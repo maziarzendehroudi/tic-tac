@@ -4,7 +4,7 @@
     <meta charset="UTF-8" />
     <link rel="icon" type="image/svg+xml" href="./favicon.svg" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
-    <title>Tic-Tac - Apprenez à lire l'heure</title>
+    <title>Tic-Tac - L'Atelier de l'Horloger</title>
     
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -20,28 +20,25 @@
   </head>
   <body>
     <div id="app">
-      <!-- VUE 1 : MENU PRINCIPAL ÉPURÉ -->
+      <!-- VUE 1 : MENU PRINCIPAL -->
       <div id="main-menu" class="view">
-        <div id="main-score-container">
-          <span id="big-score-num">0</span> ⚙️
-        </div>
-        
-        <div class="menu-intro">
-          <h2>Choisis ton niveau ⏰</h2>
+        <div id="main-title-box">
+          <h1>⏰ Tic-Tac</h1>
+          <p>L'Atelier de l'Horloger</p>
         </div>
 
         <div id="levels-grid">
           <button class="level-rect lvl-1" data-level="1">
             <div class="lvl-content">
-              <span class="lvl-title">Niveau 1</span>
-              <span class="lvl-desc">Heures pleines (sans graduations)</span>
+              <span class="lvl-title">Niveau 1 ➔ Le Ressort 🔋</span>
+              <span class="lvl-desc">Heures pleines</span>
             </div>
             <span class="lvl-check hidden">✅</span>
           </button>
 
           <button class="level-rect lvl-2 locked" data-level="2">
             <div class="lvl-content">
-              <span class="lvl-title">Niveau 2</span>
+              <span class="lvl-title">Niveau 2 ➔ Les Rouages ⚙️</span>
               <span class="lvl-desc">Demi-heures</span>
             </div>
             <span class="lvl-check hidden">✅</span>
@@ -49,7 +46,7 @@
 
           <button class="level-rect lvl-3 locked" data-level="3">
             <div class="lvl-content">
-              <span class="lvl-title">Niveau 3</span>
+              <span class="lvl-title">Niveau 3 ➔ Le Tic-Tac 🫀</span>
               <span class="lvl-desc">Quarts d'heure</span>
             </div>
             <span class="lvl-check hidden">✅</span>
@@ -57,7 +54,7 @@
 
           <button class="level-rect lvl-4 locked" data-level="4">
             <div class="lvl-content">
-              <span class="lvl-title">Niveau 4</span>
+              <span class="lvl-title">Niveau 4 ➔ Le Balancier ⚖️</span>
               <span class="lvl-desc">Précision 5 minutes</span>
             </div>
             <span class="lvl-check hidden">✅</span>
@@ -65,7 +62,7 @@
 
           <button class="level-rect lvl-5 locked" data-level="5">
             <div class="lvl-content">
-              <span class="lvl-title">Niveau 5</span>
+              <span class="lvl-title">Niveau 5 ➔ Le Cadran 🧭</span>
               <span class="lvl-desc">Les 24 heures</span>
             </div>
             <span class="lvl-check hidden">✅</span>
@@ -73,23 +70,49 @@
 
           <button class="level-rect lvl-6 locked" data-level="6">
             <div class="lvl-content">
-              <span class="lvl-title">Niveau 6</span>
-              <span class="lvl-desc">Expert minimaliste (heures complexes)</span>
+              <span class="lvl-title">Niveau 6 ➔ Maître Horloger 🌟</span>
+              <span class="lvl-desc">Défi expert & remontage</span>
             </div>
             <span class="lvl-check hidden">✅</span>
           </button>
         </div>
 
-        <button id="shop-btn-main">🛒 Boutique magique</button>
+        <button id="open-atelier-btn">🛠️ L'Atelier de la Montre</button>
       </div>
 
-      <!-- VUE 2 : ÉCRAN DE JEU ÉPURÉ -->
+      <!-- VUE 2 : L'ATELIER (Assemblage de la montre) -->
+      <div id="atelier-view" class="view hidden">
+        <div id="atelier-top-bar">
+          <button id="atelier-back-btn">🏠 Menu</button>
+          <h2>Atelier Mécanique</h2>
+          <span></span>
+        </div>
+        <p class="atelier-instruction">Glisse ou clique sur tes pièces gagnées pour assembler la montre !</p>
+        
+        <div id="watch-blueprint">
+          <!-- Emplacements (Slots) sur le plan -->
+          <div class="slot" data-part="spring" style="top: 20%; left: 20%;">🔋 Ressort</div>
+          <div class="slot" data-part="gears" style="top: 20%; right: 20%;">⚙️ Rouages</div>
+          <div class="slot" data-part="escapement" style="bottom: 20%; left: 20%;">🫀 Tic-Tac</div>
+          <div class="slot" data-part="balance" style="bottom: 20%; right: 20%;">⚖️ Balancier</div>
+          <div class="slot center-slot" data-part="hands" style="top: 38%; left: 32%;">🧭 Cadran</div>
+        </div>
+
+        <div id="parts-inventory">
+          <h3>Pièces disponibles :</h3>
+          <div id="inventory-items">
+            <!-- Rempli dynamiquement -->
+          </div>
+        </div>
+      </div>
+
+      <!-- VUE 3 : ÉCRAN DE JEU -->
       <div id="game-screen" class="view hidden">
         <div id="game-top-bar">
           <button id="back-menu-btn" title="Retour au menu">
             <span id="level-title-display">Niveau 1</span> 🏠
           </button>
-          <div id="game-score-display">0 ⚙️</div>
+          <div id="game-progress-display">Niveau en cours</div>
         </div>
         
         <div id="phase-badge">Étape 1/2 : Lecture</div>
@@ -112,33 +135,6 @@
           </div>
 
           <button id="check-btn" class="hidden">Vérifier</button>
-        </div>
-      </div>
-
-      <!-- Modale Boutique -->
-      <div id="shop-modal" class="modal hidden">
-        <div class="modal-content">
-          <h2>🛍️ La Boutique</h2>
-          <p>Personnalise ton jeu avec tes engrenages !</p>
-          <div id="shop-tabs">
-            <button class="shop-tab active" data-tab="themes">🎨 Cadrans</button>
-            <button class="shop-tab" data-tab="hands">✨ Aiguilles</button>
-          </div>
-          <div id="shop-items-container"></div>
-          <button id="close-shop-btn">Fermer</button>
-        </div>
-      </div>
-
-      <!-- POPUP D'INSTALLATION PWA -->
-      <div id="pwa-install-modal" class="modal hidden">
-        <div class="modal-content install-modal-content">
-          <div class="install-icon">⏰</div>
-          <h2>Installe Tic-Tac !</h2>
-          <p id="install-text">Installe l'application sur ton écran d'accueil pour y jouer partout, même sans internet !</p>
-          <div class="install-actions">
-            <button id="pwa-install-btn" class="shop-action-btn" style="padding: 12px 20px; font-size: 1rem;">Installer</button>
-            <button id="pwa-close-btn" class="shop-action-btn" style="background-color: #cbd5e1; color: #334155;">Plus tard</button>
-          </div>
         </div>
       </div>
     </div>

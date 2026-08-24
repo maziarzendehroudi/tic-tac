@@ -5,13 +5,6 @@ import type { TimeTarget } from './QuestionManager';
 import { SaveManager } from './SaveManager';
 import type { GameSave } from './SaveManager';
 
-interface ShopItem {
-  id: string;
-  name: string;
-  cost: number;
-  category: 'themes' | 'hands';
-}
-
 export class GameEngine {
   private canvas: HTMLCanvasElement;
   private ctx: CanvasRenderingContext2D;
@@ -29,21 +22,18 @@ export class GameEngine {
   private currentLevel: number = 1;
   private currentPhase: 1 | 2 = 1;
   private phaseSuccessCount: number = 0;
-  private activeShopCategory: 'themes' | 'hands' = 'themes';
 
   private isDragging: boolean = false;
   private activeHand: 'hour' | 'minute' = 'minute';
 
-  private shopItems: ShopItem[] = [
-    { id: 'classic', name: 'Cadran Classique', cost: 0, category: 'themes' },
-    { id: 'wood', name: 'Cadran Bois', cost: 5, category: 'themes' },
-    { id: 'forest', name: '🌲 Forêt Enchantée', cost: 8, category: 'themes' },
-    { id: 'ocean', name: '🌊 Océan Profond', cost: 12, category: 'themes' },
-    { id: 'space', name: '🚀 Cadran Espace', cost: 18, category: 'themes' },
-    { id: 'classic-hands', name: 'Aiguilles Classiques', cost: 0, category: 'hands' },
-    { id: 'gold-hands', name: '✨ Aiguilles Dorées', cost: 10, category: 'hands' },
-    { id: 'neon-hands', name: '💡 Aiguilles Néon', cost: 15, category: 'hands' }
-  ];
+  // Mapping des niveaux vers les pièces de montre débloquées
+  private levelPartsMap: { [key: number]: string } = {
+    1: 'spring',
+    2: 'gears',
+    3: 'escapement',
+    4: 'balance',
+    5: 'hands'
+  };
 
   constructor(canvas: HTMLCanvasElement) {
     this.canvas = canvas;
@@ -58,8 +48,8 @@ export class GameEngine {
     this.ctx.translate(centerX, centerY);
 
     this.saveData = SaveManager.load();
-    this.clock = new Clock(this.ctx, radius, this.saveData.activeTheme);
-    this.hands = new Hands(this.ctx, radius, this.saveData.activeHands);
+    this.clock = new Clock(this.ctx, radius, 'classic');
+    this.hands = new Hands(this.ctx, radius, 'classic-hands');
     this.questionManager = new QuestionManager(1);
 
     this.initEvents();
@@ -73,12 +63,9 @@ export class GameEngine {
     this.phaseSuccessCount = 0;
     this.questionManager.setLevel(level);
 
-    const gameScreen = document.getElementById('game-screen');
     document.getElementById('main-menu')?.classList.add('hidden');
-    gameScreen?.classList.remove('hidden');
-
-    gameScreen?.classList.remove('theme-lvl-1', 'theme-lvl-2', 'theme-lvl-3', 'theme-lvl-4', 'theme-lvl-5', 'theme-lvl-6');
-    gameScreen?.classList.add(`theme-lvl-${level}`);
+    document.getElementById('atelier-view')?.classList.add('hidden');
+    document.getElementById('game-screen')?.classList.remove('hidden');
 
     const titleDisplay = document.getElementById('level-title-display');
     if (titleDisplay) titleDisplay.textContent = `Niveau ${level}`;
@@ -90,9 +77,15 @@ export class GameEngine {
 
   private returnToMenu(): void {
     document.getElementById('game-screen')?.classList.add('hidden');
+    document.getElementById('atelier-view')?.classList.add('hidden');
     document.getElementById('main-menu')?.classList.remove('hidden');
     this.updateMenuUI();
-    this.updateScoresDisplay();
+  }
+
+  private openAtelier(): void {
+    document.getElementById('main-menu')?.classList.add('hidden');
+    document.getElementById('atelier-view')?.classList.remove('hidden');
+    this.renderAtelier();
   }
 
   private initNewQuestion(): void {
@@ -120,16 +113,23 @@ export class GameEngine {
         if (level <= (this.saveData.maxUnlockedLevel || 1)) {
           this.startLevel(level);
         } else {
-          alert("🔒 Ce niveau est verrouillé ! Termine le niveau précédent pour le débloquer.");
+          alert("🔒 Ce niveau est verrouillé ! Termine le niveau précédent.");
         }
       });
     });
+
+    const atelierBtn = document.getElementById('open-atelier-btn');
+    atelierBtn?.addEventListener('click', () => this.openAtelier());
+
+    const atelierBackBtn = document.getElementById('atelier-back-btn');
+    atelierBackBtn?.addEventListener('click', () => this.returnToMenu());
 
     const backMenuBtn = document.getElementById('back-menu-btn');
     if (backMenuBtn) {
       backMenuBtn.addEventListener('click', () => this.returnToMenu());
     }
 
+    // Gestion du tactile/souris pour l'horloge
     const getPointerPos = (e: MouseEvent | TouchEvent) => {
       const rect = this.canvas.getBoundingClientRect();
       const clientX = 'touches' in e ? e.touches[0].clientX : (e as MouseEvent).clientX;
@@ -199,34 +199,6 @@ export class GameEngine {
         }
       });
     });
-
-    const shopBtnMain = document.getElementById('shop-btn-main');
-    const shopModal = document.getElementById('shop-modal');
-    const closeShopBtn = document.getElementById('close-shop-btn');
-
-    if (shopBtnMain && shopModal) {
-      shopBtnMain.addEventListener('click', () => {
-        this.renderShopItems();
-        shopModal.classList.remove('hidden');
-      });
-    }
-
-    if (closeShopBtn && shopModal) {
-      closeShopBtn.addEventListener('click', () => {
-        shopModal.classList.add('hidden');
-      });
-    }
-
-    const shopTabs = document.querySelectorAll('.shop-tab');
-    shopTabs.forEach(tab => {
-      tab.addEventListener('click', (e) => {
-        shopTabs.forEach(t => t.classList.remove('active'));
-        const target = e.currentTarget as HTMLElement;
-        target.classList.add('active');
-        this.activeShopCategory = target.getAttribute('data-tab') as 'themes' | 'hands';
-        this.renderShopItems();
-      });
-    });
   }
 
   private updateMenuUI(): void {
@@ -249,25 +221,72 @@ export class GameEngine {
         checkMark?.classList.add('hidden');
       }
     });
-    this.updateScoresDisplay();
   }
 
-  private updateScoresDisplay(): void {
-    const bigScoreNum = document.getElementById('big-score-num');
-    const gameScoreDisplay = document.getElementById('game-score-display');
-    
-    if (bigScoreNum) bigScoreNum.textContent = this.saveData.gears.toString();
-    if (gameScoreDisplay) gameScoreDisplay.textContent = `${this.saveData.gears} ⚙️`;
+  private renderAtelier(): void {
+    const inventoryContainer = document.getElementById('inventory-items');
+    if (!inventoryContainer) return;
+    inventoryContainer.innerHTML = '';
+
+    // Afficher les pièces débloquées non encore placées
+    this.saveData.unlockedParts.forEach(partId => {
+      if (!this.saveData.placedParts.includes(partId)) {
+        const partEl = document.createElement('div');
+        partEl.className = 'inventory-part';
+        partEl.textContent = this.getPartName(partId);
+        partEl.setAttribute('data-part', partId);
+
+        // Permettre le clic pour placer directement dans son slot
+        partEl.addEventListener('click', () => {
+          if (!this.saveData.placedParts.includes(partId)) {
+            this.saveData.placedParts.push(partId);
+            SaveManager.save(this.saveData);
+            this.renderAtelier();
+          }
+        });
+
+        inventoryContainer.appendChild(partEl);
+      }
+    });
+
+    if (inventoryContainer.children.length === 0) {
+      inventoryContainer.innerHTML = '<span style="font-size:0.85rem; color:#64748b;">Toutes tes pièces sont assemblées ! 🎉</span>';
+    }
+
+    // Mettre à jour l'affichage des slots sur le plan
+    const slots = document.querySelectorAll('.slot');
+    slots.forEach(slot => {
+      const partId = slot.getAttribute('data-part');
+      if (partId && this.saveData.placedParts.includes(partId)) {
+        slot.classList.add('filled');
+        slot.textContent = `✅ ${this.getPartName(partId)}`;
+      } else {
+        slot.classList.remove('filled');
+      }
+    });
+  }
+
+  private getPartName(partId: string): string {
+    switch(partId) {
+      case 'spring': return '🔋 Ressort';
+      case 'gears': return '⚙️ Rouages';
+      case 'escapement': return '🫀 Tic-Tac';
+      case 'balance': return '⚖️ Balancier';
+      case 'hands': return '🧭 Cadran';
+      default: return partId;
+    }
   }
 
   private handleSuccessfulAnswer(): void {
-    const earnedGears = this.errorsCount === 0 ? 1 : 0.5;
-    this.saveData.gears += earnedGears;
     this.phaseSuccessCount++;
 
+    const partToUnlock = this.levelPartsMap[this.currentLevel];
+    if (partToUnlock && !this.saveData.unlockedParts.includes(partToUnlock)) {
+      this.saveData.unlockedParts.push(partToUnlock);
+    }
+
     SaveManager.save(this.saveData);
-    this.triggerSuccessEffect();
-    this.updateScoresDisplay();
+    this.updateMenuUI();
 
     const instructionEl = document.getElementById('instruction');
 
@@ -291,7 +310,7 @@ export class GameEngine {
         }
 
         if (instructionEl) {
-          instructionEl.innerHTML = `🏆 <span style="font-size: 2.5rem;">👍</span> (+${earnedGears} ⚙️)`;
+          instructionEl.innerHTML = `🏆 <span style="font-size: 2.5rem;">👍</span> Pièce débloquée !`;
         }
 
         setTimeout(() => {
@@ -314,7 +333,6 @@ export class GameEngine {
 
   private handleFailedAttempt(): void {
     this.errorsCount++;
-    this.triggerShakeEffect();
     const instructionEl = document.getElementById('instruction');
 
     if (this.errorsCount >= 3) {
@@ -369,7 +387,6 @@ export class GameEngine {
   }
 
   private snapToGrid(): void {
-    // Si niveau 6, on autorise la précision à la minute près (pas de snap sur 5 minutes pour les heures complexes)
     if (this.currentLevel === 6) {
       this.render();
       return;
@@ -379,25 +396,8 @@ export class GameEngine {
     this.render();
   }
 
-  private triggerShakeEffect(): void {
-    const container = document.getElementById('game-container');
-    if (container) {
-      container.classList.add('shake');
-      setTimeout(() => container.classList.remove('shake'), 400);
-    }
-  }
-
-  private triggerSuccessEffect(): void {
-    const container = document.getElementById('game-container');
-    if (container) {
-      container.classList.add('success-bounce');
-      setTimeout(() => container.classList.remove('success-bounce'), 600);
-    }
-  }
-
   private checkPlaceAnswer(): void {
     const isHourCorrect = this.currentHours % 12 === this.targetTime.hours % 12;
-    // Pour le niveau 6, on tolère une marge de +/- 2 minutes pour la manipulation tactile
     const isMinuteCorrect = this.currentLevel === 6 
       ? Math.abs(this.currentMinutes - this.targetTime.minutes) <= 2
       : this.currentMinutes === this.targetTime.minutes;
@@ -407,7 +407,6 @@ export class GameEngine {
     } else {
       this.handleFailedAttempt();
     }
-    this.updateScoresDisplay();
   }
 
   private checkReadAnswer(choiceIndex: number): void {
@@ -420,89 +419,6 @@ export class GameEngine {
     } else {
       this.handleFailedAttempt();
     }
-    this.updateScoresDisplay();
-  }
-
-  private renderShopItems(): void {
-    const container = document.getElementById('shop-items-container');
-    if (!container) return;
-    container.innerHTML = '';
-
-    const filteredItems = this.shopItems.filter(item => item.category === this.activeShopCategory);
-
-    filteredItems.forEach(item => {
-      const isUnlocked = item.category === 'themes' 
-        ? this.saveData.unlockedItems.includes(item.id) 
-        : this.saveData.unlockedHands.includes(item.id);
-      
-      const isActive = item.category === 'themes'
-        ? this.saveData.activeTheme === item.id
-        : this.saveData.activeHands === item.id;
-
-      const itemEl = document.createElement('div');
-      itemEl.className = 'shop-item';
-
-      let buttonText = `Acheter (${item.cost} ⚙️)`;
-      let buttonClass = 'shop-action-btn';
-
-      if (isActive) {
-        buttonText = 'Actif';
-        buttonClass = 'shop-action-btn active';
-      } else if (isUnlocked) {
-        buttonText = 'Utiliser';
-        buttonClass = 'shop-action-btn unlocked';
-      }
-
-      itemEl.innerHTML = `
-        <div class="shop-item-info">
-          <h4>${item.name}</h4>
-          <span>${item.cost === 0 ? 'Gratuit' : `${item.cost} ⚙️`}</span>
-        </div>
-        <button class="${buttonClass}" data-id="${item.id}">${buttonText}</button>
-      `;
-
-      itemEl.querySelector('button')!.addEventListener('click', () => {
-        this.handleShopAction(item);
-      });
-
-      container.appendChild(itemEl);
-    });
-  }
-
-  private handleShopAction(item: ShopItem): void {
-    const isUnlocked = item.category === 'themes'
-      ? this.saveData.unlockedItems.includes(item.id)
-      : this.saveData.unlockedHands.includes(item.id);
-
-    if (isUnlocked) {
-      if (item.category === 'themes') {
-        this.saveData.activeTheme = item.id;
-        this.clock.setTheme(item.id);
-      } else {
-        this.saveData.activeHands = item.id;
-        this.hands.setStyle(item.id);
-      }
-    } else {
-      if (this.saveData.gears >= item.cost) {
-        this.saveData.gears -= item.cost;
-        if (item.category === 'themes') {
-          this.saveData.unlockedItems.push(item.id);
-          this.saveData.activeTheme = item.id;
-          this.clock.setTheme(item.id);
-        } else {
-          this.saveData.unlockedHands.push(item.id);
-          this.saveData.activeHands = item.id;
-          this.hands.setStyle(item.id);
-        }
-      } else {
-        alert("Tu n'as pas assez d'engrenages !");
-      }
-    }
-
-    SaveManager.save(this.saveData);
-    this.updateScoresDisplay();
-    this.renderShopItems();
-    this.render();
   }
 
   private updateUI(): void {

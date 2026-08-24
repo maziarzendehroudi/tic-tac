@@ -1,45 +1,33 @@
 export interface GameSave {
-  gears: number;
   maxUnlockedLevel: number;
-  unlockedItems: string[];
-  unlockedHands: string[];
-  activeTheme: string;
-  activeHands: string;
+  unlockedParts: string[]; // ['spring', 'gears', 'escapement', 'balance', 'hands']
+  placedParts: string[];   // Pièces positionnées sur le plan de l'atelier
 }
 
 export class SaveManager {
-  private static STORAGE_KEY = 'tic_tac_save_data';
+  private static STORAGE_KEY = 'tic_tac_watch_save';
 
   public static load(): GameSave {
     const data = localStorage.getItem(this.STORAGE_KEY);
     if (!data) {
       return { 
-        gears: 0, 
         maxUnlockedLevel: 1,
-        unlockedItems: ['classic'], 
-        unlockedHands: ['classic-hands'],
-        activeTheme: 'classic',
-        activeHands: 'classic-hands'
+        unlockedParts: [], 
+        placedParts: []
       };
     }
     try {
       const save = JSON.parse(data);
       return {
-        gears: save.gears ?? 0,
         maxUnlockedLevel: save.maxUnlockedLevel ?? 1,
-        unlockedItems: save.unlockedItems ?? ['classic'],
-        unlockedHands: save.unlockedHands ?? ['classic-hands'],
-        activeTheme: save.activeTheme ?? 'classic',
-        activeHands: save.activeHands ?? 'classic-hands'
+        unlockedParts: save.unlockedParts ?? [],
+        placedParts: save.placedParts ?? []
       };
     } catch {
       return { 
-        gears: 0, 
         maxUnlockedLevel: 1,
-        unlockedItems: ['classic'], 
-        unlockedHands: ['classic-hands'],
-        activeTheme: 'classic',
-        activeHands: 'classic-hands'
+        unlockedParts: [],
+        placedParts: []
       };
     }
   }
