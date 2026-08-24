@@ -156,12 +156,19 @@ export class GameEngine {
       });
     });
 
+    // Gestion des clics sur les niveaux (Campagne)
     const levelBtns = document.querySelectorAll('.level-btn');
     levelBtns.forEach(btn => {
       btn.addEventListener('click', (e) => {
         const target = e.currentTarget as HTMLElement;
         const level = parseInt(target.getAttribute('data-level') || '1', 10);
-        this.setNewLevel(level);
+        
+        // Vérifier si le niveau est débloqué
+        if (level <= (this.saveData.maxUnlockedLevel || 1)) {
+          this.setNewLevel(level);
+        } else {
+          alert("🔒 Ce niveau est verrouillé ! Réussis les niveaux précédents pour l'ouvrir.");
+        }
       });
     });
 
@@ -225,14 +232,67 @@ export class GameEngine {
 
   private updateLevelButtonsUI(): void {
     const levelBtns = document.querySelectorAll('.level-btn');
+    const maxUnlocked = this.saveData.maxUnlockedLevel || 1;
+
     levelBtns.forEach(btn => {
       const level = parseInt(btn.getAttribute('data-level') || '1', 10);
+      
+      if (level <= maxUnlocked) {
+        btn.classList.remove('locked');
+        btn.textContent = `Niveau ${level} (${this.getLevelName(level)})`;
+      } else {
+        btn.classList.add('locked');
+        btn.textContent = `🔒 Niveau ${level}`;
+      }
+
       if (level === this.currentLevel) {
         btn.classList.add('active');
       } else {
         btn.classList.remove('active');
       }
     });
+  }
+
+  private getLevelName(level: number): string {
+    switch(level) {
+      case 1: return 'Piles';
+      case 2: return '30 min';
+      case 3: return 'Quarts';
+      case 4: return '5 min';
+      default: return '';
+    }
+  }
+
+  private handleSuccessfulAnswer(): void {
+    const earnedGears = this.errorsCount === 0 ? 1 : 0.5;
+    this.saveData.gears += earnedGears;
+
+    // Progression de campagne : si on réussit au niveau max actuel et qu'il y a un niveau suivant (< 4)
+    if (this.currentLevel === this.saveData.maxUnlockedLevel && this.currentLevel < 4) {
+      this.saveData.maxUnlockedLevel = this.currentLevel + 1;
+    }
+
+    SaveManager.save(this.saveData);
+    this.triggerSuccessEffect();
+
+    const instructionEl = document.getElementById('instruction');
+    if (instructionEl) {
+      if (this.currentLevel < this.saveData.maxUnlockedLevel && this.currentLevel === this.saveData.maxUnlockedLevel - 1) {
+        instructionEl.innerHTML = `🎉 Bravo ! Niveau validé, Niveau ${this.saveData.maxUnlockedLevel} débloqué ! (+${earnedGears} ⚙️)`;
+      } else {
+        instructionEl.innerHTML = `🎉 Super ! Gagné (+${earnedGears} ⚙️)`;
+      }
+      instructionEl.style.color = '#38a169';
+    }
+
+    this.updateLevelButtonsUI();
+
+    setTimeout(() => {
+      if (instructionEl) instructionEl.style.color = '#4a5568';
+      this.initNewQuestion();
+      this.updateUI();
+      this.render();
+    }, 1800);
   }
 
   private normalizeAngle(angle: number): number {
@@ -284,23 +344,7 @@ export class GameEngine {
     const instructionEl = document.getElementById('instruction');
 
     if (isHourCorrect && isMinuteCorrect) {
-      const earnedGears = this.errorsCount === 0 ? 1 : 0.5;
-      this.saveData.gears += earnedGears;
-      SaveManager.save(this.saveData);
-      this.triggerSuccessEffect();
-
-      if (instructionEl) {
-        instructionEl.innerHTML = `🎉 Super ! Gagné (+${earnedGears} ⚙️)`;
-        instructionEl.style.color = '#38a169';
-      }
-
-      setTimeout(() => {
-        if (instructionEl) instructionEl.style.color = '#4a5568';
-        this.initNewQuestion();
-        this.updateUI();
-        this.render();
-      }, 1500);
-
+      this.handleSuccessfulAnswer();
     } else {
       this.errorsCount++;
       this.triggerShakeEffect();
@@ -317,23 +361,7 @@ export class GameEngine {
     const instructionEl = document.getElementById('instruction');
 
     if (isCorrect) {
-      const earnedGears = this.errorsCount === 0 ? 1 : 0.5;
-      this.saveData.gears += earnedGears;
-      SaveManager.save(this.saveData);
-      this.triggerSuccessEffect();
-
-      if (instructionEl) {
-        instructionEl.innerHTML = `🎉 Bravo ! C'était bien ${this.targetTime.text} (+${earnedGears} ⚙️)`;
-        instructionEl.style.color = '#38a169';
-      }
-
-      setTimeout(() => {
-        if (instructionEl) instructionEl.style.color = '#4a5568';
-        this.initNewQuestion();
-        this.updateUI();
-        this.render();
-      }, 1500);
-
+      this.handleSuccessfulAnswer();
     } else {
       this.errorsCount++;
       this.triggerShakeEffect();

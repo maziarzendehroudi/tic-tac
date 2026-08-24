@@ -125,6 +125,19 @@ h1 {
   box-shadow: 0 2px 5px rgba(49, 130, 206, 0.3);
 }
 
+.level-btn.locked {
+  background-color: #edf2f7;
+  color: #a0aec0;
+  cursor: not-allowed;
+  border: 2px dashed #cbd5e0;
+  box-shadow: none;
+}
+
+.level-btn.locked:hover {
+  background-color: #edf2f7;
+  transform: none;
+}
+
 #game-container {
   background: white;
   border-radius: 50%;

@@ -1,6 +1,7 @@
 export interface GameSave {
   gears: number;
-  levelProgress: number;
+  maxUnlockedLevel: number;
+  levelProgress: number; // Niveau actuellement sélectionné
   unlockedItems: string[];
   activeTheme: string;
 }
@@ -13,6 +14,7 @@ export class SaveManager {
     if (!data) {
       return { 
         gears: 0, 
+        maxUnlockedLevel: 1,
         levelProgress: 1, 
         unlockedItems: ['classic'], 
         activeTheme: 'classic' 
@@ -22,6 +24,7 @@ export class SaveManager {
       const save = JSON.parse(data);
       return {
         gears: save.gears ?? 0,
+        maxUnlockedLevel: save.maxUnlockedLevel ?? 1,
         levelProgress: save.levelProgress ?? 1,
         unlockedItems: save.unlockedItems ?? ['classic'],
         activeTheme: save.activeTheme ?? 'classic'
@@ -29,6 +32,7 @@ export class SaveManager {
     } catch {
       return { 
         gears: 0, 
+        maxUnlockedLevel: 1,
         levelProgress: 1, 
         unlockedItems: ['classic'], 
         activeTheme: 'classic' 
