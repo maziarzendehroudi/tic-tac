@@ -100,7 +100,6 @@ body {
   gap: 2px;
 }
 
-/* Couleurs de niveaux vibrantes et progressives */
 .level-rect.lvl-1 { background: linear-gradient(135deg, #38bdf8, #0284c7); }
 .level-rect.lvl-2 { background: linear-gradient(135deg, #34d399, #059669); }
 .level-rect.lvl-3 { background: linear-gradient(135deg, #fbbf24, #d97706); }
@@ -162,7 +161,7 @@ body {
   transform: scale(0.96);
 }
 
-/* Écran de Jeu Épuré */
+/* Écran de Jeu */
 #game-top-bar {
   display: flex;
   justify-content: space-between;
@@ -181,7 +180,6 @@ body {
   display: flex;
   align-items: center;
   gap: 8px;
-  transition: opacity 0.15s;
   color: white;
 }
 
@@ -203,7 +201,6 @@ body {
   margin-bottom: 12px;
 }
 
-/* Horloge plus grande (presque toute la largeur) */
 #game-container {
   background: radial-gradient(circle, #ffffff 60%, #f8fafc 100%);
   border-radius: 50%;
@@ -281,7 +278,6 @@ canvas {
   display: none;
 }
 
-/* Boutons de réponses plus gros */
 .choice-btn {
   background: #f8fafc;
   border: 3px solid #cbd5e1;
@@ -299,10 +295,9 @@ canvas {
   border-color: #4f46e5;
   background: #eef2ff;
   color: #4f46e5;
-  transform: translateY(-2px);
 }
 
-/* Thèmes dynamiques hérités du menu pour l'écran de jeu */
+/* Thèmes par niveau */
 #game-screen.theme-lvl-1 #back-menu-btn { background: #0284c7; }
 #game-screen.theme-lvl-1 #phase-badge { background: #e0f2fe; color: #0284c7; }
 
@@ -318,7 +313,7 @@ canvas {
 #game-screen.theme-lvl-5 #back-menu-btn { background: #7c3aed; }
 #game-screen.theme-lvl-5 #phase-badge { background: #ede9fe; color: #7c3aed; }
 
-/* Modale Boutique */
+/* Modales & Popup PWA */
 .modal {
   position: fixed;
   top: 0;
@@ -351,6 +346,33 @@ canvas {
   max-height: 85vh;
 }
 
+.install-modal-content {
+  align-items: center;
+}
+
+.install-icon {
+  font-size: 3rem;
+  background: #ede9fe;
+  width: 70px;
+  height: 70px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 50%;
+  margin-bottom: 12px;
+}
+
+.install-actions {
+  display: flex;
+  gap: 10px;
+  width: 100%;
+  margin-top: 10px;
+}
+
+.install-actions button {
+  flex: 1;
+}
+
 .modal-content h2 {
   color: #1e293b;
   font-size: 1.4rem;
@@ -360,8 +382,9 @@ canvas {
 
 .modal-content p {
   color: #64748b;
-  font-size: 0.9rem;
-  margin-bottom: 14px;
+  font-size: 0.95rem;
+  margin-bottom: 16px;
+  line-height: 1.4;
 }
 
 #shop-tabs {
