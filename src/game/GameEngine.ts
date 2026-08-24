@@ -525,7 +525,7 @@ export class GameEngine {
   }
 
   public render(): void {
-    this.clock.draw();
+    this.clock.draw(this.currentLevel);
     this.hands.draw(this.currentHours, this.currentMinutes);
   }
 }

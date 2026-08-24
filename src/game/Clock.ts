@@ -13,7 +13,7 @@ export class Clock {
     this.theme = theme;
   }
 
-  public draw(): void {
+  public draw(level: number = 1): void {
     const ctx = this.ctx;
     ctx.clearRect(-this.radius, -this.radius, this.radius * 2, this.radius * 2);
 
@@ -39,6 +39,7 @@ export class Clock {
       numberColor = '#2c5282';
     }
 
+    // Fond du cadran
     ctx.beginPath();
     ctx.arc(0, 0, this.radius, 0, 2 * Math.PI);
     ctx.fillStyle = bgColor;
@@ -47,31 +48,56 @@ export class Clock {
     ctx.strokeStyle = borderColor;
     ctx.stroke();
 
+    // Pastille centrale (pivot)
     ctx.beginPath();
     ctx.arc(0, 0, 8, 0, 2 * Math.PI);
     ctx.fillStyle = borderColor;
     ctx.fill();
 
-    for (let i = 1; i <= 12; i++) {
-      const angle = (i * Math.PI) / 6;
+    // 1. Dessiner les 60 graduations de minutes (pédagogique)
+    for (let i = 0; i < 60; i++) {
+      const angle = (i * Math.PI) / 30;
+      const isHourMark = i % 5 === 0;
       
-      const innerRadius = this.radius - 15;
-      const outerRadius = this.radius - 5;
+      const innerRadius = this.radius - (isHourMark ? 16 : 10);
+      const outerRadius = this.radius - 6;
+
       ctx.beginPath();
       ctx.moveTo(innerRadius * Math.sin(angle), -innerRadius * Math.cos(angle));
       ctx.lineTo(outerRadius * Math.sin(angle), -outerRadius * Math.cos(angle));
-      ctx.lineWidth = i % 3 === 0 ? 4 : 2;
-      ctx.strokeStyle = numberColor;
+      ctx.lineWidth = isHourMark ? 3 : 1.5;
+      ctx.strokeStyle = isHourMark ? numberColor : '#94a3b8';
       ctx.stroke();
+    }
 
+    // 2. Chiffres des heures et repères de minutes pour les niveaux 1 à 3
+    for (let i = 1; i <= 12; i++) {
+      const angle = (i * Math.PI) / 6;
+
+      // Chiffre principal des heures
       const numRadius = this.radius - 42;
       const x = numRadius * Math.sin(angle);
       const y = -numRadius * Math.cos(angle);
-      ctx.font = 'bold 24px "Comic Sans MS", sans-serif';
+      
+      ctx.font = 'bold 24px "Fredoka", sans-serif';
       ctx.fillStyle = numberColor;
       ctx.textAlign = 'center';
       ctx.textBaseline = 'middle';
       ctx.fillText(i.toString(), x, y);
+
+      // Aide pédagogique : Afficher les minutes (05, 10, 15...) uniquement pour les niveaux 1, 2 et 3
+      if (level <= 3) {
+        const minuteVal = i * 5 === 60 ? '00' : (i * 5 < 10 ? `0${i * 5}` : `${i * 5}`);
+        const minRadius = this.radius - 68;
+        const minX = minRadius * Math.sin(angle);
+        const minY = -minRadius * Math.cos(angle);
+
+        ctx.font = '600 12px "Fredoka", sans-serif';
+        ctx.fillStyle = '#64748b';
+        ctx.textAlign = 'center';
+        ctx.textBaseline = 'middle';
+        ctx.fillText(minuteVal, minX, minY);
+      }
     }
   }
 }
