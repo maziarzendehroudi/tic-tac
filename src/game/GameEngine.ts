@@ -27,8 +27,8 @@ export class GameEngine {
   private saveData: GameSave;
   private errorsCount: number = 0;
   private currentLevel: number = 1;
-  private currentPhase: 1 | 2 = 1; // Phase 1: Lecture, Phase 2: Placement
-  private phaseSuccessCount: number = 0; // 3 réussites requises par phase
+  private currentPhase: 1 | 2 = 1;
+  private phaseSuccessCount: number = 0;
   private activeShopCategory: 'themes' | 'hands' = 'themes';
 
   private isDragging: boolean = false;
@@ -73,12 +73,11 @@ export class GameEngine {
     this.phaseSuccessCount = 0;
     this.questionManager.setLevel(level);
 
-    // Basculer l'affichage des vues
     document.getElementById('main-menu')?.classList.add('hidden');
     document.getElementById('game-screen')?.classList.remove('hidden');
 
     const titleDisplay = document.getElementById('level-title-display');
-    if (titleDisplay) titleDisplay.textContent = `Niveau ${level} (${this.getLevelName(level)})`;
+    if (titleDisplay) titleDisplay.textContent = `Niveau ${level}`;
 
     this.initNewQuestion();
     this.render();
@@ -89,7 +88,7 @@ export class GameEngine {
     document.getElementById('game-screen')?.classList.add('hidden');
     document.getElementById('main-menu')?.classList.remove('hidden');
     this.updateMenuUI();
-    this.updateGearsDisplay();
+    this.updateScoresDisplay();
   }
 
   private initNewQuestion(): void {
@@ -108,10 +107,9 @@ export class GameEngine {
   }
 
   private initEvents(): void {
-    // Gestionnaire de sélection de niveau depuis le menu
-    const levelCards = document.querySelectorAll('.level-card');
-    levelCards.forEach(card => {
-      card.addEventListener('click', (e) => {
+    const levelRects = document.querySelectorAll('.level-rect');
+    levelRects.forEach(rect => {
+      rect.addEventListener('click', (e) => {
         const target = e.currentTarget as HTMLElement;
         const level = parseInt(target.getAttribute('data-level') || '1', 10);
         
@@ -198,13 +196,12 @@ export class GameEngine {
       });
     });
 
-    // Boutique
-    const shopBtn = document.getElementById('shop-btn');
+    const shopBtnMain = document.getElementById('shop-btn-main');
     const shopModal = document.getElementById('shop-modal');
     const closeShopBtn = document.getElementById('close-shop-btn');
 
-    if (shopBtn && shopModal) {
-      shopBtn.addEventListener('click', () => {
+    if (shopBtnMain && shopModal) {
+      shopBtnMain.addEventListener('click', () => {
         this.renderShopItems();
         shopModal.classList.remove('hidden');
       });
@@ -229,27 +226,27 @@ export class GameEngine {
   }
 
   private updateMenuUI(): void {
-    const levelCards = document.querySelectorAll('.level-card');
+    const levelRects = document.querySelectorAll('.level-rect');
     const maxUnlocked = this.saveData.maxUnlockedLevel || 1;
 
-    levelCards.forEach(card => {
-      const level = parseInt(card.getAttribute('data-level') || '1', 10);
-      const statusEl = card.querySelector('.level-status');
-
+    levelRects.forEach(rect => {
+      const level = parseInt(rect.getAttribute('data-level') || '1', 10);
+      
       if (level <= maxUnlocked) {
-        card.classList.remove('locked');
-        if (statusEl) statusEl.textContent = 'Disponible 🟢';
+        rect.classList.remove('locked');
       } else {
-        card.classList.add('locked');
-        if (statusEl) statusEl.textContent = '🔒 Verrouillé';
+        rect.classList.add('locked');
       }
     });
-    this.updateGearsDisplay();
+    this.updateScoresDisplay();
   }
 
-  private updateGearsDisplay(): void {
-    const gearsEl = document.getElementById('gears-count');
-    if (gearsEl) gearsEl.textContent = `⚙️ ${this.saveData.gears}`;
+  private updateScoresDisplay(): void {
+    const bigScoreNum = document.getElementById('big-score-num');
+    const gameScoreDisplay = document.getElementById('game-score-display');
+    
+    if (bigScoreNum) bigScoreNum.textContent = this.saveData.gears.toString();
+    if (gameScoreDisplay) gameScoreDisplay.textContent = `${this.saveData.gears} ⚙️`;
   }
 
   private handleSuccessfulAnswer(): void {
@@ -259,57 +256,54 @@ export class GameEngine {
 
     SaveManager.save(this.saveData);
     this.triggerSuccessEffect();
-    this.updateGearsDisplay();
+    this.updateScoresDisplay();
 
     const instructionEl = document.getElementById('instruction');
 
-    // Vérifier si la phase actuelle est terminée (3 réussites par phase)
     if (this.phaseSuccessCount >= 3) {
       if (this.currentPhase === 1) {
-        // Passer à la phase 2 : Placement
         this.currentPhase = 2;
         this.phaseSuccessCount = 0;
         if (instructionEl) {
-          instructionEl.innerHTML = `🎉 Étape 1 réussie ! Passons au placement des aiguilles.`;
-          instructionEl.style.color = '#38a169';
+          instructionEl.innerHTML = `🎉 Étape 1 réussie ! Passons au placement.`;
+          instructionEl.style.color = '#059669';
         }
         setTimeout(() => {
-          if (instructionEl) instructionEl.style.color = '#2d3748';
+          if (instructionEl) instructionEl.style.color = '#1e293b';
           this.initNewQuestion();
           this.updateUI();
           this.render();
-        }, 2000);
+        }, 1800);
         return;
       } else {
-        // Niveau entièrement terminé !
-        if (this.currentLevel === this.saveData.maxUnlockedLevel && this.currentLevel < 4) {
+        if (this.currentLevel === this.saveData.maxUnlockedLevel && this.currentLevel < 5) {
           this.saveData.maxUnlockedLevel = this.currentLevel + 1;
           SaveManager.save(this.saveData);
         }
 
         if (instructionEl) {
-          instructionEl.innerHTML = `🏆 Niveau ${this.currentLevel} terminé avec succès ! (+${earnedGears} ⚙️)`;
-          instructionEl.style.color = '#38a169';
+          instructionEl.innerHTML = `🏆 Niveau ${this.currentLevel} terminé ! (+${earnedGears} ⚙️)`;
+          instructionEl.style.color = '#059669';
         }
 
         setTimeout(() => {
           this.returnToMenu();
-        }, 2500);
+        }, 2200);
         return;
       }
     }
 
     if (instructionEl) {
-      instructionEl.innerHTML = `🎉 Correct ! Encore ${3 - this.phaseSuccessCount} bonne(s) réponse(s) pour cette étape (+${earnedGears} ⚙️)`;
-      instructionEl.style.color = '#38a169';
+      instructionEl.innerHTML = `🎉 Correct ! Encore ${3 - this.phaseSuccessCount} réussite(s). (+${earnedGears} ⚙️)`;
+      instructionEl.style.color = '#059669';
     }
 
     setTimeout(() => {
-      if (instructionEl) instructionEl.style.color = '#2d3748';
+      if (instructionEl) instructionEl.style.color = '#1e293b';
       this.initNewQuestion();
       this.updateUI();
       this.render();
-    }, 1500);
+    }, 1400);
   }
 
   private handleFailedAttempt(): void {
@@ -321,11 +315,7 @@ export class GameEngine {
       this.showHelp();
     } else {
       if (instructionEl) {
-        if (this.currentPhase === 1) {
-          instructionEl.innerHTML = `Ce n'est pas tout à fait ça. Essaie encore ! (${3 - this.errorsCount} essais avant indice)`;
-        } else {
-          instructionEl.innerHTML = `Presque ! Réessaie de placer les aiguilles. (${3 - this.errorsCount} essais avant indice)`;
-        }
+        instructionEl.innerHTML = `Presque ! Réessaie. (${3 - this.errorsCount} essai(s) avant indice)`;
       }
     }
   }
@@ -336,9 +326,9 @@ export class GameEngine {
     if (helpBox && helpText) {
       helpBox.classList.remove('hidden');
       if (this.currentPhase === 1) {
-        helpText.textContent = `Regarde l'horloge : la cible est ${this.targetTime.text}.`;
+        helpText.textContent = `La bonne réponse est ${this.targetTime.text}.`;
       } else {
-        helpText.textContent = `Pour afficher ${this.targetTime.text}, place la petite aiguille sur le chiffre ${this.targetTime.hours % 12 || 12} et la grande sur ${this.targetTime.minutes}.`;
+        helpText.textContent = `Pour ${this.targetTime.text}, place la petite aiguille sur ${this.targetTime.hours % 12 || 12} et la grande sur ${this.targetTime.minutes}.`;
       }
     }
   }
@@ -400,7 +390,7 @@ export class GameEngine {
     } else {
       this.handleFailedAttempt();
     }
-    this.updateGearsDisplay();
+    this.updateScoresDisplay();
   }
 
   private checkReadAnswer(choiceIndex: number): void {
@@ -413,7 +403,7 @@ export class GameEngine {
     } else {
       this.handleFailedAttempt();
     }
-    this.updateGearsDisplay();
+    this.updateScoresDisplay();
   }
 
   private renderShopItems(): void {
@@ -449,7 +439,7 @@ export class GameEngine {
       itemEl.innerHTML = `
         <div class="shop-item-info">
           <h4>${item.name}</h4>
-          <span>${item.cost === 0 ? 'Gratuit' : `${item.cost} Engrenages`}</span>
+          <span>${item.cost === 0 ? 'Gratuit' : `${item.cost} ⚙️`}</span>
         </div>
         <button class="${buttonClass}" data-id="${item.id}">${buttonText}</button>
       `;
@@ -493,7 +483,7 @@ export class GameEngine {
     }
 
     SaveManager.save(this.saveData);
-    this.updateGearsDisplay();
+    this.updateScoresDisplay();
     this.renderShopItems();
     this.render();
   }
@@ -525,16 +515,6 @@ export class GameEngine {
       if (checkBtn) checkBtn.classList.remove('hidden');
       if (choicesContainer) choicesContainer.classList.add('hidden');
       if (instructionEl) instructionEl.innerHTML = `Place les aiguilles sur : <strong>${this.targetTime.text}</strong>`;
-    }
-  }
-
-  private getLevelName(level: number): string {
-    switch(level) {
-      case 1: return 'Piles';
-      case 2: return '30 min';
-      case 3: return 'Quarts';
-      case 4: return '5 min';
-      default: return '';
     }
   }
 

@@ -16,37 +16,44 @@ export class QuestionManager {
   }
 
   public generateQuestion(): TimeTarget {
-    let hours = 1;
+    let hours = Math.floor(Math.random() * 12) + 1;
     let minutes = 0;
 
-    switch (this.level) {
-      case 1: // Heures piles (1-12)
-        hours = Math.floor(Math.random() * 12) + 1;
-        minutes = 0;
-        break;
-      case 2: // Demi-heures (ex: 4h30)
-        hours = Math.floor(Math.random() * 12) + 1;
-        minutes = Math.random() < 0.5 ? 0 : 30;
-        break;
-      case 3: // Quarts d'heure (0, 15, 30, 45)
-        hours = Math.floor(Math.random() * 12) + 1;
-        minutes = [0, 15, 30, 45][Math.floor(Math.random() * 4)];
-        break;
-      case 4: // Tranches de 5 minutes
-        hours = Math.floor(Math.random() * 12) + 1;
-        minutes = Math.floor(Math.random() * 12) * 5;
-        break;
-      default:
-        hours = Math.floor(Math.random() * 12) + 1;
-        minutes = 0;
+    if (this.level === 1) {
+      // Heures pleines
+      minutes = 0;
+    } else if (this.level === 2) {
+      // Demi-heures (0 ou 30)
+      minutes = Math.random() < 0.5 ? 0 : 30;
+    } else if (this.level === 3) {
+      // Quarts d'heure (0, 15, 30, 45)
+      const quarters = [0, 15, 30, 45];
+      minutes = quarters[Math.floor(Math.random() * quarters.length)];
+    } else if (this.level === 4) {
+      // Précision 5 minutes
+      minutes = Math.floor(Math.random() * 12) * 5;
+    } else if (this.level === 5) {
+      // Format 24h (heures de 1 à 24)
+      hours = Math.floor(Math.random() * 24) + 1;
+      minutes = Math.floor(Math.random() * 12) * 5;
     }
 
-    const formattedMinutes = minutes < 10 ? `0${minutes}` : `${minutes}`;
-    return {
-      hours,
-      minutes,
-      text: `${hours}h${formattedMinutes}`
-    };
+    let text = '';
+    const displayHour = this.level === 5 ? hours : (hours % 12 || 12);
+
+    if (minutes === 0) {
+      text = `${displayHour}h00`;
+    } else if (minutes < 10) {
+      text = `${displayHour}h0${minutes}`;
+    } else {
+      text = `${displayHour}h${minutes}`;
+    }
+
+    if (this.level === 5) {
+      text += ` (${hours}h)`;
+    }
+
+    return { hours, minutes, text };
   }
 
   public generateChoices(correct: TimeTarget): TimeTarget[] {
@@ -59,7 +66,7 @@ export class QuestionManager {
       }
     }
 
-    // Mélanger les choix aléatoirement
+    // Mélanger les choix
     return choices.sort(() => Math.random() - 0.5);
   }
 }
