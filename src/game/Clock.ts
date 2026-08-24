@@ -44,55 +44,53 @@ export class Clock {
     ctx.arc(0, 0, this.radius, 0, 2 * Math.PI);
     ctx.fillStyle = bgColor;
     ctx.fill();
-    ctx.lineWidth = 8;
+    ctx.lineWidth = 6;
     ctx.strokeStyle = borderColor;
     ctx.stroke();
 
     // Pastille centrale (pivot)
     ctx.beginPath();
-    ctx.arc(0, 0, 8, 0, 2 * Math.PI);
+    ctx.arc(0, 0, 6, 0, 2 * Math.PI);
     ctx.fillStyle = borderColor;
     ctx.fill();
 
-    // 1. Dessiner les 60 graduations de minutes (pédagogique)
+    // Graduations des 60 minutes
     for (let i = 0; i < 60; i++) {
       const angle = (i * Math.PI) / 30;
       const isHourMark = i % 5 === 0;
       
-      const innerRadius = this.radius - (isHourMark ? 16 : 10);
-      const outerRadius = this.radius - 6;
+      const innerRadius = this.radius - (isHourMark ? 14 : 8);
+      const outerRadius = this.radius - 4;
 
       ctx.beginPath();
       ctx.moveTo(innerRadius * Math.sin(angle), -innerRadius * Math.cos(angle));
       ctx.lineTo(outerRadius * Math.sin(angle), -outerRadius * Math.cos(angle));
-      ctx.lineWidth = isHourMark ? 3 : 1.5;
+      ctx.lineWidth = isHourMark ? 2.5 : 1;
       ctx.strokeStyle = isHourMark ? numberColor : '#94a3b8';
       ctx.stroke();
     }
 
-    // 2. Chiffres des heures et repères de minutes pour les niveaux 1 à 3
+    // Chiffres des heures (agrandis) et minutes pédagogiques
     for (let i = 1; i <= 12; i++) {
       const angle = (i * Math.PI) / 6;
 
-      // Chiffre principal des heures
       const numRadius = this.radius - 42;
       const x = numRadius * Math.sin(angle);
       const y = -numRadius * Math.cos(angle);
       
-      ctx.font = 'bold 24px "Fredoka", sans-serif';
+      ctx.font = 'bold 34px "Fredoka", sans-serif';
       ctx.fillStyle = numberColor;
       ctx.textAlign = 'center';
       ctx.textBaseline = 'middle';
       ctx.fillText(i.toString(), x, y);
 
-      // Aide pédagogique : Afficher les minutes (05, 10, 15...) uniquement pour les niveaux 1, 2 et 3
       if (level <= 3) {
         const minuteVal = i * 5 === 60 ? '00' : (i * 5 < 10 ? `0${i * 5}` : `${i * 5}`);
-        const minRadius = this.radius - 68;
+        const minRadius = this.radius - 72;
         const minX = minRadius * Math.sin(angle);
         const minY = -minRadius * Math.cos(angle);
 
-        ctx.font = '600 12px "Fredoka", sans-serif';
+        ctx.font = '600 15px "Fredoka", sans-serif';
         ctx.fillStyle = '#64748b';
         ctx.textAlign = 'center';
         ctx.textBaseline = 'middle';

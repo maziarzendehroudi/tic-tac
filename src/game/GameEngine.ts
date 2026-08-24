@@ -77,7 +77,6 @@ export class GameEngine {
     document.getElementById('main-menu')?.classList.add('hidden');
     gameScreen?.classList.remove('hidden');
 
-    // Appliquer la couleur du niveau sur l'écran de jeu
     gameScreen?.classList.remove('theme-lvl-1', 'theme-lvl-2', 'theme-lvl-3', 'theme-lvl-4', 'theme-lvl-5');
     gameScreen?.classList.add(`theme-lvl-${level}`);
 
@@ -240,7 +239,6 @@ export class GameEngine {
       
       if (level <= maxUnlocked) {
         rect.classList.remove('locked');
-        // Afficher l'encoche verte si le niveau a été dépassé/validé
         if (level < maxUnlocked) {
           checkMark?.classList.remove('hidden');
         } else {
@@ -278,15 +276,13 @@ export class GameEngine {
         this.currentPhase = 2;
         this.phaseSuccessCount = 0;
         if (instructionEl) {
-          instructionEl.innerHTML = `🎉 Étape 1 réussie ! Passons au placement.`;
-          instructionEl.style.color = '#059669';
+          instructionEl.innerHTML = `<span style="font-size: 2.5rem;">👍</span>`;
         }
         setTimeout(() => {
-          if (instructionEl) instructionEl.style.color = '#1e293b';
           this.initNewQuestion();
           this.updateUI();
           this.render();
-        }, 1800);
+        }, 1500);
         return;
       } else {
         if (this.currentLevel === this.saveData.maxUnlockedLevel && this.currentLevel < 5) {
@@ -295,28 +291,25 @@ export class GameEngine {
         }
 
         if (instructionEl) {
-          instructionEl.innerHTML = `🏆 Niveau ${this.currentLevel} terminé ! (+${earnedGears} ⚙️)`;
-          instructionEl.style.color = '#059669';
+          instructionEl.innerHTML = `🏆 <span style="font-size: 2.5rem;">👍</span> (+${earnedGears} ⚙️)`;
         }
 
         setTimeout(() => {
           this.returnToMenu();
-        }, 2200);
+        }, 2000);
         return;
       }
     }
 
     if (instructionEl) {
-      instructionEl.innerHTML = `🎉 Correct ! Encore ${3 - this.phaseSuccessCount} réussite(s). (+${earnedGears} ⚙️)`;
-      instructionEl.style.color = '#059669';
+      instructionEl.innerHTML = `<span style="font-size: 2.5rem;">👍</span>`;
     }
 
     setTimeout(() => {
-      if (instructionEl) instructionEl.style.color = '#1e293b';
       this.initNewQuestion();
       this.updateUI();
       this.render();
-    }, 1400);
+    }, 1200);
   }
 
   private handleFailedAttempt(): void {
@@ -328,8 +321,11 @@ export class GameEngine {
       this.showHelp();
     } else {
       if (instructionEl) {
-        instructionEl.innerHTML = `Presque ! Réessaie. (${3 - this.errorsCount} essai(s) avant indice)`;
+        instructionEl.innerHTML = `<span style="font-size: 2.5rem;">❌</span>`;
       }
+      setTimeout(() => {
+        this.updateUI();
+      }, 1000);
     }
   }
 
@@ -534,7 +530,7 @@ export class GameEngine {
   private get radius(): number {
     const width = this.canvas.width;
     const height = this.canvas.height;
-    return Math.min(width / 2, height / 2) - 20;
+    return Math.min(width / 2, height / 2) - 10;
   }
 
   public render(): void {
