@@ -5,13 +5,13 @@
     <link rel="icon" type="image/svg+xml" href="/tic-tac/favicon.svg" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
     <title>Tic-Tac - Apprenez à lire l'heure</title>
-    <script type="module" crossorigin src="/tic-tac/assets/index-YDY6TKha.js"></script>
-    <link rel="stylesheet" crossorigin href="/tic-tac/assets/index-DgN4RM5S.css">
+    <script type="module" crossorigin src="/tic-tac/assets/index-DxvlzQnH.js"></script>
+    <link rel="stylesheet" crossorigin href="/tic-tac/assets/index-hEfJmdZT.css">
   </head>
   <body>
     <div id="app">
       <header>
-        <h1>Tic-Tac</h1>
+        <h1 id="app-title">Tic-Tac ⏰</h1>
         <div id="header-right">
           <button id="shop-btn">🛒 Boutique</button>
           <div id="score-board">
@@ -20,42 +20,81 @@
         </div>
       </header>
 
-      <!-- Sélecteur de Mode de Jeu -->
-      <nav id="mode-selector">
-        <button class="mode-btn active" data-mode="place">🎯 Place les aiguilles</button>
-        <button class="mode-btn" data-mode="read">👀 Lis l'horloge</button>
-      </nav>
+      <!-- VUE 1 : MENU PRINCIPAL (Sélection des Niveaux) -->
+      <div id="main-menu" class="view">
+        <div class="menu-intro">
+          <h2>Choisis ton Aventure ! 🌟</h2>
+          <p>Relève les défis pour gagner des engrenages et débloquer de superbes personnalisations.</p>
+        </div>
+        <div id="levels-grid">
+          <button class="level-card" data-level="1">
+            <div class="level-badge">Niveau 1</div>
+            <h3>Piles & Heures pleines</h3>
+            <p>Maîtrise les aiguilles sur les heures exactes.</p>
+            <span class="level-status">Disponible 🟢</span>
+          </button>
+          <button class="level-card locked" data-level="2">
+            <div class="level-badge">Niveau 2</div>
+            <h3>Les Demi-heures</h3>
+            <p>Apprends à repérer les 30 minutes.</p>
+            <span class="level-status">🔒 Verrouillé</span>
+          </button>
+          <button class="level-card locked" data-level="3">
+            <div class="level-badge">Niveau 3</div>
+            <h3>Les Quarts d'heure</h3>
+            <p>Maîtrise les quarts et trois-quarts d'heure.</p>
+            <span class="level-status">🔒 Verrouillé</span>
+          </button>
+          <button class="level-card locked" data-level="4">
+            <div class="level-badge">Niveau 4</div>
+            <h3>Précision 5 minutes</h3>
+            <p>Le défi ultime de l'horloger !</p>
+            <span class="level-status">🔒 Verrouillé</span>
+          </button>
+        </div>
+      </div>
 
-      <!-- Sélecteur de niveaux (Campagne) -->
-      <nav id="level-selector">
-        <button class="level-btn active" data-level="1">Niveau 1 (Piles)</button>
-        <button class="level-btn locked" data-level="2">🔒 Niveau 2</button>
-        <button class="level-btn locked" data-level="3">🔒 Niveau 3</button>
-        <button class="level-btn locked" data-level="4">🔒 Niveau 4</button>
-      </nav>
-      
-      <main>
+      <!-- VUE 2 : ÉCRAN DE JEU (Campagne en 2 parties) -->
+      <div id="game-screen" class="view hidden">
+        <div id="game-top-bar">
+          <button id="back-menu-btn">⬅️ Menu</button>
+          <span id="level-title-display">Niveau 1</span>
+          <span id="phase-badge">Étape 1/2 : Lecture</span>
+        </div>
+
         <div id="game-container">
           <canvas id="clockCanvas" width="500" height="500"></canvas>
         </div>
+
         <div id="ui-container">
-          <p id="instruction">Place les aiguilles sur : <span id="target-time">10h00</span></p>
-          <button id="check-btn">Vérifier</button>
+          <p id="instruction">Quelle heure est-il sur l'horloge ?</p>
           
-          <!-- Conteneur des choix pour le Mode Lecture -->
-          <div id="choices-container" class="hidden">
+          <!-- Aide contextuelle après 3 échecs -->
+          <div id="help-box" class="hidden">
+            💡 <strong>Indice :</strong> <span id="help-text">Regarde bien la petite aiguille (heures) et la grande (minutes).</span>
+          </div>
+
+          <!-- Contrôles Mode Lecture (Phase 1) -->
+          <div id="choices-container">
             <button class="choice-btn" data-index="0">--</button>
             <button class="choice-btn" data-index="1">--</button>
             <button class="choice-btn" data-index="2">--</button>
           </div>
+
+          <!-- Contrôles Mode Placement (Phase 2) -->
+          <button id="check-btn" class="hidden">Vérifier</button>
         </div>
-      </main>
+      </div>
 
       <!-- Modale de la Boutique -->
       <div id="shop-modal" class="modal hidden">
         <div class="modal-content">
           <h2>Boutique Tic-Tac 🛒</h2>
-          <p>Dépense tes engrenages pour personnaliser ton horloge !</p>
+          <p>Personnalise ton horloge avec tes engrenages !</p>
+          <div id="shop-tabs">
+            <button class="shop-tab active" data-tab="themes">Cadrans</button>
+            <button class="shop-tab" data-tab="hands">Aiguilles</button>
+          </div>
           <div id="shop-items-container"></div>
           <button id="close-shop-btn">Fermer</button>
         </div>
