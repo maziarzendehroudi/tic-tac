@@ -1,0 +1,66 @@
+<!doctype html>
+<html lang="fr">
+  <head>
+    <meta charset="UTF-8" />
+    <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
+    <title>Tic-Tac - Apprenez à lire l'heure</title>
+    <script type="module" crossorigin src="/assets/index-Dn7e827G.js"></script>
+    <link rel="stylesheet" crossorigin href="/assets/index-eHsnQLdK.css">
+  </head>
+  <body>
+    <div id="app">
+      <header>
+        <h1>Tic-Tac</h1>
+        <div id="header-right">
+          <button id="shop-btn">🛒 Boutique</button>
+          <div id="score-board">
+            <span id="gears-count">⚙️ 0</span>
+          </div>
+        </div>
+      </header>
+
+      <!-- Sélecteur de Mode de Jeu -->
+      <nav id="mode-selector">
+        <button class="mode-btn active" data-mode="place">🎯 Place les aiguilles</button>
+        <button class="mode-btn" data-mode="read">👀 Lis l'horloge</button>
+      </nav>
+
+      <!-- Sélecteur de niveaux -->
+      <nav id="level-selector">
+        <button class="level-btn active" data-level="1">Niveau 1 (Piles)</button>
+        <button class="level-btn" data-level="2">Niveau 2 (30 min)</button>
+        <button class="level-btn" data-level="3">Niveau 3 (Quarts)</button>
+        <button class="level-btn" data-level="4">Niveau 4 (5 min)</button>
+      </nav>
+      
+      <main>
+        <div id="game-container">
+          <canvas id="clockCanvas" width="500" height="500"></canvas>
+        </div>
+        <div id="ui-container">
+          <p id="instruction">Place les aiguilles sur : <span id="target-time">10h00</span></p>
+          <button id="check-btn">Vérifier</button>
+          
+          <!-- Conteneur des choix pour le Mode Lecture -->
+          <div id="choices-container" class="hidden">
+            <button class="choice-btn" data-index="0">--</button>
+            <button class="choice-btn" data-index="1">--</button>
+            <button class="choice-btn" data-index="2">--</button>
+          </div>
+        </div>
+      </main>
+
+      <!-- Modale de la Boutique -->
+      <div id="shop-modal" class="modal hidden">
+        <div class="modal-content">
+          <h2>Boutique Tic-Tac 🛒</h2>
+          <p>Dépense tes engrenages pour personnaliser ton horloge !</p>
+          <div id="shop-items-container"></div>
+          <button id="close-shop-btn">Fermer</button>
+        </div>
+      </div>
+    </div>
+
+  </body>
+</html>
