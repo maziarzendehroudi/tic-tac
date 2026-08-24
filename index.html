@@ -5,11 +5,14 @@
     <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
     <title>Tic-Tac - Apprenez à lire l'heure</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Fredoka:wght@400;600;700&display=swap" rel="stylesheet">
   </head>
   <body>
     <div id="app">
       <header>
-        <h1 id="app-title">Tic-Tac ⏰</h1>
+        <h1 id="app-title">⏰ Tic-Tac</h1>
         <div id="header-right">
           <button id="shop-btn">🛒 Boutique</button>
           <div id="score-board">
@@ -22,42 +25,57 @@
       <div id="main-menu" class="view">
         <div class="menu-intro">
           <h2>Choisis ton Aventure ! 🌟</h2>
-          <p>Relève les défis pour gagner des engrenages et débloquer de superbes personnalisations.</p>
+          <p>Relève les défis pour gagner des engrenages et personnaliser ton horloge.</p>
         </div>
         <div id="levels-grid">
-          <button class="level-card" data-level="1">
-            <div class="level-badge">Niveau 1</div>
-            <h3>Piles & Heures pleines</h3>
-            <p>Maîtrise les aiguilles sur les heures exactes.</p>
-            <span class="level-status">Disponible 🟢</span>
+          <button class="level-card lvl-1" data-level="1">
+            <div class="level-icon">🌞</div>
+            <div class="level-info">
+              <span class="level-badge">Niveau 1</span>
+              <h3>Piles & Heures pleines</h3>
+              <p>Maîtrise les heures exactes</p>
+            </div>
+            <span class="level-status">Jouer 🚀</span>
           </button>
-          <button class="level-card locked" data-level="2">
-            <div class="level-badge">Niveau 2</div>
-            <h3>Les Demi-heures</h3>
-            <p>Apprends à repérer les 30 minutes.</p>
+          
+          <button class="level-card lvl-2 locked" data-level="2">
+            <div class="level-icon">🌿</div>
+            <div class="level-info">
+              <span class="level-badge">Niveau 2</span>
+              <h3>Les Demi-heures</h3>
+              <p>Repère les 30 minutes</p>
+            </div>
             <span class="level-status">🔒 Verrouillé</span>
           </button>
-          <button class="level-card locked" data-level="3">
-            <div class="level-badge">Niveau 3</div>
-            <h3>Les Quarts d'heure</h3>
-            <p>Maîtrise les quarts et trois-quarts d'heure.</p>
+
+          <button class="level-card lvl-3 locked" data-level="3">
+            <div class="level-icon">🎨</div>
+            <div class="level-info">
+              <span class="level-badge">Niveau 3</span>
+              <h3>Les Quarts d'heure</h3>
+              <p>Maîtrise les quarts et trois-quarts</p>
+            </div>
             <span class="level-status">🔒 Verrouillé</span>
           </button>
-          <button class="level-card locked" data-level="4">
-            <div class="level-badge">Niveau 4</div>
-            <h3>Précision 5 minutes</h3>
+
+          <button class="level-card lvl-4 locked" data-level="4">
+            <div class="level-icon">🚀</div>
+            <div class="level-info">
+              <span class="level-badge">Niveau 4</span>
+              <h3>Précision 5 minutes</h3>
             <p>Le défi ultime de l'horloger !</p>
+            </div>
             <span class="level-status">🔒 Verrouillé</span>
           </button>
         </div>
       </div>
 
-      <!-- VUE 2 : ÉCRAN DE JEU (Campagne en 2 parties) -->
+      <!-- VUE 2 : ÉCRAN DE JEU -->
       <div id="game-screen" class="view hidden">
         <div id="game-top-bar">
-          <button id="back-menu-btn">⬅️ Menu</button>
+          <button id="back-menu-btn">🏠 Menu</button>
           <span id="level-title-display">Niveau 1</span>
-          <span id="phase-badge">Étape 1/2 : Lecture</span>
+          <span id="phase-badge">Étape 1/2</span>
         </div>
 
         <div id="game-container">
@@ -67,31 +85,31 @@
         <div id="ui-container">
           <p id="instruction">Quelle heure est-il sur l'horloge ?</p>
           
-          <!-- Aide contextuelle après 3 échecs -->
+          <!-- Aide après 3 erreurs -->
           <div id="help-box" class="hidden">
-            💡 <strong>Indice :</strong> <span id="help-text">Regarde bien la petite aiguille (heures) et la grande (minutes).</span>
+            💡 <strong>Indice magique :</strong> <span id="help-text">Regarde bien les aiguilles !</span>
           </div>
 
-          <!-- Contrôles Mode Lecture (Phase 1) -->
+          <!-- Choix Phase Lecture -->
           <div id="choices-container">
             <button class="choice-btn" data-index="0">--</button>
             <button class="choice-btn" data-index="1">--</button>
             <button class="choice-btn" data-index="2">--</button>
           </div>
 
-          <!-- Contrôles Mode Placement (Phase 2) -->
-          <button id="check-btn" class="hidden">Vérifier</button>
+          <!-- Bouton Phase Placement -->
+          <button id="check-btn" class="hidden">✨ Vérifier !</button>
         </div>
       </div>
 
-      <!-- Modale de la Boutique -->
+      <!-- Modale Boutique -->
       <div id="shop-modal" class="modal hidden">
         <div class="modal-content">
-          <h2>Boutique Tic-Tac 🛒</h2>
-          <p>Personnalise ton horloge avec tes engrenages !</p>
+          <h2>🛍️ La Boutique Magique</h2>
+          <p>Dépense tes engrenages pour personnaliser ton jeu !</p>
           <div id="shop-tabs">
-            <button class="shop-tab active" data-tab="themes">Cadrans</button>
-            <button class="shop-tab" data-tab="hands">Aiguilles</button>
+            <button class="shop-tab active" data-tab="themes">🎨 Cadrans</button>
+            <button class="shop-tab" data-tab="hands">✨ Aiguilles</button>
           </div>
           <div id="shop-items-container"></div>
           <button id="close-shop-btn">Fermer</button>
