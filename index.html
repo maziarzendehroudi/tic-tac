@@ -11,28 +11,28 @@
     <link href="https://fonts.googleapis.com/css2?family=Fredoka:wght@400;600;700&display=swap" rel="stylesheet">
 
     <link rel="manifest" href="./manifest.json">
-    <meta name="theme-color" content="#4f46e5">
+    <meta name="theme-color" content="#0f172a">
 
     <meta name="apple-mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
     <meta name="apple-mobile-web-app-title" content="Tic-Tac">
     <link rel="apple-touch-icon" href="./icon-192.png">
-    <script type="module" crossorigin src="/tic-tac/assets/index-DKL4nBWn.js"></script>
-    <link rel="stylesheet" crossorigin href="/tic-tac/assets/index-YpGyWg3C.css">
+    <script type="module" crossorigin src="/tic-tac/assets/index-CVsp7gh0.js"></script>
+    <link rel="stylesheet" crossorigin href="/tic-tac/assets/index-jnduwUKJ.css">
   </head>
   <body>
     <div id="app">
       <!-- VUE 1 : MENU PRINCIPAL -->
       <div id="main-menu" class="view">
         <div id="main-title-box">
-          <h1>⏰ Tic-Tac</h1>
-          <p>L'Atelier de l'Horloger</p>
+          <h1>⏱️ Tic-Tac</h1>
+          <p>L'Atelier de Haute Horlogerie</p>
         </div>
 
         <div id="levels-grid">
           <button class="level-rect lvl-1" data-level="1">
             <div class="lvl-content">
-              <span class="lvl-title">Niveau 1 ➔ Le Ressort 🔋</span>
+              <span class="lvl-title">Niveau 1 ➔ 1. Le Barillet & Ressort</span>
               <span class="lvl-desc">Heures pleines</span>
             </div>
             <span class="lvl-check hidden">✅</span>
@@ -40,7 +40,7 @@
 
           <button class="level-rect lvl-2 locked" data-level="2">
             <div class="lvl-content">
-              <span class="lvl-title">Niveau 2 ➔ Les Rouages ⚙️</span>
+              <span class="lvl-title">Niveau 2 ➔ 2. Le Train de Rouage</span>
               <span class="lvl-desc">Demi-heures</span>
             </div>
             <span class="lvl-check hidden">✅</span>
@@ -48,7 +48,7 @@
 
           <button class="level-rect lvl-3 locked" data-level="3">
             <div class="lvl-content">
-              <span class="lvl-title">Niveau 3 ➔ Le Tic-Tac 🫀</span>
+              <span class="lvl-title">Niveau 3 ➔ 3. L'Échappement (Ancre)</span>
               <span class="lvl-desc">Quarts d'heure</span>
             </div>
             <span class="lvl-check hidden">✅</span>
@@ -56,7 +56,7 @@
 
           <button class="level-rect lvl-4 locked" data-level="4">
             <div class="lvl-content">
-              <span class="lvl-title">Niveau 4 ➔ Le Balancier ⚖️</span>
+              <span class="lvl-title">Niveau 4 ➔ 4. Le Balancier-Spirale</span>
               <span class="lvl-desc">Précision 5 minutes</span>
             </div>
             <span class="lvl-check hidden">✅</span>
@@ -64,7 +64,7 @@
 
           <button class="level-rect lvl-5 locked" data-level="5">
             <div class="lvl-content">
-              <span class="lvl-title">Niveau 5 ➔ Le Cadran 🧭</span>
+              <span class="lvl-title">Niveau 5 ➔ 5. Le Cadran & Aiguilles</span>
               <span class="lvl-desc">Les 24 heures</span>
             </div>
             <span class="lvl-check hidden">✅</span>
@@ -72,39 +72,47 @@
 
           <button class="level-rect lvl-6 locked" data-level="6">
             <div class="lvl-content">
-              <span class="lvl-title">Niveau 6 ➔ Maître Horloger 🌟</span>
+              <span class="lvl-title">Niveau 6 ➔ Le Maître Horloger</span>
               <span class="lvl-desc">Défi expert & remontage</span>
             </div>
             <span class="lvl-check hidden">✅</span>
           </button>
         </div>
 
-        <button id="open-atelier-btn">🛠️ L'Atelier de la Montre</button>
+        <button id="open-atelier-btn">🛠️ Entrer dans l'Atelier</button>
       </div>
 
-      <!-- VUE 2 : L'ATELIER (Assemblage de la montre) -->
+      <!-- VUE 2 : L'ATELIER (Plan technique & Mécanismes) -->
       <div id="atelier-view" class="view hidden">
         <div id="atelier-top-bar">
           <button id="atelier-back-btn">🏠 Menu</button>
           <h2>Atelier Mécanique</h2>
           <span></span>
         </div>
-        <p class="atelier-instruction">Glisse ou clique sur tes pièces gagnées pour assembler la montre !</p>
+        <p class="atelier-instruction">Glisse ou clique sur tes pièces pour assembler le mouvement horloger !</p>
         
         <div id="watch-blueprint">
-          <!-- Emplacements (Slots) sur le plan -->
-          <div class="slot" data-part="spring" style="top: 20%; left: 20%;">🔋 Ressort</div>
-          <div class="slot" data-part="gears" style="top: 20%; right: 20%;">⚙️ Rouages</div>
-          <div class="slot" data-part="escapement" style="bottom: 20%; left: 20%;">🫀 Tic-Tac</div>
-          <div class="slot" data-part="balance" style="bottom: 20%; right: 20%;">⚖️ Balancier</div>
-          <div class="slot center-slot" data-part="hands" style="top: 38%; left: 32%;">🧭 Cadran</div>
+          <!-- Emplacements techniques sur le mouvement -->
+          <div class="slot" data-part="spring" style="top: 22%; left: 22%;">
+            <span class="slot-label">1. Barillet</span>
+          </div>
+          <div class="slot" data-part="gears" style="top: 22%; right: 22%;">
+            <span class="slot-label">2. Rouage</span>
+          </div>
+          <div class="slot" data-part="escapement" style="bottom: 22%; left: 22%;">
+            <span class="slot-label">3. Échappement</span>
+          </div>
+          <div class="slot" data-part="balance" style="bottom: 22%; right: 22%;">
+            <span class="slot-label">4. Balancier</span>
+          </div>
+          <div class="slot center-slot" data-part="hands" style="top: 40%; left: 30%;">
+            <span class="slot-label">5. Échappement & Cadran</span>
+          </div>
         </div>
 
         <div id="parts-inventory">
-          <h3>Pièces disponibles :</h3>
-          <div id="inventory-items">
-            <!-- Rempli dynamiquement -->
-          </div>
+          <h3>Composants forgés :</h3>
+          <div id="inventory-items"></div>
         </div>
       </div>
 
