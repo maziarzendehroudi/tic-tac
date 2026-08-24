@@ -1,9 +1,10 @@
 export interface GameSave {
   gears: number;
   maxUnlockedLevel: number;
-  levelProgress: number; // Niveau actuellement sélectionné
   unlockedItems: string[];
+  unlockedHands: string[];
   activeTheme: string;
+  activeHands: string;
 }
 
 export class SaveManager {
@@ -15,9 +16,10 @@ export class SaveManager {
       return { 
         gears: 0, 
         maxUnlockedLevel: 1,
-        levelProgress: 1, 
         unlockedItems: ['classic'], 
-        activeTheme: 'classic' 
+        unlockedHands: ['classic-hands'],
+        activeTheme: 'classic',
+        activeHands: 'classic-hands'
       };
     }
     try {
@@ -25,17 +27,19 @@ export class SaveManager {
       return {
         gears: save.gears ?? 0,
         maxUnlockedLevel: save.maxUnlockedLevel ?? 1,
-        levelProgress: save.levelProgress ?? 1,
         unlockedItems: save.unlockedItems ?? ['classic'],
-        activeTheme: save.activeTheme ?? 'classic'
+        unlockedHands: save.unlockedHands ?? ['classic-hands'],
+        activeTheme: save.activeTheme ?? 'classic',
+        activeHands: save.activeHands ?? 'classic-hands'
       };
     } catch {
       return { 
         gears: 0, 
         maxUnlockedLevel: 1,
-        levelProgress: 1, 
         unlockedItems: ['classic'], 
-        activeTheme: 'classic' 
+        unlockedHands: ['classic-hands'],
+        activeTheme: 'classic',
+        activeHands: 'classic-hands'
       };
     }
   }

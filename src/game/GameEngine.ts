@@ -9,6 +9,7 @@ interface ShopItem {
   id: string;
   name: string;
   cost: number;
+  category: 'themes' | 'hands';
 }
 
 export class GameEngine {
@@ -26,17 +27,22 @@ export class GameEngine {
   private saveData: GameSave;
   private errorsCount: number = 0;
   private currentLevel: number = 1;
-  private gameMode: 'place' | 'read' = 'place';
+  private currentPhase: 1 | 2 = 1; // Phase 1: Lecture, Phase 2: Placement
+  private phaseSuccessCount: number = 0; // 3 réussites requises par phase
+  private activeShopCategory: 'themes' | 'hands' = 'themes';
 
   private isDragging: boolean = false;
   private activeHand: 'hour' | 'minute' = 'minute';
 
   private shopItems: ShopItem[] = [
-    { id: 'classic', name: 'Cadran Classique', cost: 0 },
-    { id: 'wood', name: 'Cadran Bois', cost: 5 },
-    { id: 'forest', name: '🌲 Forêt Enchantée', cost: 8 },
-    { id: 'ocean', name: '🌊 Océan Profond', cost: 15 },
-    { id: 'space', name: '🚀 Cadran Espace', cost: 20 }
+    { id: 'classic', name: 'Cadran Classique', cost: 0, category: 'themes' },
+    { id: 'wood', name: 'Cadran Bois', cost: 5, category: 'themes' },
+    { id: 'forest', name: '🌲 Forêt Enchantée', cost: 8, category: 'themes' },
+    { id: 'ocean', name: '🌊 Océan Profond', cost: 12, category: 'themes' },
+    { id: 'space', name: '🚀 Cadran Espace', cost: 18, category: 'themes' },
+    { id: 'classic-hands', name: 'Aiguilles Classiques', cost: 0, category: 'hands' },
+    { id: 'gold-hands', name: '✨ Aiguilles Dorées', cost: 10, category: 'hands' },
+    { id: 'neon-hands', name: '💡 Aiguilles Néon', cost: 15, category: 'hands' }
   ];
 
   constructor(canvas: HTMLCanvasElement) {
@@ -52,22 +58,46 @@ export class GameEngine {
     this.ctx.translate(centerX, centerY);
 
     this.saveData = SaveManager.load();
-    this.currentLevel = this.saveData.levelProgress || 1;
-
     this.clock = new Clock(this.ctx, radius, this.saveData.activeTheme);
-    this.hands = new Hands(this.ctx, radius);
-    this.questionManager = new QuestionManager(this.currentLevel);
+    this.hands = new Hands(this.ctx, radius, this.saveData.activeHands);
+    this.questionManager = new QuestionManager(1);
+
+    this.initEvents();
+    this.updateMenuUI();
+    this.updateUI();
+  }
+
+  public startLevel(level: number): void {
+    this.currentLevel = level;
+    this.currentPhase = 1;
+    this.phaseSuccessCount = 0;
+    this.questionManager.setLevel(level);
+
+    // Basculer l'affichage des vues
+    document.getElementById('main-menu')?.classList.add('hidden');
+    document.getElementById('game-screen')?.classList.remove('hidden');
+
+    const titleDisplay = document.getElementById('level-title-display');
+    if (titleDisplay) titleDisplay.textContent = `Niveau ${level} (${this.getLevelName(level)})`;
 
     this.initNewQuestion();
-    this.initEvents();
-    this.updateLevelButtonsUI();
     this.render();
     this.updateUI();
   }
 
+  private returnToMenu(): void {
+    document.getElementById('game-screen')?.classList.add('hidden');
+    document.getElementById('main-menu')?.classList.remove('hidden');
+    this.updateMenuUI();
+    this.updateGearsDisplay();
+  }
+
   private initNewQuestion(): void {
     this.targetTime = this.questionManager.generateQuestion();
-    if (this.gameMode === 'read') {
+    this.errorsCount = 0;
+    this.hideHelp();
+
+    if (this.currentPhase === 1) {
       this.currentHours = this.targetTime.hours;
       this.currentMinutes = this.targetTime.minutes;
       this.currentChoices = this.questionManager.generateChoices(this.targetTime);
@@ -75,10 +105,29 @@ export class GameEngine {
       this.currentHours = 12;
       this.currentMinutes = 0;
     }
-    this.errorsCount = 0;
   }
 
   private initEvents(): void {
+    // Gestionnaire de sélection de niveau depuis le menu
+    const levelCards = document.querySelectorAll('.level-card');
+    levelCards.forEach(card => {
+      card.addEventListener('click', (e) => {
+        const target = e.currentTarget as HTMLElement;
+        const level = parseInt(target.getAttribute('data-level') || '1', 10);
+        
+        if (level <= (this.saveData.maxUnlockedLevel || 1)) {
+          this.startLevel(level);
+        } else {
+          alert("🔒 Ce niveau est verrouillé ! Termine le niveau précédent pour le débloquer.");
+        }
+      });
+    });
+
+    const backMenuBtn = document.getElementById('back-menu-btn');
+    if (backMenuBtn) {
+      backMenuBtn.addEventListener('click', () => this.returnToMenu());
+    }
+
     const getPointerPos = (e: MouseEvent | TouchEvent) => {
       const rect = this.canvas.getBoundingClientRect();
       const clientX = 'touches' in e ? e.touches[0].clientX : (e as MouseEvent).clientX;
@@ -92,7 +141,7 @@ export class GameEngine {
     };
 
     const onStart = (e: MouseEvent | TouchEvent) => {
-      if (this.gameMode === 'read') return;
+      if (this.currentPhase === 1) return;
       e.preventDefault();
       const pos = getPointerPos(e);
       
@@ -115,7 +164,7 @@ export class GameEngine {
     };
 
     const onMove = (e: MouseEvent | TouchEvent) => {
-      if (!this.isDragging || this.gameMode === 'read') return;
+      if (!this.isDragging || this.currentPhase === 1) return;
       e.preventDefault();
       const pos = getPointerPos(e);
       this.updateFromPointer(pos.x, pos.y);
@@ -143,35 +192,13 @@ export class GameEngine {
     const choiceBtns = document.querySelectorAll('.choice-btn');
     choiceBtns.forEach((btn, index) => {
       btn.addEventListener('click', () => {
-        if (this.gameMode === 'read') {
+        if (this.currentPhase === 1) {
           this.checkReadAnswer(index);
         }
       });
     });
 
-    const modeBtns = document.querySelectorAll('.mode-btn');
-    modeBtns.forEach(btn => {
-      btn.addEventListener('click', (e) => {
-        const target = e.currentTarget as HTMLElement;
-        const mode = target.getAttribute('data-mode') as 'place' | 'read';
-        this.setGameMode(mode);
-      });
-    });
-
-    const levelBtns = document.querySelectorAll('.level-btn');
-    levelBtns.forEach(btn => {
-      btn.addEventListener('click', (e) => {
-        const target = e.currentTarget as HTMLElement;
-        const level = parseInt(target.getAttribute('data-level') || '1', 10);
-        
-        if (level <= (this.saveData.maxUnlockedLevel || 1)) {
-          this.setNewLevel(level);
-        } else {
-          alert("🔒 Ce niveau est verrouillé ! Réussis les niveaux précédents pour l'ouvrir.");
-        }
-      });
-    });
-
+    // Boutique
     const shopBtn = document.getElementById('shop-btn');
     const shopModal = document.getElementById('shop-modal');
     const closeShopBtn = document.getElementById('close-shop-btn');
@@ -188,110 +215,137 @@ export class GameEngine {
         shopModal.classList.add('hidden');
       });
     }
-  }
 
-  private setGameMode(mode: 'place' | 'read'): void {
-    this.gameMode = mode;
-    
-    const modeBtns = document.querySelectorAll('.mode-btn');
-    modeBtns.forEach(b => {
-      if (b.getAttribute('data-mode') === mode) {
-        b.classList.add('active');
-      } else {
-        b.classList.remove('active');
-      }
+    const shopTabs = document.querySelectorAll('.shop-tab');
+    shopTabs.forEach(tab => {
+      tab.addEventListener('click', (e) => {
+        shopTabs.forEach(t => t.classList.remove('active'));
+        const target = e.currentTarget as HTMLElement;
+        target.classList.add('active');
+        this.activeShopCategory = target.getAttribute('data-tab') as 'themes' | 'hands';
+        this.renderShopItems();
+      });
     });
-
-    const checkBtn = document.getElementById('check-btn');
-    const choicesContainer = document.getElementById('choices-container');
-
-    if (mode === 'place') {
-      if (checkBtn) checkBtn.classList.remove('hidden');
-      if (choicesContainer) choicesContainer.classList.add('hidden');
-    } else {
-      if (checkBtn) checkBtn.classList.add('hidden');
-      if (choicesContainer) choicesContainer.classList.remove('hidden');
-    }
-
-    this.initNewQuestion();
-    this.render();
-    this.updateUI();
   }
 
-  private setNewLevel(level: number): void {
-    this.currentLevel = level;
-    this.questionManager.setLevel(level);
-    this.saveData.levelProgress = this.currentLevel;
-    SaveManager.save(this.saveData);
-
-    this.updateLevelButtonsUI();
-    this.initNewQuestion();
-    this.render();
-    this.updateUI();
-  }
-
-  private updateLevelButtonsUI(): void {
-    const levelBtns = document.querySelectorAll('.level-btn');
+  private updateMenuUI(): void {
+    const levelCards = document.querySelectorAll('.level-card');
     const maxUnlocked = this.saveData.maxUnlockedLevel || 1;
 
-    levelBtns.forEach(btn => {
-      const level = parseInt(btn.getAttribute('data-level') || '1', 10);
-      
-      if (level <= maxUnlocked) {
-        btn.classList.remove('locked');
-        btn.textContent = `Niveau ${level} (${this.getLevelName(level)})`;
-      } else {
-        btn.classList.add('locked');
-        btn.textContent = `🔒 Niveau ${level}`;
-      }
+    levelCards.forEach(card => {
+      const level = parseInt(card.getAttribute('data-level') || '1', 10);
+      const statusEl = card.querySelector('.level-status');
 
-      if (level === this.currentLevel) {
-        btn.classList.add('active');
+      if (level <= maxUnlocked) {
+        card.classList.remove('locked');
+        if (statusEl) statusEl.textContent = 'Disponible 🟢';
       } else {
-        btn.classList.remove('active');
+        card.classList.add('locked');
+        if (statusEl) statusEl.textContent = '🔒 Verrouillé';
       }
     });
+    this.updateGearsDisplay();
   }
 
-  private getLevelName(level: number): string {
-    switch(level) {
-      case 1: return 'Piles';
-      case 2: return '30 min';
-      case 3: return 'Quarts';
-      case 4: return '5 min';
-      default: return '';
-    }
+  private updateGearsDisplay(): void {
+    const gearsEl = document.getElementById('gears-count');
+    if (gearsEl) gearsEl.textContent = `⚙️ ${this.saveData.gears}`;
   }
 
   private handleSuccessfulAnswer(): void {
     const earnedGears = this.errorsCount === 0 ? 1 : 0.5;
     this.saveData.gears += earnedGears;
-
-    if (this.currentLevel === this.saveData.maxUnlockedLevel && this.currentLevel < 4) {
-      this.saveData.maxUnlockedLevel = this.currentLevel + 1;
-    }
+    this.phaseSuccessCount++;
 
     SaveManager.save(this.saveData);
     this.triggerSuccessEffect();
+    this.updateGearsDisplay();
 
     const instructionEl = document.getElementById('instruction');
-    if (instructionEl) {
-      if (this.currentLevel < this.saveData.maxUnlockedLevel && this.currentLevel === this.saveData.maxUnlockedLevel - 1) {
-        instructionEl.innerHTML = `🎉 Bravo ! Niveau validé, Niveau ${this.saveData.maxUnlockedLevel} débloqué ! (+${earnedGears} ⚙️)`;
+
+    // Vérifier si la phase actuelle est terminée (3 réussites par phase)
+    if (this.phaseSuccessCount >= 3) {
+      if (this.currentPhase === 1) {
+        // Passer à la phase 2 : Placement
+        this.currentPhase = 2;
+        this.phaseSuccessCount = 0;
+        if (instructionEl) {
+          instructionEl.innerHTML = `🎉 Étape 1 réussie ! Passons au placement des aiguilles.`;
+          instructionEl.style.color = '#38a169';
+        }
+        setTimeout(() => {
+          if (instructionEl) instructionEl.style.color = '#2d3748';
+          this.initNewQuestion();
+          this.updateUI();
+          this.render();
+        }, 2000);
+        return;
       } else {
-        instructionEl.innerHTML = `🎉 Super ! Gagné (+${earnedGears} ⚙️)`;
+        // Niveau entièrement terminé !
+        if (this.currentLevel === this.saveData.maxUnlockedLevel && this.currentLevel < 4) {
+          this.saveData.maxUnlockedLevel = this.currentLevel + 1;
+          SaveManager.save(this.saveData);
+        }
+
+        if (instructionEl) {
+          instructionEl.innerHTML = `🏆 Niveau ${this.currentLevel} terminé avec succès ! (+${earnedGears} ⚙️)`;
+          instructionEl.style.color = '#38a169';
+        }
+
+        setTimeout(() => {
+          this.returnToMenu();
+        }, 2500);
+        return;
       }
+    }
+
+    if (instructionEl) {
+      instructionEl.innerHTML = `🎉 Correct ! Encore ${3 - this.phaseSuccessCount} bonne(s) réponse(s) pour cette étape (+${earnedGears} ⚙️)`;
       instructionEl.style.color = '#38a169';
     }
 
-    this.updateLevelButtonsUI();
-
     setTimeout(() => {
-      if (instructionEl) instructionEl.style.color = '#4a5568';
+      if (instructionEl) instructionEl.style.color = '#2d3748';
       this.initNewQuestion();
       this.updateUI();
       this.render();
-    }, 1800);
+    }, 1500);
+  }
+
+  private handleFailedAttempt(): void {
+    this.errorsCount++;
+    this.triggerShakeEffect();
+    const instructionEl = document.getElementById('instruction');
+
+    if (this.errorsCount >= 3) {
+      this.showHelp();
+    } else {
+      if (instructionEl) {
+        if (this.currentPhase === 1) {
+          instructionEl.innerHTML = `Ce n'est pas tout à fait ça. Essaie encore ! (${3 - this.errorsCount} essais avant indice)`;
+        } else {
+          instructionEl.innerHTML = `Presque ! Réessaie de placer les aiguilles. (${3 - this.errorsCount} essais avant indice)`;
+        }
+      }
+    }
+  }
+
+  private showHelp(): void {
+    const helpBox = document.getElementById('help-box');
+    const helpText = document.getElementById('help-text');
+    if (helpBox && helpText) {
+      helpBox.classList.remove('hidden');
+      if (this.currentPhase === 1) {
+        helpText.textContent = `Regarde l'horloge : la cible est ${this.targetTime.text}.`;
+      } else {
+        helpText.textContent = `Pour afficher ${this.targetTime.text}, place la petite aiguille sur le chiffre ${this.targetTime.hours % 12 || 12} et la grande sur ${this.targetTime.minutes}.`;
+      }
+    }
+  }
+
+  private hideHelp(): void {
+    const helpBox = document.getElementById('help-box');
+    if (helpBox) helpBox.classList.add('hidden');
   }
 
   private normalizeAngle(angle: number): number {
@@ -340,36 +394,26 @@ export class GameEngine {
   private checkPlaceAnswer(): void {
     const isHourCorrect = this.currentHours % 12 === this.targetTime.hours % 12;
     const isMinuteCorrect = this.currentMinutes === this.targetTime.minutes;
-    const instructionEl = document.getElementById('instruction');
 
     if (isHourCorrect && isMinuteCorrect) {
       this.handleSuccessfulAnswer();
     } else {
-      this.errorsCount++;
-      this.triggerShakeEffect();
-      if (instructionEl) {
-        instructionEl.innerHTML = `Presque ! Réessaie de placer les aiguilles pour : <span id="target-time">${this.targetTime.text}</span>`;
-      }
+      this.handleFailedAttempt();
     }
-    this.updateUIStoreOnly();
+    this.updateGearsDisplay();
   }
 
   private checkReadAnswer(choiceIndex: number): void {
     const selectedChoice = this.currentChoices[choiceIndex];
     const isMinutesExact = selectedChoice.minutes === this.targetTime.minutes;
     const isHoursExact = selectedChoice.hours % 12 === this.targetTime.hours % 12;
-    const instructionEl = document.getElementById('instruction');
 
     if (isHoursExact && isMinutesExact) {
       this.handleSuccessfulAnswer();
     } else {
-      this.errorsCount++;
-      this.triggerShakeEffect();
-      if (instructionEl) {
-        instructionEl.innerHTML = `Ce n'est pas tout à fait ça. Regarde bien l'horloge !`;
-      }
+      this.handleFailedAttempt();
     }
-    this.updateUIStoreOnly();
+    this.updateGearsDisplay();
   }
 
   private renderShopItems(): void {
@@ -377,9 +421,16 @@ export class GameEngine {
     if (!container) return;
     container.innerHTML = '';
 
-    this.shopItems.forEach(item => {
-      const isUnlocked = this.saveData.unlockedItems.includes(item.id);
-      const isActive = this.saveData.activeTheme === item.id;
+    const filteredItems = this.shopItems.filter(item => item.category === this.activeShopCategory);
+
+    filteredItems.forEach(item => {
+      const isUnlocked = item.category === 'themes' 
+        ? this.saveData.unlockedItems.includes(item.id) 
+        : this.saveData.unlockedHands.includes(item.id);
+      
+      const isActive = item.category === 'themes'
+        ? this.saveData.activeTheme === item.id
+        : this.saveData.activeHands === item.id;
 
       const itemEl = document.createElement('div');
       itemEl.className = 'shop-item';
@@ -412,50 +463,79 @@ export class GameEngine {
   }
 
   private handleShopAction(item: ShopItem): void {
-    const isUnlocked = this.saveData.unlockedItems.includes(item.id);
+    const isUnlocked = item.category === 'themes'
+      ? this.saveData.unlockedItems.includes(item.id)
+      : this.saveData.unlockedHands.includes(item.id);
 
     if (isUnlocked) {
-      this.saveData.activeTheme = item.id;
-      this.clock.setTheme(item.id);
+      if (item.category === 'themes') {
+        this.saveData.activeTheme = item.id;
+        this.clock.setTheme(item.id);
+      } else {
+        this.saveData.activeHands = item.id;
+        this.hands.setStyle(item.id);
+      }
     } else {
       if (this.saveData.gears >= item.cost) {
         this.saveData.gears -= item.cost;
-        this.saveData.unlockedItems.push(item.id);
-        this.saveData.activeTheme = item.id;
-        this.clock.setTheme(item.id);
+        if (item.category === 'themes') {
+          this.saveData.unlockedItems.push(item.id);
+          this.saveData.activeTheme = item.id;
+          this.clock.setTheme(item.id);
+        } else {
+          this.saveData.unlockedHands.push(item.id);
+          this.saveData.activeHands = item.id;
+          this.hands.setStyle(item.id);
+        }
       } else {
         alert("Tu n'as pas assez d'engrenages !");
       }
     }
 
     SaveManager.save(this.saveData);
-    this.updateUI();
+    this.updateGearsDisplay();
     this.renderShopItems();
     this.render();
   }
 
   private updateUI(): void {
     const instructionEl = document.getElementById('instruction');
-    const gearsEl = document.getElementById('gears-count');
-    
-    if (gearsEl) gearsEl.textContent = `⚙️ ${this.saveData.gears}`;
+    const phaseBadge = document.getElementById('phase-badge');
+    const checkBtn = document.getElementById('check-btn');
+    const choicesContainer = document.getElementById('choices-container');
 
-    if (this.gameMode === 'place') {
-      if (instructionEl) instructionEl.innerHTML = `Place les aiguilles sur : <span id="target-time">${this.targetTime.text}</span>`;
-    } else {
+    if (phaseBadge) {
+      phaseBadge.textContent = this.currentPhase === 1 
+        ? `Étape 1/2 : Lecture (${this.phaseSuccessCount}/3)` 
+        : `Étape 2/2 : Placement (${this.phaseSuccessCount}/3)`;
+    }
+
+    if (this.currentPhase === 1) {
+      if (checkBtn) checkBtn.classList.add('hidden');
+      if (choicesContainer) choicesContainer.classList.remove('hidden');
       if (instructionEl) instructionEl.textContent = `Quelle heure est-il sur l'horloge ?`;
+
       const choiceBtns = document.querySelectorAll('.choice-btn');
       choiceBtns.forEach((btn, idx) => {
         if (this.currentChoices[idx]) {
           btn.textContent = this.currentChoices[idx].text;
         }
       });
+    } else {
+      if (checkBtn) checkBtn.classList.remove('hidden');
+      if (choicesContainer) choicesContainer.classList.add('hidden');
+      if (instructionEl) instructionEl.innerHTML = `Place les aiguilles sur : <strong>${this.targetTime.text}</strong>`;
     }
   }
 
-  private updateUIStoreOnly(): void {
-    const gearsEl = document.getElementById('gears-count');
-    if (gearsEl) gearsEl.textContent = `⚙️ ${this.saveData.gears}`;
+  private getLevelName(level: number): string {
+    switch(level) {
+      case 1: return 'Piles';
+      case 2: return '30 min';
+      case 3: return 'Quarts';
+      case 4: return '5 min';
+      default: return '';
+    }
   }
 
   private get radius(): number {
