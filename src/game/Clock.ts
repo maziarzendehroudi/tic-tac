@@ -18,15 +18,15 @@ export class Clock {
     ctx.clearRect(-this.radius, -this.radius, this.radius * 2, this.radius * 2);
 
     let bgColor = '#ffffff';
-    let borderColor = '#2b6cb0';
-    let numberColor = '#2d3748';
+    let borderColor = '#b45309';
+    let numberColor = '#0f172a';
 
     if (this.theme === 'wood') {
       bgColor = '#fdf6e2';
       borderColor = '#b7791f';
       numberColor = '#744210';
     } else if (this.theme === 'space') {
-      bgColor = '#1a202c';
+      bgColor = '#0f172a';
       borderColor = '#805ad5';
       numberColor = '#e2e8f0';
     } else if (this.theme === 'forest') {
@@ -39,24 +39,26 @@ export class Clock {
       numberColor = '#2c5282';
     }
 
-    // Fond du cadran
+    // Cercle extérieur (Lunette / Bezel en laiton poli)
     ctx.beginPath();
     ctx.arc(0, 0, this.radius, 0, 2 * Math.PI);
     ctx.fillStyle = bgColor;
     ctx.fill();
-    ctx.lineWidth = 6;
+    ctx.lineWidth = 8;
     ctx.strokeStyle = borderColor;
     ctx.stroke();
 
-    // Pastille centrale (pivot)
+    // Pivot central rubis d'horlogerie
     ctx.beginPath();
-    ctx.arc(0, 0, 6, 0, 2 * Math.PI);
-    ctx.fillStyle = borderColor;
+    ctx.arc(0, 0, 7, 0, 2 * Math.PI);
+    ctx.fillStyle = '#e11d48';
     ctx.fill();
+    ctx.lineWidth = 2;
+    ctx.strokeStyle = '#ffffff';
+    ctx.stroke();
 
     // --- GRADUATIONS SELON LE NIVEAU ---
     if (level === 2) {
-      // Niveau 2 : Seulement les graduations des demi-heures (0 et 30 min)
       [0, 30].forEach(min => {
         const angle = (min * Math.PI) / 30;
         const innerRadius = this.radius - 14;
@@ -69,7 +71,6 @@ export class Clock {
         ctx.stroke();
       });
     } else if (level === 3) {
-      // Niveau 3 : Seulement les graduations des quarts d'heure (0, 15, 30, 45)
       [0, 15, 30, 45].forEach(min => {
         const angle = (min * Math.PI) / 30;
         const innerRadius = this.radius - 14;
@@ -82,7 +83,6 @@ export class Clock {
         ctx.stroke();
       });
     } else if (level === 4 || level === 5) {
-      // Niveaux 4 & 5 : Graduations de toutes les minutes
       for (let i = 0; i < 60; i++) {
         const angle = (i * Math.PI) / 30;
         const isHourMark = i % 5 === 0;
@@ -98,11 +98,9 @@ export class Clock {
         ctx.stroke();
       }
     }
-    // Niveau 1 et Niveau 6 : Aucune graduation de minutes
 
-    // --- CHIFFRES DES HEURES SELON LE NIVEAU ---
+    // --- CHIFFRES DES HEURES ---
     if (level === 6) {
-      // Niveau 6 : Horloge épurée avec seulement 12, 3, 6 et 9
       const hoursToShow = [12, 3, 6, 9];
       hoursToShow.forEach(h => {
         const angle = (h * Math.PI) / 6;
@@ -117,7 +115,6 @@ export class Clock {
         ctx.fillText(h.toString(), x, y);
       });
     } else if (level === 5) {
-      // Niveau 5 : Heures de 1 à 12 (intérieur) et 13 à 00 (extérieur)
       for (let i = 1; i <= 12; i++) {
         const angle = (i * Math.PI) / 6;
 
@@ -137,16 +134,14 @@ export class Clock {
         const outY = -outRadius * Math.cos(angle);
 
         ctx.font = '600 15px "Fredoka", sans-serif';
-        ctx.fillStyle = '#4f46e5';
+        ctx.fillStyle = '#d97706';
         ctx.textAlign = 'center';
         ctx.textBaseline = 'middle';
         ctx.fillText(hour24, outX, outY);
       }
     } else {
-      // Niveaux 1 à 4 : Chiffres classiques de 1 à 12
       for (let i = 1; i <= 12; i++) {
         const angle = (i * Math.PI) / 6;
-
         const numRadius = this.radius - 42;
         const x = numRadius * Math.sin(angle);
         const y = -numRadius * Math.cos(angle);

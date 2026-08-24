@@ -26,7 +26,6 @@ export class GameEngine {
   private isDragging: boolean = false;
   private activeHand: 'hour' | 'minute' = 'minute';
 
-  // Mapping des niveaux vers les pièces de montre débloquées
   private levelPartsMap: { [key: number]: string } = {
     1: 'spring',
     2: 'gears',
@@ -129,7 +128,6 @@ export class GameEngine {
       backMenuBtn.addEventListener('click', () => this.returnToMenu());
     }
 
-    // Gestion du tactile/souris pour l'horloge
     const getPointerPos = (e: MouseEvent | TouchEvent) => {
       const rect = this.canvas.getBoundingClientRect();
       const clientX = 'touches' in e ? e.touches[0].clientX : (e as MouseEvent).clientX;
@@ -228,15 +226,12 @@ export class GameEngine {
     if (!inventoryContainer) return;
     inventoryContainer.innerHTML = '';
 
-    // Afficher les pièces débloquées non encore placées
     this.saveData.unlockedParts.forEach(partId => {
       if (!this.saveData.placedParts.includes(partId)) {
         const partEl = document.createElement('div');
         partEl.className = 'inventory-part';
-        partEl.textContent = this.getPartName(partId);
-        partEl.setAttribute('data-part', partId);
-
-        // Permettre le clic pour placer directement dans son slot
+        partEl.innerHTML = `${this.getPartIcon(partId)} <span>${this.getPartName(partId)}</span>`;
+        
         partEl.addEventListener('click', () => {
           if (!this.saveData.placedParts.includes(partId)) {
             this.saveData.placedParts.push(partId);
@@ -250,30 +245,52 @@ export class GameEngine {
     });
 
     if (inventoryContainer.children.length === 0) {
-      inventoryContainer.innerHTML = '<span style="font-size:0.85rem; color:#64748b;">Toutes tes pièces sont assemblées ! 🎉</span>';
+      inventoryContainer.innerHTML = '<span style="font-size:0.85rem; color:#64748b;">Mouvement complet et assemblé ! 🌟</span>';
     }
 
-    // Mettre à jour l'affichage des slots sur le plan
     const slots = document.querySelectorAll('.slot');
     slots.forEach(slot => {
       const partId = slot.getAttribute('data-part');
       if (partId && this.saveData.placedParts.includes(partId)) {
         slot.classList.add('filled');
-        slot.textContent = `✅ ${this.getPartName(partId)}`;
+        slot.innerHTML = `<div class="rotating-gear" style="font-size:1.4rem;">${this.getPartIcon(partId)}</div><span class="slot-label" style="color:#fbbf24; font-weight:700;">${this.getPartName(partId)}</span>`;
       } else {
         slot.classList.remove('filled');
+        slot.innerHTML = `<span class="slot-label">${this.getSlotDescription(partId || '')}</span>`;
       }
     });
   }
 
+  private getPartIcon(partId: string): string {
+    switch(partId) {
+      case 'spring': return '🔋';
+      case 'gears': return '⚙️';
+      case 'escapement': return '⚓';
+      case 'balance': return '⚖️';
+      case 'hands': return '🧭';
+      default: return '🔧';
+    }
+  }
+
   private getPartName(partId: string): string {
     switch(partId) {
-      case 'spring': return '🔋 Ressort';
-      case 'gears': return '⚙️ Rouages';
-      case 'escapement': return '🫀 Tic-Tac';
-      case 'balance': return '⚖️ Balancier';
-      case 'hands': return '🧭 Cadran';
+      case 'spring': return 'Barillet';
+      case 'gears': return 'Rouage';
+      case 'escapement': return 'Échappement';
+      case 'balance': return 'Balancier';
+      case 'hands': return 'Cadran';
       default: return partId;
+    }
+  }
+
+  private getSlotDescription(partId: string): string {
+    switch(partId) {
+      case 'spring': return '1. Barillet';
+      case 'gears': return '2. Rouage';
+      case 'escapement': return '3. Échappement';
+      case 'balance': return '4. Balancier';
+      case 'hands': return '5. Cadran';
+      default: return '';
     }
   }
 
@@ -310,7 +327,7 @@ export class GameEngine {
         }
 
         if (instructionEl) {
-          instructionEl.innerHTML = `🏆 <span style="font-size: 2.5rem;">👍</span> Pièce débloquée !`;
+          instructionEl.innerHTML = `🏆 <span style="font-size: 2.5rem;">👍</span> Pièce forgée !`;
         }
 
         setTimeout(() => {
