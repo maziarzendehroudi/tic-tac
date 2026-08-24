@@ -108,8 +108,10 @@ export class GameEngine {
       this.lastTime = time;
       
       const isFullyAssembled = this.saveData.placedParts.length >= 5;
-      this.watchMechanism.update(deltaTime, isFullyAssembled);
-      this.watchMechanism.draw(this.saveData.placedParts, this.saveData.unlockedParts);
+      if (this.watchMechanism) {
+        this.watchMechanism.update(deltaTime, isFullyAssembled);
+        this.watchMechanism.draw(this.saveData.placedParts, this.saveData.unlockedParts);
+      }
       
       this.animFrameId = requestAnimationFrame(loop);
     };
@@ -154,14 +156,13 @@ export class GameEngine {
     document.getElementById('atelier-back-btn')?.addEventListener('click', () => this.returnToMenu());
     document.getElementById('back-menu-btn')?.addEventListener('click', () => this.returnToMenu());
 
-    // Interactions Atelier Mouvement
     document.getElementById('wind-up-btn')?.addEventListener('click', () => {
-      this.watchMechanism.power = 100;
+      if (this.watchMechanism) this.watchMechanism.power = 100;
     });
 
     document.getElementById('time-slider')?.addEventListener('input', (e) => {
       const target = e.target as HTMLInputElement;
-      this.watchMechanism.timeOffset = (parseInt(target.value) / 720) * Math.PI * 2 * 12;
+      if (this.watchMechanism) this.watchMechanism.timeOffset = (parseInt(target.value) / 720) * Math.PI * 2 * 12;
     });
 
     const getPointerPos = (e: MouseEvent | TouchEvent) => {
@@ -304,6 +305,7 @@ export class GameEngine {
 
   private handleSuccessfulAnswer(): void {
     this.phaseSuccessCount++;
+    this.triggerSuccessEffect(); // Animation de rebond restaurée
 
     const partToUnlock = this.levelPartsMap[this.currentLevel];
     if (partToUnlock && !this.saveData.unlockedParts.includes(partToUnlock)) {
