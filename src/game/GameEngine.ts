@@ -77,7 +77,7 @@ export class GameEngine {
     document.getElementById('main-menu')?.classList.add('hidden');
     gameScreen?.classList.remove('hidden');
 
-    gameScreen?.classList.remove('theme-lvl-1', 'theme-lvl-2', 'theme-lvl-3', 'theme-lvl-4', 'theme-lvl-5');
+    gameScreen?.classList.remove('theme-lvl-1', 'theme-lvl-2', 'theme-lvl-3', 'theme-lvl-4', 'theme-lvl-5', 'theme-lvl-6');
     gameScreen?.classList.add(`theme-lvl-${level}`);
 
     const titleDisplay = document.getElementById('level-title-display');
@@ -285,7 +285,7 @@ export class GameEngine {
         }, 1500);
         return;
       } else {
-        if (this.currentLevel === this.saveData.maxUnlockedLevel && this.currentLevel < 5) {
+        if (this.currentLevel === this.saveData.maxUnlockedLevel && this.currentLevel < 6) {
           this.saveData.maxUnlockedLevel = this.currentLevel + 1;
           SaveManager.save(this.saveData);
         }
@@ -369,6 +369,11 @@ export class GameEngine {
   }
 
   private snapToGrid(): void {
+    // Si niveau 6, on autorise la précision à la minute près (pas de snap sur 5 minutes pour les heures complexes)
+    if (this.currentLevel === 6) {
+      this.render();
+      return;
+    }
     this.currentMinutes = Math.round(this.currentMinutes / 5) * 5;
     if (this.currentMinutes === 60) this.currentMinutes = 0;
     this.render();
@@ -392,7 +397,10 @@ export class GameEngine {
 
   private checkPlaceAnswer(): void {
     const isHourCorrect = this.currentHours % 12 === this.targetTime.hours % 12;
-    const isMinuteCorrect = this.currentMinutes === this.targetTime.minutes;
+    // Pour le niveau 6, on tolère une marge de +/- 2 minutes pour la manipulation tactile
+    const isMinuteCorrect = this.currentLevel === 6 
+      ? Math.abs(this.currentMinutes - this.targetTime.minutes) <= 2
+      : this.currentMinutes === this.targetTime.minutes;
 
     if (isHourCorrect && isMinuteCorrect) {
       this.handleSuccessfulAnswer();
@@ -405,7 +413,7 @@ export class GameEngine {
   private checkReadAnswer(choiceIndex: number): void {
     const selectedChoice = this.currentChoices[choiceIndex];
     const isMinutesExact = selectedChoice.minutes === this.targetTime.minutes;
-    const isHoursExact = selectedChoice.hours % 12 === this.targetTime.hours % 12;
+    const isHoursExact = selectedChoice.hours === this.targetTime.hours;
 
     if (isHoursExact && isMinutesExact) {
       this.handleSuccessfulAnswer();

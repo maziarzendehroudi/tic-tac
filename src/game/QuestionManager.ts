@@ -31,11 +31,14 @@ export class QuestionManager {
     } else if (this.level === 5) {
       hours = Math.floor(Math.random() * 24) + 1;
       minutes = Math.floor(Math.random() * 12) * 5;
+    } else if (this.level === 6) {
+      // Niveau 6 : 24h et minutes complexes/arbitraires (ex: 13h43, 9h12...)
+      hours = Math.floor(Math.random() * 24) + 1;
+      minutes = Math.floor(Math.random() * 60);
     }
 
     let text = '';
-    if (this.level === 5) {
-      // Format 24h sans parenthèses
+    if (this.level >= 5) {
       const h = hours < 10 ? `0${hours}` : `${hours}`;
       const m = minutes < 10 ? `0${minutes}` : `${minutes}`;
       text = `${h}h${m}`;

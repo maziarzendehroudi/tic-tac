@@ -54,47 +54,108 @@ export class Clock {
     ctx.fillStyle = borderColor;
     ctx.fill();
 
-    // Graduations des 60 minutes
-    for (let i = 0; i < 60; i++) {
-      const angle = (i * Math.PI) / 30;
-      const isHourMark = i % 5 === 0;
-      
-      const innerRadius = this.radius - (isHourMark ? 14 : 8);
-      const outerRadius = this.radius - 4;
+    // --- GRADUATIONS SELON LE NIVEAU ---
+    if (level === 2) {
+      // Niveau 2 : Seulement les graduations des demi-heures (0 et 30 min)
+      [0, 30].forEach(min => {
+        const angle = (min * Math.PI) / 30;
+        const innerRadius = this.radius - 14;
+        const outerRadius = this.radius - 4;
+        ctx.beginPath();
+        ctx.moveTo(innerRadius * Math.sin(angle), -innerRadius * Math.cos(angle));
+        ctx.lineTo(outerRadius * Math.sin(angle), -outerRadius * Math.cos(angle));
+        ctx.lineWidth = 3;
+        ctx.strokeStyle = numberColor;
+        ctx.stroke();
+      });
+    } else if (level === 3) {
+      // Niveau 3 : Seulement les graduations des quarts d'heure (0, 15, 30, 45)
+      [0, 15, 30, 45].forEach(min => {
+        const angle = (min * Math.PI) / 30;
+        const innerRadius = this.radius - 14;
+        const outerRadius = this.radius - 4;
+        ctx.beginPath();
+        ctx.moveTo(innerRadius * Math.sin(angle), -innerRadius * Math.cos(angle));
+        ctx.lineTo(outerRadius * Math.sin(angle), -outerRadius * Math.cos(angle));
+        ctx.lineWidth = 3;
+        ctx.strokeStyle = numberColor;
+        ctx.stroke();
+      });
+    } else if (level === 4 || level === 5) {
+      // Niveaux 4 & 5 : Graduations de toutes les minutes
+      for (let i = 0; i < 60; i++) {
+        const angle = (i * Math.PI) / 30;
+        const isHourMark = i % 5 === 0;
+        
+        const innerRadius = this.radius - (isHourMark ? 14 : 8);
+        const outerRadius = this.radius - 4;
 
-      ctx.beginPath();
-      ctx.moveTo(innerRadius * Math.sin(angle), -innerRadius * Math.cos(angle));
-      ctx.lineTo(outerRadius * Math.sin(angle), -outerRadius * Math.cos(angle));
-      ctx.lineWidth = isHourMark ? 2.5 : 1;
-      ctx.strokeStyle = isHourMark ? numberColor : '#94a3b8';
-      ctx.stroke();
+        ctx.beginPath();
+        ctx.moveTo(innerRadius * Math.sin(angle), -innerRadius * Math.cos(angle));
+        ctx.lineTo(outerRadius * Math.sin(angle), -outerRadius * Math.cos(angle));
+        ctx.lineWidth = isHourMark ? 2.5 : 1;
+        ctx.strokeStyle = isHourMark ? numberColor : '#94a3b8';
+        ctx.stroke();
+      }
     }
+    // Niveau 1 et Niveau 6 : Aucune graduation de minutes
 
-    // Chiffres des heures (agrandis) et minutes pédagogiques
-    for (let i = 1; i <= 12; i++) {
-      const angle = (i * Math.PI) / 6;
+    // --- CHIFFRES DES HEURES SELON LE NIVEAU ---
+    if (level === 6) {
+      // Niveau 6 : Horloge épurée avec seulement 12, 3, 6 et 9
+      const hoursToShow = [12, 3, 6, 9];
+      hoursToShow.forEach(h => {
+        const angle = (h * Math.PI) / 6;
+        const numRadius = this.radius - 42;
+        const x = numRadius * Math.sin(angle);
+        const y = -numRadius * Math.cos(angle);
 
-      const numRadius = this.radius - 42;
-      const x = numRadius * Math.sin(angle);
-      const y = -numRadius * Math.cos(angle);
-      
-      ctx.font = 'bold 34px "Fredoka", sans-serif';
-      ctx.fillStyle = numberColor;
-      ctx.textAlign = 'center';
-      ctx.textBaseline = 'middle';
-      ctx.fillText(i.toString(), x, y);
-
-      if (level <= 3) {
-        const minuteVal = i * 5 === 60 ? '00' : (i * 5 < 10 ? `0${i * 5}` : `${i * 5}`);
-        const minRadius = this.radius - 72;
-        const minX = minRadius * Math.sin(angle);
-        const minY = -minRadius * Math.cos(angle);
-
-        ctx.font = '600 15px "Fredoka", sans-serif';
-        ctx.fillStyle = '#64748b';
+        ctx.font = 'bold 36px "Fredoka", sans-serif';
+        ctx.fillStyle = numberColor;
         ctx.textAlign = 'center';
         ctx.textBaseline = 'middle';
-        ctx.fillText(minuteVal, minX, minY);
+        ctx.fillText(h.toString(), x, y);
+      });
+    } else if (level === 5) {
+      // Niveau 5 : Heures de 1 à 12 (intérieur) et 13 à 00 (extérieur)
+      for (let i = 1; i <= 12; i++) {
+        const angle = (i * Math.PI) / 6;
+
+        const numRadius = this.radius - 52;
+        const x = numRadius * Math.sin(angle);
+        const y = -numRadius * Math.cos(angle);
+        
+        ctx.font = 'bold 24px "Fredoka", sans-serif';
+        ctx.fillStyle = numberColor;
+        ctx.textAlign = 'center';
+        ctx.textBaseline = 'middle';
+        ctx.fillText(i.toString(), x, y);
+
+        const hour24 = i === 12 ? '00' : (i + 12).toString();
+        const outRadius = this.radius - 24;
+        const outX = outRadius * Math.sin(angle);
+        const outY = -outRadius * Math.cos(angle);
+
+        ctx.font = '600 15px "Fredoka", sans-serif';
+        ctx.fillStyle = '#4f46e5';
+        ctx.textAlign = 'center';
+        ctx.textBaseline = 'middle';
+        ctx.fillText(hour24, outX, outY);
+      }
+    } else {
+      // Niveaux 1 à 4 : Chiffres classiques de 1 à 12
+      for (let i = 1; i <= 12; i++) {
+        const angle = (i * Math.PI) / 6;
+
+        const numRadius = this.radius - 42;
+        const x = numRadius * Math.sin(angle);
+        const y = -numRadius * Math.cos(angle);
+        
+        ctx.font = 'bold 34px "Fredoka", sans-serif';
+        ctx.fillStyle = numberColor;
+        ctx.textAlign = 'center';
+        ctx.textBaseline = 'middle';
+        ctx.fillText(i.toString(), x, y);
       }
     }
   }
