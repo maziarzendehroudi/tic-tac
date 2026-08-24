@@ -34,7 +34,9 @@ export class GameEngine {
   private shopItems: ShopItem[] = [
     { id: 'classic', name: 'Cadran Classique', cost: 0 },
     { id: 'wood', name: 'Cadran Bois', cost: 5 },
-    { id: 'space', name: 'Cadran Espace', cost: 10 }
+    { id: 'forest', name: '🌲 Forêt Enchantée', cost: 8 },
+    { id: 'ocean', name: '🌊 Océan Profond', cost: 15 },
+    { id: 'space', name: '🚀 Cadran Espace', cost: 20 }
   ];
 
   constructor(canvas: HTMLCanvasElement) {
@@ -156,14 +158,12 @@ export class GameEngine {
       });
     });
 
-    // Gestion des clics sur les niveaux (Campagne)
     const levelBtns = document.querySelectorAll('.level-btn');
     levelBtns.forEach(btn => {
       btn.addEventListener('click', (e) => {
         const target = e.currentTarget as HTMLElement;
         const level = parseInt(target.getAttribute('data-level') || '1', 10);
         
-        // Vérifier si le niveau est débloqué
         if (level <= (this.saveData.maxUnlockedLevel || 1)) {
           this.setNewLevel(level);
         } else {
@@ -267,7 +267,6 @@ export class GameEngine {
     const earnedGears = this.errorsCount === 0 ? 1 : 0.5;
     this.saveData.gears += earnedGears;
 
-    // Progression de campagne : si on réussit au niveau max actuel et qu'il y a un niveau suivant (< 4)
     if (this.currentLevel === this.saveData.maxUnlockedLevel && this.currentLevel < 4) {
       this.saveData.maxUnlockedLevel = this.currentLevel + 1;
     }
@@ -357,10 +356,13 @@ export class GameEngine {
 
   private checkReadAnswer(choiceIndex: number): void {
     const selectedChoice = this.currentChoices[choiceIndex];
-    const isCorrect = selectedChoice.hours === this.targetTime.hours && selectedChoice.minutes === this.targetTime.minutes;
+    const isCorrect = selectedChoice.hours === this.targetTime.hours && selectedChoice.minutes === this.targetTestMinutes(this.targetTime.minutes);
+    // Note: simplifions la vérification des minutes ci-dessous
+    const isMinutesExact = selectedChoice.minutes === this.targetTime.minutes;
+    const isHoursExact = selectedChoice.hours % 12 === this.targetTime.hours % 12;
     const instructionEl = document.getElementById('instruction');
 
-    if (isCorrect) {
+    if (isHoursExact && isMinutesExact) {
       this.handleSuccessfulAnswer();
     } else {
       this.errorsCount++;
@@ -370,6 +372,10 @@ export class GameEngine {
       }
     }
     this.updateUIStoreOnly();
+  }
+
+  private targetTestMinutes(m: number): number {
+    return m;
   }
 
   private renderShopItems(): void {

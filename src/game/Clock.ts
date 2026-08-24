@@ -23,7 +23,7 @@ export class Clock {
     const ctx = this.ctx;
     ctx.clearRect(-this.radius, -this.radius, this.radius * 2, this.radius * 2);
 
-    // Couleurs selon le thème
+    // Couleurs selon le thème actif
     let bgColor = '#ffffff';
     let borderColor = '#2b6cb0';
     let numberColor = '#2d3748';
@@ -36,6 +36,14 @@ export class Clock {
       bgColor = '#1a202c';
       borderColor = '#805ad5';
       numberColor = '#e2e8f0';
+    } else if (this.theme === 'forest') {
+      bgColor = '#f0fff4';
+      borderColor = '#276749';
+      numberColor = '#22543d';
+    } else if (this.theme === 'ocean') {
+      bgColor = '#ebf8ff';
+      borderColor = '#2b6cb0';
+      numberColor = '#2c5282';
     }
 
     // Fond du cadran
@@ -74,21 +82,6 @@ export class Clock {
       ctx.textAlign = 'center';
       ctx.textBaseline = 'middle';
       ctx.fillText(i.toString(), x, y);
-    }
-
-    if (this.show24h) {
-      const hours24 = [13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 0];
-      for (let i = 0; i < 12; i++) {
-        const angle = ((i + 1) * Math.PI) / 6;
-        const numRadius = this.radius - 85;
-        const x = numRadius * Math.sin(angle);
-        const y = -numRadius * Math.cos(angle);
-        ctx.font = 'bold 14px "Comic Sans MS", sans-serif';
-        ctx.fillStyle = this.theme === 'space' ? '#a0aec0' : '#a0aec0';
-        ctx.textAlign = 'center';
-        ctx.textBaseline = 'middle';
-        ctx.fillText(hours24[i].toString(), x, y);
-      }
     }
   }
 }
