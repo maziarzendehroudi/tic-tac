@@ -4,7 +4,8 @@ export class WatchMechanism {
   private height: number;
   
   public power: number = 0; // Énergie du ressort (0 à 100)
-  public timeOffset: number = 0; // Pour le réglage de l'heure
+  public timeOffset: number = 0; // Position des aiguilles
+  public showDial: boolean = true; // Affichage du cadran
   private animTime: number = 0;
 
   constructor(ctx: CanvasRenderingContext2D, width: number, height: number) {
@@ -13,11 +14,19 @@ export class WatchMechanism {
     this.height = height;
   }
 
-  public update(deltaTime: number, isFullyAssembled: boolean): void {
-    if (isFullyAssembled && this.power > 0) {
-      this.power = Math.max(0, this.power - deltaTime * 0.002); // Le ressort se décharge lentement
+  public update(deltaTime: number, placedParts: string[]): void {
+    // La montre ne fonctionne que si les 4 organes vitaux sont présents
+    const canRun = placedParts.includes('spring') &&
+                   placedParts.includes('gears') &&
+                   placedParts.includes('escapement') &&
+                   placedParts.includes('balance');
+
+    if (canRun && this.power > 0) {
+      // Le ressort se décharge (environ 20 secondes d'autonomie à 100%)
+      this.power = Math.max(0, this.power - deltaTime * 0.005); 
+      
       this.animTime += deltaTime * 0.005;
-      this.timeOffset += deltaTime * 0.0005; // L'heure avance naturellement
+      this.timeOffset += deltaTime * 0.003; // Les aiguilles tournent
     }
   }
 
@@ -40,16 +49,16 @@ export class WatchMechanism {
       this.drawGear(60, 30, 25, 10, this.animTime * 0.6, '#b45309'); // Roue moyenne
     });
 
-    // 4. Échappement (Ancre et Roue d'échappement)
+    // 4. Échappement (Ancre et Roue)
     this.drawPart('escapement', placedParts, unlockedParts, 20, 65, () => {
-      const tickStep = Math.floor(this.animTime * 4) * 0.15; // Mouvement saccadé (tic-tac)
-      this.drawEscapeWheel(20, 65, 20, 15, tickStep, '#94a3b8'); // Acier
-      this.drawPalletFork(0, 80, Math.sin(this.animTime * 4) * 0.2); // Ancre
+      const tickStep = Math.floor(this.animTime * 4) * 0.15; // Tic-tac
+      this.drawEscapeWheel(20, 65, 20, 15, tickStep, '#94a3b8');
+      this.drawPalletFork(0, 80, Math.sin(this.animTime * 4) * 0.2);
     });
 
     // 5. Balancier-Spiral
     this.drawPart('balance', placedParts, unlockedParts, -40, 60, () => {
-      const oscillation = Math.sin(this.animTime * 4) * 2; // Oscillation rapide
+      const oscillation = Math.sin(this.animTime * 4) * 2;
       this.drawBalanceWheel(-40, 60, 35, oscillation);
     });
 
@@ -61,22 +70,18 @@ export class WatchMechanism {
     this.ctx.restore();
   }
 
-  // --- Fonctions de dessin mécaniques ---
-
   private drawPart(id: string, placed: string[], unlocked: string[], x: number, y: number, drawFunc: () => void) {
     if (placed.includes(id)) {
-      // Dessin réaliste complet
       this.ctx.globalAlpha = 1;
       drawFunc();
     } else {
-      // Schéma (Blueprint)
       this.ctx.globalAlpha = unlocked.includes(id) ? 0.4 : 0.15;
       this.ctx.filter = 'grayscale(100%)';
       drawFunc();
       this.ctx.filter = 'none';
       this.ctx.globalAlpha = 1;
 
-      // Pointillé pour indiquer l'emplacement
+      // Pointillé pour indiquer l'emplacement vide
       this.ctx.beginPath();
       this.ctx.arc(x, y, 20, 0, Math.PI * 2);
       this.ctx.setLineDash([5, 5]);
@@ -90,18 +95,17 @@ export class WatchMechanism {
   private drawBasePlate() {
     this.ctx.beginPath();
     this.ctx.arc(0, 0, 110, 0, Math.PI * 2);
-    this.ctx.fillStyle = '#1e293b'; // Acier sombre
+    this.ctx.fillStyle = '#1e293b';
     this.ctx.fill();
     this.ctx.lineWidth = 4;
     this.ctx.strokeStyle = '#334155';
     this.ctx.stroke();
 
-    // Quelques rubis d'horlogerie
     const rubies = [[-50, -50], [40, -20], [60, 30], [20, 65], [-40, 60]];
     rubies.forEach(([rx, ry]) => {
       this.ctx.beginPath();
       this.ctx.arc(rx, ry, 4, 0, Math.PI * 2);
-      this.ctx.fillStyle = '#e11d48'; // Rouge rubis
+      this.ctx.fillStyle = '#e11d48';
       this.ctx.fill();
     });
   }
@@ -110,7 +114,7 @@ export class WatchMechanism {
     this.ctx.save();
     this.ctx.translate(x, y);
     this.ctx.rotate(angle);
-    // Tambour du barillet en laiton
+    
     this.ctx.beginPath();
     this.ctx.arc(0, 0, r, 0, Math.PI * 2);
     this.ctx.fillStyle = '#b45309';
@@ -119,16 +123,16 @@ export class WatchMechanism {
     this.ctx.lineWidth = 2;
     this.ctx.stroke();
 
-    // Ressort spirale à l'intérieur (plus serré si power est élevé)
+    // Ressort spirale (se resserre selon l'énergie)
     this.ctx.beginPath();
-    const turns = 3 + (power / 20);
-    for (let i = 0; i < 100; i++) {
-      const theta = (i / 100) * Math.PI * 2 * turns;
-      const sr = (i / 100) * (r - 5);
+    const turns = 3 + (power / 15);
+    for (let i = 0; i < 150; i++) {
+      const theta = (i / 150) * Math.PI * 2 * turns;
+      const sr = (i / 150) * (r - 5);
       if (i === 0) this.ctx.moveTo(0, 0);
       else this.ctx.lineTo(Math.cos(theta) * sr, Math.sin(theta) * sr);
     }
-    this.ctx.strokeStyle = '#475569'; // Acier bleui
+    this.ctx.strokeStyle = '#475569';
     this.ctx.lineWidth = 1.5;
     this.ctx.stroke();
     this.ctx.restore();
@@ -155,7 +159,6 @@ export class WatchMechanism {
     this.ctx.lineWidth = 1;
     this.ctx.stroke();
 
-    // Trous (rayons)
     this.ctx.globalCompositeOperation = 'destination-out';
     for (let i = 0; i < 5; i++) {
       const a = (i / 5) * Math.PI * 2;
@@ -175,7 +178,7 @@ export class WatchMechanism {
     for (let i = 0; i < teeth; i++) {
       const a = (i / teeth) * Math.PI * 2;
       this.ctx.lineTo(Math.cos(a) * (r * 0.6), Math.sin(a) * (r * 0.6));
-      this.ctx.lineTo(Math.cos(a + 0.15) * r, Math.sin(a + 0.15) * r); // Dents pointues (échappement)
+      this.ctx.lineTo(Math.cos(a + 0.15) * r, Math.sin(a + 0.15) * r);
     }
     this.ctx.closePath();
     this.ctx.fillStyle = color;
@@ -208,21 +211,18 @@ export class WatchMechanism {
     this.ctx.translate(x, y);
     this.ctx.rotate(angle);
 
-    // Anneau du balancier
     this.ctx.beginPath();
     this.ctx.arc(0, 0, r, 0, Math.PI * 2);
-    this.ctx.strokeStyle = '#d97706'; // Or
+    this.ctx.strokeStyle = '#d97706';
     this.ctx.lineWidth = 4;
     this.ctx.stroke();
 
-    // Rayons
     this.ctx.beginPath();
     this.ctx.moveTo(-r, 0); this.ctx.lineTo(r, 0);
     this.ctx.moveTo(0, -r); this.ctx.lineTo(0, r);
     this.ctx.lineWidth = 2;
     this.ctx.stroke();
 
-    // Spiral (Cheveu bleu)
     this.ctx.beginPath();
     for (let i = 0; i < 100; i++) {
       const theta = (i / 100) * Math.PI * 2 * 4;
@@ -233,7 +233,6 @@ export class WatchMechanism {
     this.ctx.strokeStyle = '#3b82f6';
     this.ctx.lineWidth = 1;
     this.ctx.stroke();
-
     this.ctx.restore();
   }
 
@@ -241,24 +240,32 @@ export class WatchMechanism {
     this.ctx.save();
     this.ctx.translate(x, y);
     
-    // Verre et cadran transparent
-    this.ctx.beginPath();
-    this.ctx.arc(0, 0, r, 0, Math.PI * 2);
-    this.ctx.fillStyle = 'rgba(255, 255, 255, 0.9)';
-    this.ctx.fill();
-    this.ctx.lineWidth = 2;
-    this.ctx.strokeStyle = '#e2e8f0';
-    this.ctx.stroke();
+    // Le cadran n'est dessiné que si "showDial" est vrai
+    if (this.showDial) {
+      this.ctx.beginPath();
+      this.ctx.arc(0, 0, r, 0, Math.PI * 2);
+      this.ctx.fillStyle = '#ffffff';
+      this.ctx.fill();
+      this.ctx.lineWidth = 2;
+      this.ctx.strokeStyle = '#e2e8f0';
+      this.ctx.stroke();
 
-    // Chiffres romains
-    this.ctx.fillStyle = '#0f172a';
-    this.ctx.font = 'bold 16px "Fredoka"';
-    this.ctx.textAlign = 'center';
-    this.ctx.textBaseline = 'middle';
-    const numerals = ['XII', 'I', 'II', 'III', 'IV', 'V', 'VI', 'VII', 'VIII', 'IX', 'X', 'XI'];
-    for (let i = 0; i < 12; i++) {
-      const angle = (i * Math.PI) / 6 - Math.PI / 2;
-      this.ctx.fillText(numerals[i], Math.cos(angle) * (r * 0.8), Math.sin(angle) * (r * 0.8));
+      this.ctx.fillStyle = '#0f172a';
+      this.ctx.font = 'bold 16px "Fredoka"';
+      this.ctx.textAlign = 'center';
+      this.ctx.textBaseline = 'middle';
+      const numerals = ['XII', 'I', 'II', 'III', 'IV', 'V', 'VI', 'VII', 'VIII', 'IX', 'X', 'XI'];
+      for (let i = 0; i < 12; i++) {
+        const angle = (i * Math.PI) / 6 - Math.PI / 2;
+        this.ctx.fillText(numerals[i], Math.cos(angle) * (r * 0.8), Math.sin(angle) * (r * 0.8));
+      }
+    } else {
+      // Juste un anneau transparent pour matérialiser la limite du cadran
+      this.ctx.beginPath();
+      this.ctx.arc(0, 0, r, 0, Math.PI * 2);
+      this.ctx.lineWidth = 2;
+      this.ctx.strokeStyle = 'rgba(255, 255, 255, 0.2)';
+      this.ctx.stroke();
     }
 
     // Aiguille des minutes
@@ -266,7 +273,7 @@ export class WatchMechanism {
     this.ctx.rotate(time);
     this.ctx.beginPath();
     this.ctx.moveTo(-3, 0); this.ctx.lineTo(0, -r * 0.85); this.ctx.lineTo(3, 0);
-    this.ctx.fillStyle = '#0f172a';
+    this.ctx.fillStyle = this.showDial ? '#0f172a' : '#f8fafc';
     this.ctx.fill();
     this.ctx.restore();
 
@@ -275,11 +282,10 @@ export class WatchMechanism {
     this.ctx.rotate(time / 12);
     this.ctx.beginPath();
     this.ctx.moveTo(-4, 0); this.ctx.lineTo(0, -r * 0.55); this.ctx.lineTo(4, 0);
-    this.ctx.fillStyle = '#0f172a';
+    this.ctx.fillStyle = this.showDial ? '#0f172a' : '#f8fafc';
     this.ctx.fill();
     this.ctx.restore();
 
-    // Pivot central
     this.ctx.beginPath();
     this.ctx.arc(0, 0, 4, 0, Math.PI * 2);
     this.ctx.fillStyle = '#d97706';

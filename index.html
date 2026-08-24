@@ -82,19 +82,26 @@
           <h2>Atelier Mécanique</h2>
           <span></span>
         </div>
-        <p id="atelier-instruction" class="atelier-instruction">Touche une pièce forgée pour l'assembler dans le calibre !</p>
+        <p id="atelier-instruction" class="atelier-instruction">Clique en bas pour monter, ou sur la montre pour démonter !</p>
         
         <div id="watch-blueprint">
-          <!-- Le Canvas génère le mouvement horloger complet de manière réaliste -->
           <canvas id="atelierCanvas" width="300" height="300"></canvas>
+          
+          <!-- Emplacements superposés pour le clic -->
+          <div class="slot-overlay" data-part="spring" style="top: 22%; left: 22%;"></div>
+          <div class="slot-overlay" data-part="gears" style="top: 22%; right: 22%;"></div>
+          <div class="slot-overlay" data-part="escapement" style="bottom: 22%; left: 22%;"></div>
+          <div class="slot-overlay" data-part="balance" style="bottom: 22%; right: 22%;"></div>
+          <div class="slot-overlay center-slot" data-part="hands" style="top: 50%; left: 50%;"></div>
         </div>
 
-        <!-- Contrôles interactifs de la montre terminée -->
         <div id="watch-controls" class="hidden">
-          <button id="wind-up-btn">🔄 Remonter le ressort</button>
-          <div class="slider-container">
-            <label for="time-slider">Mettre à l'heure :</label>
-            <input type="range" id="time-slider" min="0" max="720" value="0">
+          <div id="power-bar-container">
+            <div id="power-bar"></div>
+          </div>
+          <div class="control-buttons">
+            <button id="wind-up-btn">🔄 Remonter</button>
+            <button id="toggle-dial-btn">👁️ Cacher Cadran</button>
           </div>
         </div>
 
@@ -104,7 +111,7 @@
         </div>
       </div>
 
-      <!-- VUE 3 : ÉCRAN DE JEU (Apprentissage) -->
+      <!-- VUE 3 : ÉCRAN DE JEU -->
       <div id="game-screen" class="view hidden">
         <div id="game-top-bar">
           <button id="back-menu-btn" title="Retour au menu">
@@ -121,7 +128,6 @@
 
         <div id="ui-container">
           <p id="instruction">Quelle heure est-il sur l'horloge ?</p>
-          
           <div id="help-box" class="hidden">
             💡 <strong>Indice :</strong> <span id="help-text">Regarde bien les aiguilles !</span>
           </div>
@@ -141,7 +147,7 @@
         <div class="modal-content install-modal-content">
           <div class="install-icon">⏰</div>
           <h2>Installe Tic-Tac !</h2>
-          <p id="install-text">Installe l'application sur ton écran pour accéder à ton atelier sans internet !</p>
+          <p id="install-text">Installe l'application sur ton écran pour y jouer sans internet !</p>
           <div class="install-actions">
             <button id="pwa-install-btn" class="choice-btn" style="padding: 12px 20px;">Installer</button>
             <button id="pwa-close-btn" class="choice-btn" style="background-color: #cbd5e1; color: #334155;">Plus tard</button>

@@ -107,10 +107,15 @@ export class GameEngine {
       const deltaTime = time - this.lastTime;
       this.lastTime = time;
       
-      const isFullyAssembled = this.saveData.placedParts.length >= 5;
       if (this.watchMechanism) {
-        this.watchMechanism.update(deltaTime, isFullyAssembled);
+        this.watchMechanism.update(deltaTime, this.saveData.placedParts);
         this.watchMechanism.draw(this.saveData.placedParts, this.saveData.unlockedParts);
+        
+        // Mettre à jour la barre d'énergie HTML
+        const powerBar = document.getElementById('power-bar');
+        if (powerBar) {
+          powerBar.style.width = `${this.watchMechanism.power}%`;
+        }
       }
       
       this.animFrameId = requestAnimationFrame(loop);
@@ -156,15 +161,36 @@ export class GameEngine {
     document.getElementById('atelier-back-btn')?.addEventListener('click', () => this.returnToMenu());
     document.getElementById('back-menu-btn')?.addEventListener('click', () => this.returnToMenu());
 
+    // Contrôles interactifs Atelier
     document.getElementById('wind-up-btn')?.addEventListener('click', () => {
-      if (this.watchMechanism) this.watchMechanism.power = 100;
+      if (this.watchMechanism) {
+        // Remonte de 25% à chaque clic (max 100%)
+        this.watchMechanism.power = Math.min(100, this.watchMechanism.power + 25);
+      }
     });
 
-    document.getElementById('time-slider')?.addEventListener('input', (e) => {
-      const target = e.target as HTMLInputElement;
-      if (this.watchMechanism) this.watchMechanism.timeOffset = (parseInt(target.value) / 720) * Math.PI * 2 * 12;
+    document.getElementById('toggle-dial-btn')?.addEventListener('click', () => {
+      if (this.watchMechanism) {
+        this.watchMechanism.showDial = !this.watchMechanism.showDial;
+        const btn = document.getElementById('toggle-dial-btn');
+        if (btn) btn.textContent = this.watchMechanism.showDial ? '👁️ Cacher Cadran' : '👁️ Afficher Cadran';
+      }
     });
 
+    const overlays = document.querySelectorAll('.slot-overlay');
+    overlays.forEach(overlay => {
+      overlay.addEventListener('click', (e) => {
+        const partId = (e.currentTarget as HTMLElement).getAttribute('data-part');
+        if (partId && this.saveData.placedParts.includes(partId)) {
+          // Démonter la pièce
+          this.saveData.placedParts = this.saveData.placedParts.filter(p => p !== partId);
+          SaveManager.save(this.saveData);
+          this.renderAtelier();
+        }
+      });
+    });
+
+    // Événements jeu (horloge)
     const getPointerPos = (e: MouseEvent | TouchEvent) => {
       const rect = this.canvas.getBoundingClientRect();
       const clientX = 'touches' in e ? e.touches[0].clientX : (e as MouseEvent).clientX;
@@ -250,11 +276,11 @@ export class GameEngine {
   private renderAtelier(): void {
     const inventoryContainer = document.getElementById('inventory-items');
     const watchControls = document.getElementById('watch-controls');
-    const atelierInstruction = document.getElementById('atelier-instruction');
 
     if (!inventoryContainer) return;
     inventoryContainer.innerHTML = '';
 
+    // Afficher les pièces dispo
     this.saveData.unlockedParts.forEach(partId => {
       if (!this.saveData.placedParts.includes(partId)) {
         const partEl = document.createElement('div');
@@ -272,13 +298,27 @@ export class GameEngine {
       }
     });
 
-    if (this.saveData.placedParts.length >= 5) {
+    if (this.saveData.unlockedParts.length > 0 && inventoryContainer.children.length === 0) {
       inventoryContainer.innerHTML = '<span style="font-size:0.85rem; color:#64748b;">Mouvement complet et assemblé ! 🌟</span>';
+    }
+
+    // Afficher les contrôles si au moins une pièce est posée
+    if (this.saveData.placedParts.length > 0) {
       watchControls?.classList.remove('hidden');
-      if (atelierInstruction) atelierInstruction.textContent = "Magnifique ! Remonte la couronne pour donner vie à la montre.";
     } else {
       watchControls?.classList.add('hidden');
     }
+
+    // Mettre à jour les overlays pour le démontage
+    const overlays = document.querySelectorAll('.slot-overlay');
+    overlays.forEach(overlay => {
+      const partId = overlay.getAttribute('data-part');
+      if (partId && this.saveData.placedParts.includes(partId)) {
+        overlay.classList.add('removable');
+      } else {
+        overlay.classList.remove('removable');
+      }
+    });
   }
 
   private getPartIcon(partId: string): string {
@@ -305,7 +345,7 @@ export class GameEngine {
 
   private handleSuccessfulAnswer(): void {
     this.phaseSuccessCount++;
-    this.triggerSuccessEffect(); // Animation de rebond restaurée
+    this.triggerSuccessEffect();
 
     const partToUnlock = this.levelPartsMap[this.currentLevel];
     if (partToUnlock && !this.saveData.unlockedParts.includes(partToUnlock)) {
