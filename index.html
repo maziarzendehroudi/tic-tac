@@ -8,77 +8,61 @@
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Fredoka:wght@400;600;700&display=swap" rel="stylesheet">
-    <script type="module" crossorigin src="/tic-tac/assets/index-BEFaoYq_.js"></script>
-    <link rel="stylesheet" crossorigin href="/tic-tac/assets/index-CxLMNDfO.css">
+    <script type="module" crossorigin src="/tic-tac/assets/index-Dq6HXGyx.js"></script>
+    <link rel="stylesheet" crossorigin href="/tic-tac/assets/index-hmsMUWXj.css">
   </head>
   <body>
     <div id="app">
-      <header>
-        <h1 id="app-title">⏰ Tic-Tac</h1>
-        <div id="header-right">
-          <button id="shop-btn">🛒 Boutique</button>
-          <div id="score-board">
-            <span id="gears-count">⚙️ 0</span>
-          </div>
-        </div>
-      </header>
-
-      <!-- VUE 1 : MENU PRINCIPAL (Sélection des Niveaux) -->
+      <!-- VUE 1 : MENU PRINCIPAL ÉPURÉ -->
       <div id="main-menu" class="view">
+        <div id="main-score-container">
+          <span id="big-score-num">0</span> ⚙️
+        </div>
+        
         <div class="menu-intro">
-          <h2>Choisis ton Aventure ! 🌟</h2>
-          <p>Relève les défis pour gagner des engrenages et personnaliser ton horloge.</p>
+          <h2>Choisis ton niveau ⏰</h2>
         </div>
+
         <div id="levels-grid">
-          <button class="level-card lvl-1" data-level="1">
-            <div class="level-icon">🌞</div>
-            <div class="level-info">
-              <span class="level-badge">Niveau 1</span>
-              <h3>Piles & Heures pleines</h3>
-              <p>Maîtrise les heures exactes</p>
-            </div>
-            <span class="level-status">Jouer 🚀</span>
-          </button>
-          
-          <button class="level-card lvl-2 locked" data-level="2">
-            <div class="level-icon">🌿</div>
-            <div class="level-info">
-              <span class="level-badge">Niveau 2</span>
-              <h3>Les Demi-heures</h3>
-              <p>Repère les 30 minutes</p>
-            </div>
-            <span class="level-status">🔒 Verrouillé</span>
+          <button class="level-rect lvl-1" data-level="1">
+            <span class="lvl-title">Niveau 1</span>
+            <span class="lvl-desc">Les heures pleines</span>
           </button>
 
-          <button class="level-card lvl-3 locked" data-level="3">
-            <div class="level-icon">🎨</div>
-            <div class="level-info">
-              <span class="level-badge">Niveau 3</span>
-              <h3>Les Quarts d'heure</h3>
-              <p>Maîtrise les quarts et trois-quarts</p>
-            </div>
-            <span class="level-status">🔒 Verrouillé</span>
+          <button class="level-rect lvl-2 locked" data-level="2">
+            <span class="lvl-title">Niveau 2</span>
+            <span class="lvl-desc">Les demi-heures</span>
           </button>
 
-          <button class="level-card lvl-4 locked" data-level="4">
-            <div class="level-icon">🚀</div>
-            <div class="level-info">
-              <span class="level-badge">Niveau 4</span>
-              <h3>Précision 5 minutes</h3>
-            <p>Le défi ultime de l'horloger !</p>
-            </div>
-            <span class="level-status">🔒 Verrouillé</span>
+          <button class="level-rect lvl-3 locked" data-level="3">
+            <span class="lvl-title">Niveau 3</span>
+            <span class="lvl-desc">Les quarts d'heure</span>
+          </button>
+
+          <button class="level-rect lvl-4 locked" data-level="4">
+            <span class="lvl-title">Niveau 4</span>
+            <span class="lvl-desc">Précision 5 minutes</span>
+          </button>
+
+          <button class="level-rect lvl-5 locked" data-level="5">
+            <span class="lvl-title">Niveau 5</span>
+            <span class="lvl-desc">Les 24 heures</span>
           </button>
         </div>
+
+        <button id="shop-btn-main">🛒 Boutique magique</button>
       </div>
 
-      <!-- VUE 2 : ÉCRAN DE JEU -->
+      <!-- VUE 2 : ÉCRAN DE JEU ÉPURÉ -->
       <div id="game-screen" class="view hidden">
         <div id="game-top-bar">
-          <button id="back-menu-btn">🏠 Menu</button>
-          <span id="level-title-display">Niveau 1</span>
-          <span id="phase-badge">Étape 1/2</span>
+          <button id="back-menu-btn" title="Retour au menu">
+            <span id="level-title-display">Niveau 1</span> 🏠
+          </button>
+          <div id="game-score-display">0 ⚙️</div>
         </div>
+        
+        <div id="phase-badge">Étape 1/2 : Lecture</div>
 
         <div id="game-container">
           <canvas id="clockCanvas" width="500" height="500"></canvas>
@@ -87,19 +71,16 @@
         <div id="ui-container">
           <p id="instruction">Quelle heure est-il sur l'horloge ?</p>
           
-          <!-- Aide après 3 erreurs -->
           <div id="help-box" class="hidden">
-            💡 <strong>Indice magique :</strong> <span id="help-text">Regarde bien les aiguilles !</span>
+            💡 <strong>Indice :</strong> <span id="help-text">Regarde bien les aiguilles !</span>
           </div>
 
-          <!-- Choix Phase Lecture -->
           <div id="choices-container">
             <button class="choice-btn" data-index="0">--</button>
             <button class="choice-btn" data-index="1">--</button>
             <button class="choice-btn" data-index="2">--</button>
           </div>
 
-          <!-- Bouton Phase Placement -->
           <button id="check-btn" class="hidden">✨ Vérifier !</button>
         </div>
       </div>
@@ -107,8 +88,8 @@
       <!-- Modale Boutique -->
       <div id="shop-modal" class="modal hidden">
         <div class="modal-content">
-          <h2>🛍️ La Boutique Magique</h2>
-          <p>Dépense tes engrenages pour personnaliser ton jeu !</p>
+          <h2>🛍️ La Boutique</h2>
+          <p>Personnalise ton jeu avec tes engrenages !</p>
           <div id="shop-tabs">
             <button class="shop-tab active" data-tab="themes">🎨 Cadrans</button>
             <button class="shop-tab" data-tab="hands">✨ Aiguilles</button>
