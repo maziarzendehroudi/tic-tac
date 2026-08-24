@@ -26,6 +26,7 @@ export class GameEngine {
   private phaseSuccessCount: number = 0;
 
   private isDragging: boolean = false;
+  private isWinding: boolean = false; // Suivi de l'appui sur la couronne
   private activeHand: 'hour' | 'minute' = 'minute';
   private animFrameId: number = 0;
   private lastTime: number = performance.now();
@@ -108,10 +109,10 @@ export class GameEngine {
       this.lastTime = time;
       
       if (this.watchMechanism) {
-        this.watchMechanism.update(deltaTime, this.saveData.placedParts);
+        // Envoie de l'état "isWinding" au mécanisme
+        this.watchMechanism.update(deltaTime, this.saveData.placedParts, this.isWinding);
         this.watchMechanism.draw(this.saveData.placedParts, this.saveData.unlockedParts);
         
-        // Mettre à jour la barre d'énergie HTML
         const powerBar = document.getElementById('power-bar');
         if (powerBar) {
           powerBar.style.width = `${this.watchMechanism.power}%`;
@@ -148,7 +149,6 @@ export class GameEngine {
       rect.addEventListener('click', (e) => {
         const target = e.currentTarget as HTMLElement;
         const level = parseInt(target.getAttribute('data-level') || '1', 10);
-        
         if (level <= (this.saveData.maxUnlockedLevel || 1)) {
           this.startLevel(level);
         } else {
@@ -161,13 +161,18 @@ export class GameEngine {
     document.getElementById('atelier-back-btn')?.addEventListener('click', () => this.returnToMenu());
     document.getElementById('back-menu-btn')?.addEventListener('click', () => this.returnToMenu());
 
-    // Contrôles interactifs Atelier
-    document.getElementById('wind-up-btn')?.addEventListener('click', () => {
-      if (this.watchMechanism) {
-        // Remonte de 25% à chaque clic (max 100%)
-        this.watchMechanism.power = Math.min(100, this.watchMechanism.power + 25);
-      }
-    });
+    // --- CONTRÔLE DE LA MOLETTE DE REMONTAGE ---
+    const crownBtn = document.getElementById('crown-btn');
+    if (crownBtn) {
+      const startWinding = (e: Event) => { e.preventDefault(); this.isWinding = true; };
+      const stopWinding = () => { this.isWinding = false; };
+      
+      crownBtn.addEventListener('mousedown', startWinding);
+      crownBtn.addEventListener('touchstart', startWinding, { passive: false });
+      
+      window.addEventListener('mouseup', stopWinding);
+      window.addEventListener('touchend', stopWinding);
+    }
 
     document.getElementById('toggle-dial-btn')?.addEventListener('click', () => {
       if (this.watchMechanism) {
@@ -177,12 +182,12 @@ export class GameEngine {
       }
     });
 
+    // Démontage des pièces depuis le Canvas de l'atelier
     const overlays = document.querySelectorAll('.slot-overlay');
     overlays.forEach(overlay => {
       overlay.addEventListener('click', (e) => {
         const partId = (e.currentTarget as HTMLElement).getAttribute('data-part');
         if (partId && this.saveData.placedParts.includes(partId)) {
-          // Démonter la pièce
           this.saveData.placedParts = this.saveData.placedParts.filter(p => p !== partId);
           SaveManager.save(this.saveData);
           this.renderAtelier();
@@ -190,7 +195,7 @@ export class GameEngine {
       });
     });
 
-    // Événements jeu (horloge)
+    // Horloge tactile (Jeu)
     const getPointerPos = (e: MouseEvent | TouchEvent) => {
       const rect = this.canvas.getBoundingClientRect();
       const clientX = 'touches' in e ? e.touches[0].clientX : (e as MouseEvent).clientX;
@@ -276,11 +281,11 @@ export class GameEngine {
   private renderAtelier(): void {
     const inventoryContainer = document.getElementById('inventory-items');
     const watchControls = document.getElementById('watch-controls');
+    const atelierInstruction = document.getElementById('atelier-instruction');
 
     if (!inventoryContainer) return;
     inventoryContainer.innerHTML = '';
 
-    // Afficher les pièces dispo
     this.saveData.unlockedParts.forEach(partId => {
       if (!this.saveData.placedParts.includes(partId)) {
         const partEl = document.createElement('div');
@@ -298,18 +303,15 @@ export class GameEngine {
       }
     });
 
-    if (this.saveData.unlockedParts.length > 0 && inventoryContainer.children.length === 0) {
+    if (this.saveData.placedParts.length >= 5) {
       inventoryContainer.innerHTML = '<span style="font-size:0.85rem; color:#64748b;">Mouvement complet et assemblé ! 🌟</span>';
-    }
-
-    // Afficher les contrôles si au moins une pièce est posée
-    if (this.saveData.placedParts.length > 0) {
       watchControls?.classList.remove('hidden');
+      if (atelierInstruction) atelierInstruction.textContent = "Maintiens la molette appuyée pour remonter le ressort !";
     } else {
       watchControls?.classList.add('hidden');
+      if (atelierInstruction) atelierInstruction.textContent = "Clique en bas pour monter, ou sur le mouvement pour démonter.";
     }
 
-    // Mettre à jour les overlays pour le démontage
     const overlays = document.querySelectorAll('.slot-overlay');
     overlays.forEach(overlay => {
       const partId = overlay.getAttribute('data-part');
