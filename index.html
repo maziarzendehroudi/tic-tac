@@ -12,13 +12,8 @@
 
     <link rel="manifest" href="./manifest.json">
     <meta name="theme-color" content="#0f172a">
-
-    <meta name="apple-mobile-web-app-capable" content="yes">
-    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-    <meta name="apple-mobile-web-app-title" content="Tic-Tac">
-    <link rel="apple-touch-icon" href="./icon-192.png">
-    <script type="module" crossorigin src="/tic-tac/assets/index-CVsp7gh0.js"></script>
-    <link rel="stylesheet" crossorigin href="/tic-tac/assets/index-jnduwUKJ.css">
+    <script type="module" crossorigin src="/tic-tac/assets/index-C5SeRr2f.js"></script>
+    <link rel="stylesheet" crossorigin href="/tic-tac/assets/index-PJPkwpS7.css">
   </head>
   <body>
     <div id="app">
@@ -32,7 +27,7 @@
         <div id="levels-grid">
           <button class="level-rect lvl-1" data-level="1">
             <div class="lvl-content">
-              <span class="lvl-title">Niveau 1 ➔ 1. Le Barillet & Ressort</span>
+              <span class="lvl-title">Niveau 1 ➔ 1. Le Barillet</span>
               <span class="lvl-desc">Heures pleines</span>
             </div>
             <span class="lvl-check hidden">✅</span>
@@ -40,7 +35,7 @@
 
           <button class="level-rect lvl-2 locked" data-level="2">
             <div class="lvl-content">
-              <span class="lvl-title">Niveau 2 ➔ 2. Le Train de Rouage</span>
+              <span class="lvl-title">Niveau 2 ➔ 2. Le Rouage</span>
               <span class="lvl-desc">Demi-heures</span>
             </div>
             <span class="lvl-check hidden">✅</span>
@@ -48,7 +43,7 @@
 
           <button class="level-rect lvl-3 locked" data-level="3">
             <div class="lvl-content">
-              <span class="lvl-title">Niveau 3 ➔ 3. L'Échappement (Ancre)</span>
+              <span class="lvl-title">Niveau 3 ➔ 3. L'Échappement</span>
               <span class="lvl-desc">Quarts d'heure</span>
             </div>
             <span class="lvl-check hidden">✅</span>
@@ -56,7 +51,7 @@
 
           <button class="level-rect lvl-4 locked" data-level="4">
             <div class="lvl-content">
-              <span class="lvl-title">Niveau 4 ➔ 4. Le Balancier-Spirale</span>
+              <span class="lvl-title">Niveau 4 ➔ 4. Le Balancier</span>
               <span class="lvl-desc">Précision 5 minutes</span>
             </div>
             <span class="lvl-check hidden">✅</span>
@@ -64,7 +59,7 @@
 
           <button class="level-rect lvl-5 locked" data-level="5">
             <div class="lvl-content">
-              <span class="lvl-title">Niveau 5 ➔ 5. Le Cadran & Aiguilles</span>
+              <span class="lvl-title">Niveau 5 ➔ 5. Le Cadran</span>
               <span class="lvl-desc">Les 24 heures</span>
             </div>
             <span class="lvl-check hidden">✅</span>
@@ -72,8 +67,8 @@
 
           <button class="level-rect lvl-6 locked" data-level="6">
             <div class="lvl-content">
-              <span class="lvl-title">Niveau 6 ➔ Le Maître Horloger</span>
-              <span class="lvl-desc">Défi expert & remontage</span>
+              <span class="lvl-title">Niveau 6 ➔ Maître Horloger</span>
+              <span class="lvl-desc">Défi expert (heures complexes)</span>
             </div>
             <span class="lvl-check hidden">✅</span>
           </button>
@@ -82,47 +77,42 @@
         <button id="open-atelier-btn">🛠️ Entrer dans l'Atelier</button>
       </div>
 
-      <!-- VUE 2 : L'ATELIER (Plan technique & Mécanismes) -->
+      <!-- VUE 2 : L'ATELIER (Assemblage et Animation) -->
       <div id="atelier-view" class="view hidden">
         <div id="atelier-top-bar">
           <button id="atelier-back-btn">🏠 Menu</button>
           <h2>Atelier Mécanique</h2>
           <span></span>
         </div>
-        <p class="atelier-instruction">Glisse ou clique sur tes pièces pour assembler le mouvement horloger !</p>
+        <p id="atelier-instruction" class="atelier-instruction">Touche une pièce forgée pour l'assembler dans le calibre !</p>
         
         <div id="watch-blueprint">
-          <!-- Emplacements techniques sur le mouvement -->
-          <div class="slot" data-part="spring" style="top: 22%; left: 22%;">
-            <span class="slot-label">1. Barillet</span>
-          </div>
-          <div class="slot" data-part="gears" style="top: 22%; right: 22%;">
-            <span class="slot-label">2. Rouage</span>
-          </div>
-          <div class="slot" data-part="escapement" style="bottom: 22%; left: 22%;">
-            <span class="slot-label">3. Échappement</span>
-          </div>
-          <div class="slot" data-part="balance" style="bottom: 22%; right: 22%;">
-            <span class="slot-label">4. Balancier</span>
-          </div>
-          <div class="slot center-slot" data-part="hands" style="top: 40%; left: 30%;">
-            <span class="slot-label">5. Échappement & Cadran</span>
+          <!-- Le Canvas génère le mouvement horloger complet de manière réaliste -->
+          <canvas id="atelierCanvas" width="300" height="300"></canvas>
+        </div>
+
+        <!-- Contrôles interactifs de la montre terminée -->
+        <div id="watch-controls" class="hidden">
+          <button id="wind-up-btn">🔄 Remonter le ressort</button>
+          <div class="slider-container">
+            <label for="time-slider">Mettre à l'heure :</label>
+            <input type="range" id="time-slider" min="0" max="720" value="0">
           </div>
         </div>
 
         <div id="parts-inventory">
-          <h3>Composants forgés :</h3>
+          <h3>Pièces sur l'établi :</h3>
           <div id="inventory-items"></div>
         </div>
       </div>
 
-      <!-- VUE 3 : ÉCRAN DE JEU -->
+      <!-- VUE 3 : ÉCRAN DE JEU (Apprentissage) -->
       <div id="game-screen" class="view hidden">
         <div id="game-top-bar">
           <button id="back-menu-btn" title="Retour au menu">
             <span id="level-title-display">Niveau 1</span> 🏠
           </button>
-          <div id="game-progress-display">Niveau en cours</div>
+          <div id="game-progress-display">Apprentissage</div>
         </div>
         
         <div id="phase-badge">Étape 1/2 : Lecture</div>
@@ -145,6 +135,19 @@
           </div>
 
           <button id="check-btn" class="hidden">Vérifier</button>
+        </div>
+      </div>
+
+      <!-- POPUP D'INSTALLATION PWA -->
+      <div id="pwa-install-modal" class="modal hidden">
+        <div class="modal-content install-modal-content">
+          <div class="install-icon">⏰</div>
+          <h2>Installe Tic-Tac !</h2>
+          <p id="install-text">Installe l'application sur ton écran pour accéder à ton atelier sans internet !</p>
+          <div class="install-actions">
+            <button id="pwa-install-btn" class="choice-btn" style="padding: 12px 20px;">Installer</button>
+            <button id="pwa-close-btn" class="choice-btn" style="background-color: #cbd5e1; color: #334155;">Plus tard</button>
+          </div>
         </div>
       </div>
     </div>
