@@ -73,8 +73,13 @@ export class GameEngine {
     this.phaseSuccessCount = 0;
     this.questionManager.setLevel(level);
 
+    const gameScreen = document.getElementById('game-screen');
     document.getElementById('main-menu')?.classList.add('hidden');
-    document.getElementById('game-screen')?.classList.remove('hidden');
+    gameScreen?.classList.remove('hidden');
+
+    // Appliquer la couleur du niveau sur l'écran de jeu
+    gameScreen?.classList.remove('theme-lvl-1', 'theme-lvl-2', 'theme-lvl-3', 'theme-lvl-4', 'theme-lvl-5');
+    gameScreen?.classList.add(`theme-lvl-${level}`);
 
     const titleDisplay = document.getElementById('level-title-display');
     if (titleDisplay) titleDisplay.textContent = `Niveau ${level}`;
@@ -231,11 +236,19 @@ export class GameEngine {
 
     levelRects.forEach(rect => {
       const level = parseInt(rect.getAttribute('data-level') || '1', 10);
+      const checkMark = rect.querySelector('.lvl-check');
       
       if (level <= maxUnlocked) {
         rect.classList.remove('locked');
+        // Afficher l'encoche verte si le niveau a été dépassé/validé
+        if (level < maxUnlocked) {
+          checkMark?.classList.remove('hidden');
+        } else {
+          checkMark?.classList.add('hidden');
+        }
       } else {
         rect.classList.add('locked');
+        checkMark?.classList.add('hidden');
       }
     });
     this.updateScoresDisplay();
