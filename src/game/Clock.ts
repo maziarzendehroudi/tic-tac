@@ -1,13 +1,11 @@
 export class Clock {
   private ctx: CanvasRenderingContext2D;
   private radius: number;
-  private show24h: boolean;
   private theme: string;
 
-  constructor(ctx: CanvasRenderingContext2D, radius: number, show24h: boolean = false, theme: string = 'classic') {
+  constructor(ctx: CanvasRenderingContext2D, radius: number, theme: string = 'classic') {
     this.ctx = ctx;
     this.radius = radius;
-    this.show24h = show24h;
     this.theme = theme;
   }
 
@@ -15,15 +13,10 @@ export class Clock {
     this.theme = theme;
   }
 
-  public setShow24h(show: boolean): void {
-    this.show24h = show;
-  }
-
   public draw(): void {
     const ctx = this.ctx;
     ctx.clearRect(-this.radius, -this.radius, this.radius * 2, this.radius * 2);
 
-    // Couleurs selon le thème actif
     let bgColor = '#ffffff';
     let borderColor = '#2b6cb0';
     let numberColor = '#2d3748';
@@ -46,7 +39,6 @@ export class Clock {
       numberColor = '#2c5282';
     }
 
-    // Fond du cadran
     ctx.beginPath();
     ctx.arc(0, 0, this.radius, 0, 2 * Math.PI);
     ctx.fillStyle = bgColor;
@@ -55,13 +47,11 @@ export class Clock {
     ctx.strokeStyle = borderColor;
     ctx.stroke();
 
-    // Pastille centrale (pivot)
     ctx.beginPath();
     ctx.arc(0, 0, 8, 0, 2 * Math.PI);
     ctx.fillStyle = borderColor;
     ctx.fill();
 
-    // Graduations et chiffres (1 à 12)
     for (let i = 1; i <= 12; i++) {
       const angle = (i * Math.PI) / 6;
       

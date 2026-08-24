@@ -54,7 +54,7 @@ export class GameEngine {
     this.saveData = SaveManager.load();
     this.currentLevel = this.saveData.levelProgress || 1;
 
-    this.clock = new Clock(this.ctx, radius, false, this.saveData.activeTheme);
+    this.clock = new Clock(this.ctx, radius, this.saveData.activeTheme);
     this.hands = new Hands(this.ctx, radius);
     this.questionManager = new QuestionManager(this.currentLevel);
 
@@ -356,8 +356,6 @@ export class GameEngine {
 
   private checkReadAnswer(choiceIndex: number): void {
     const selectedChoice = this.currentChoices[choiceIndex];
-    const isCorrect = selectedChoice.hours === this.targetTime.hours && selectedChoice.minutes === this.targetTestMinutes(this.targetTime.minutes);
-    // Note: simplifions la vérification des minutes ci-dessous
     const isMinutesExact = selectedChoice.minutes === this.targetTime.minutes;
     const isHoursExact = selectedChoice.hours % 12 === this.targetTime.hours % 12;
     const instructionEl = document.getElementById('instruction');
@@ -372,10 +370,6 @@ export class GameEngine {
       }
     }
     this.updateUIStoreOnly();
-  }
-
-  private targetTestMinutes(m: number): number {
-    return m;
   }
 
   private renderShopItems(): void {
