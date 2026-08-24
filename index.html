@@ -9,11 +9,10 @@
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Fredoka:wght@400;600;700&display=swap" rel="stylesheet">
-
     <link rel="manifest" href="./manifest.json">
     <meta name="theme-color" content="#0f172a">
-    <script type="module" crossorigin src="/tic-tac/assets/index-D3v0bbwq.js"></script>
-    <link rel="stylesheet" crossorigin href="/tic-tac/assets/index-CxS_IJou.css">
+    <script type="module" crossorigin src="/tic-tac/assets/index-QcUy7qyk.js"></script>
+    <link rel="stylesheet" crossorigin href="/tic-tac/assets/index-BxFk7RL_.css">
   </head>
   <body>
     <div id="app">
@@ -32,7 +31,6 @@
             </div>
             <span class="lvl-check hidden">✅</span>
           </button>
-
           <button class="level-rect lvl-2 locked" data-level="2">
             <div class="lvl-content">
               <span class="lvl-title">Niveau 2 ➔ 2. Le Rouage</span>
@@ -40,7 +38,6 @@
             </div>
             <span class="lvl-check hidden">✅</span>
           </button>
-
           <button class="level-rect lvl-3 locked" data-level="3">
             <div class="lvl-content">
               <span class="lvl-title">Niveau 3 ➔ 3. L'Échappement</span>
@@ -48,7 +45,6 @@
             </div>
             <span class="lvl-check hidden">✅</span>
           </button>
-
           <button class="level-rect lvl-4 locked" data-level="4">
             <div class="lvl-content">
               <span class="lvl-title">Niveau 4 ➔ 4. Le Balancier</span>
@@ -56,7 +52,6 @@
             </div>
             <span class="lvl-check hidden">✅</span>
           </button>
-
           <button class="level-rect lvl-5 locked" data-level="5">
             <div class="lvl-content">
               <span class="lvl-title">Niveau 5 ➔ 5. Le Cadran</span>
@@ -64,7 +59,6 @@
             </div>
             <span class="lvl-check hidden">✅</span>
           </button>
-
           <button class="level-rect lvl-6 locked" data-level="6">
             <div class="lvl-content">
               <span class="lvl-title">Niveau 6 ➔ Maître Horloger</span>
@@ -77,23 +71,23 @@
         <button id="open-atelier-btn">🛠️ Entrer dans l'Atelier</button>
       </div>
 
-      <!-- VUE 2 : L'ATELIER (Assemblage et Animation) -->
+      <!-- VUE 2 : L'ATELIER (Simulateur) -->
       <div id="atelier-view" class="view hidden">
         <div id="atelier-top-bar">
           <button id="atelier-back-btn">🏠 Menu</button>
-          <h2>Atelier Mécanique</h2>
+          <h2>Simulateur Mécanique</h2>
           <span></span>
         </div>
-        <p id="atelier-instruction" class="atelier-instruction">Clique en bas pour monter, ou sur la montre pour démonter !</p>
+        <p id="atelier-instruction" class="atelier-instruction">Clique en bas pour monter, ou sur le mouvement pour démonter.</p>
         
         <div id="watch-blueprint">
           <canvas id="atelierCanvas" width="300" height="300"></canvas>
           
-          <!-- Emplacements superposés pour le clic -->
-          <div class="slot-overlay" data-part="spring" style="top: 22%; left: 22%;"></div>
-          <div class="slot-overlay" data-part="gears" style="top: 22%; right: 22%;"></div>
-          <div class="slot-overlay" data-part="escapement" style="bottom: 22%; left: 22%;"></div>
-          <div class="slot-overlay" data-part="balance" style="bottom: 22%; right: 22%;"></div>
+          <!-- Zones de clic pour démonter le mécanisme (placées exactement sur les coordonnées du Canvas) -->
+          <div class="slot-overlay" data-part="spring" style="top: 25%; left: 25%;"></div>
+          <div class="slot-overlay" data-part="gears" style="top: 25%; right: 25%;"></div>
+          <div class="slot-overlay" data-part="escapement" style="bottom: 25%; left: 25%;"></div>
+          <div class="slot-overlay" data-part="balance" style="bottom: 25%; right: 25%;"></div>
           <div class="slot-overlay center-slot" data-part="hands" style="top: 50%; left: 50%;"></div>
         </div>
 
@@ -101,8 +95,14 @@
           <div id="power-bar-container">
             <div id="power-bar"></div>
           </div>
+          
+          <div class="crown-wrapper">
+            <span class="crown-instruction">Maintenir pour remonter ➔</span>
+            <!-- La Molette réaliste ! -->
+            <div id="crown-btn" class="crown-wheel"></div> 
+          </div>
+
           <div class="control-buttons">
-            <button id="wind-up-btn">🔄 Remonter</button>
             <button id="toggle-dial-btn">👁️ Cacher Cadran</button>
           </div>
         </div>
@@ -139,7 +139,6 @@
             <button class="choice-btn" data-index="1">--</button>
             <button class="choice-btn" data-index="2">--</button>
           </div>
-
           <button id="check-btn" class="hidden">Vérifier</button>
         </div>
       </div>
@@ -157,6 +156,5 @@
         </div>
       </div>
     </div>
-
   </body>
 </html>
