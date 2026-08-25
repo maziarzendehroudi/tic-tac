@@ -23,7 +23,7 @@ export class WatchMechanism {
   public update(deltaTime: number, placedParts: string[], isWinding: boolean): void {
     const isComplete = placedParts.length >= 5;
 
-    // Remontage via la molette (La vis sans fin tourne, le ressort se tend et se comprime)
+    // Remontage via la molette
     if (isWinding && placedParts.includes('crown')) {
       this.power = Math.min(100, this.power + deltaTime * 0.05);
       this.wormOffset = (this.wormOffset + deltaTime * 0.05) % 12;
@@ -35,7 +35,7 @@ export class WatchMechanism {
 
     // Décharge (Fonctionnement de l'horloge)
     if (isComplete && this.power > 0 && !isWinding) {
-      this.power = Math.max(0, this.power - deltaTime * 0.003); // Autonomie de ~30 secondes
+      this.power = Math.max(0, this.power - deltaTime * 0.003); // Autonomie ~30 secondes
       
       const speed = 0.001;
       this.angleSeconds += speed * 40;   
@@ -60,7 +60,7 @@ export class WatchMechanism {
       this.drawHorizontalWormGear(-170, 0, this.wormOffset, isWinding);
     });
 
-    // 3. Barillet & Ressort à compression dynamique réaliste
+    // 3. Barillet & Ressort à longueur constante (compression par redistribution des spires)
     this.drawPart('spring', placedParts, unlockedParts, -80, 0, () => {
       this.drawBarrel(-80, 0, 45, 18, this.angleBarrel, this.power);
     });
@@ -150,7 +150,6 @@ export class WatchMechanism {
     this.ctx.lineWidth = 3;
     this.ctx.stroke();
     
-    // Molette avec effet lumineux si on la tourne
     if (isWinding) {
       this.ctx.shadowColor = '#fbbf24';
       this.ctx.shadowBlur = 15;
@@ -183,7 +182,7 @@ export class WatchMechanism {
     this.ctx.save();
     this.ctx.translate(x, y);
     
-    // Intérieur du tambour du barillet
+    // Tambour du barillet
     this.ctx.beginPath();
     this.ctx.arc(0, 0, r * 0.82, 0, Math.PI * 2);
     this.ctx.fillStyle = '#1e293b';
@@ -198,25 +197,21 @@ export class WatchMechanism {
     this.ctx.fillStyle = '#d97706';
     this.ctx.fill();
 
-    // --- CINÉMATIQUE DU RESSORT MOTEUR ---
-    // power = 0 : Détendu (spires éparpillées vers l'extérieur)
-    // power = 100 : Comprimé (spires serrées et denses autour de l'axe central)
+    // --- RESSORT À LONGUEUR CONSTANTE (Répartition dynamique des spires) ---
     this.ctx.beginPath();
-    const minTurns = 2.0;
-    const maxTurns = 5.5;
-    const turns = minTurns + (power / 100) * (maxTurns - minTurns);
-    
-    const innerR = 6;
+    const turns = 5.0; // Nombre de tours strictement FIXE pour garder une longueur de ruban constante
+    const innerR = 5;
     const outerR = r * 0.75;
+
+    // Lorsque power = 100 (Comprimé), l'exposant est élevé -> spires serrées et denses au centre.
+    // Lorsque power = 0 (Détendu), l'exposant est bas -> spires écartées vers l'extérieur.
+    const tightness = power / 100; // 0 à 1
+    const exponent = 1.0 + tightness * 3.0; // Varie de 1.0 (détendu) à 4.0 (comprimé)
 
     for (let i = 0; i <= 200; i++) {
       const t = i / 200;
       const theta = t * Math.PI * 2 * turns;
       
-      // Lorsque power est haut (100), les spires se tassent vers le centre (minR)
-      // Lorsque power est bas (0), les spires se détendent vers l'extérieur (outerR)
-      const tightnessFactor = power / 100; // 0 à 1
-      const exponent = 1.0 + (1 - tightnessFactor) * 1.5; // Ajuste la courbe de répartition
       const currentR = innerR + (outerR - innerR) * Math.pow(t, exponent);
       
       if (i === 0) {
@@ -226,7 +221,6 @@ export class WatchMechanism {
       }
     }
 
-    // Couleur dynamique du ressort : Brillant/doré sous tension, gris acier détendu
     const red = Math.floor(200 - (power * 0.3));
     const green = Math.floor(200 - (power * 0.3));
     const blue = Math.floor(205 + (power * 0.3));
