@@ -78,7 +78,7 @@
         </div>
         
         <div id="watch-blueprint">
-          <canvas id="atelierCanvas" width="400" height="400"></canvas>
+          <canvas id="atelierCanvas" width="500" height="500"></canvas>
           <button id="crown-hitbox" class="hidden" title="Maintenir pour remonter"></button>
           <button id="dial-hitbox" class="hidden" title="Cliquer pour afficher/masquer le cadran"></button>
         </div>
@@ -90,7 +90,6 @@
         </div>
 
         <div id="parts-inventory">
-          <h3>L'établi (Cliquer pour monter/démonter) :</h3>
           <div id="inventory-items"></div>
         </div>
       </div>
@@ -125,7 +124,7 @@
         </div>
       </div>
 
-      <!-- POPUP PWA INSTALLATION -->
+      <!-- POPUP PWA -->
       <div id="pwa-install-modal" class="modal hidden">
         <div class="modal-content install-modal-content">
           <div class="install-icon">⏰</div>
@@ -139,14 +138,15 @@
       </div>
     </div>
 
-    <!-- SCRIPT DE LANCEMENT ET ENREGISTREMENT PWA -->
     <script type="module" src="./src/main.ts"></script>
     <script>
       if ('serviceWorker' in navigator) {
         window.addEventListener('load', () => {
-          navigator.serviceWorker.register('./sw.js')
-            .then(reg => console.log('Service Worker enregistré !', reg))
-            .catch(err => console.error('Erreur Service Worker', err));
+          navigator.serviceWorker.getRegistrations().then(registrations => {
+            for (let registration of registrations) registration.unregister(); 
+          }).then(() => {
+            navigator.serviceWorker.register('./sw.js').catch(err => console.error(err));
+          });
         });
       }
     </script>
