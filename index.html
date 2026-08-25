@@ -11,8 +11,8 @@
     <link href="https://fonts.googleapis.com/css2?family=Fredoka:wght@400;600;700&display=swap" rel="stylesheet">
     <link rel="manifest" href="./manifest.json">
     <meta name="theme-color" content="#0f172a">
-    <script type="module" crossorigin src="/tic-tac/assets/index-Bveli8m2.js"></script>
-    <link rel="stylesheet" crossorigin href="/tic-tac/assets/index-B1xCHlF2.css">
+    <script type="module" crossorigin src="/tic-tac/assets/index-BjbR83gf.js"></script>
+    <link rel="stylesheet" crossorigin href="/tic-tac/assets/index-PSQxoyqd.css">
   </head>
   <body>
     <div id="app">
@@ -71,22 +71,19 @@
         <button id="open-atelier-btn">🛠️ Entrer dans l'Atelier</button>
       </div>
 
-      <!-- VUE 2 : L'ATELIER (Mouvement de montre circulaire plein écran) -->
+      <!-- VUE 2 : L'ATELIER -->
       <div id="atelier-view" class="view hidden">
         <div id="atelier-top-bar">
           <button id="atelier-back-btn">🏠 Menu</button>
           <h2>Atelier Mécanique</h2>
           <span></span>
         </div>
-        <p id="atelier-instruction" class="atelier-instruction">Clique sur une pièce de l'établi pour la monter ou la démonter.</p>
         
         <div id="watch-blueprint">
-          <canvas id="atelierCanvas" width="360" height="360"></canvas>
+          <canvas id="atelierCanvas" width="400" height="400"></canvas>
           
           <button id="crown-hitbox" class="hidden" title="Maintenir pour remonter"></button>
           <button id="dial-hitbox" class="hidden" title="Cliquer pour afficher/masquer le cadran"></button>
-          
-          <div id="dial-hint" class="hidden">👆 Clic au centre : Masquer cadran</div>
         </div>
 
         <div id="watch-controls" class="hidden">
