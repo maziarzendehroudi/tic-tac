@@ -3,10 +3,11 @@ export class WatchMechanism {
   private width: number;
   private height: number;
   
-  public power: number = 0; // Énergie (0 à 100)
+  public power: number = 0; // Énergie du ressort (0 à 100)
   public timeOffset: number = 0; 
   public showDial: boolean = true; 
   
+  // Angles de rotation
   private wormOffset: number = 0;
   private angleBarrel: number = 0;
   private angleHours: number = 0;
@@ -22,13 +23,13 @@ export class WatchMechanism {
   public update(deltaTime: number, placedParts: string[], isWinding: boolean): void {
     const isComplete = placedParts.length >= 5;
 
-    // Remontage via la molette (La vis sans fin tourne, le ressort se tend)
+    // Remontage via la molette (La vis sans fin tourne, le ressort se tend et se comprime)
     if (isWinding && placedParts.includes('crown')) {
       this.power = Math.min(100, this.power + deltaTime * 0.05);
       this.wormOffset = (this.wormOffset + deltaTime * 0.05) % 12;
       
       if (placedParts.includes('spring')) {
-        this.angleBarrel -= deltaTime * 0.002; // Le barillet accompagne la vis
+        this.angleBarrel -= deltaTime * 0.002; 
       }
     }
 
@@ -59,7 +60,7 @@ export class WatchMechanism {
       this.drawHorizontalWormGear(-170, 0, this.wormOffset, isWinding);
     });
 
-    // 3. Barillet & Ressort spirale
+    // 3. Barillet & Ressort à compression dynamique réaliste
     this.drawPart('spring', placedParts, unlockedParts, -80, 0, () => {
       this.drawBarrel(-80, 0, 45, 18, this.angleBarrel, this.power);
     });
@@ -158,7 +159,7 @@ export class WatchMechanism {
     this.ctx.beginPath();
     this.ctx.roundRect(-10, -18, 20, 36, 6);
     this.ctx.fill();
-    this.ctx.shadowBlur = 0; // Reset shadow
+    this.ctx.shadowBlur = 0; 
 
     this.ctx.strokeStyle = '#78350f';
     this.ctx.lineWidth = 3;
@@ -182,28 +183,55 @@ export class WatchMechanism {
     this.ctx.save();
     this.ctx.translate(x, y);
     
+    // Intérieur du tambour du barillet
     this.ctx.beginPath();
-    this.ctx.arc(0, 0, r * 0.8, 0, Math.PI * 2);
+    this.ctx.arc(0, 0, r * 0.82, 0, Math.PI * 2);
     this.ctx.fillStyle = '#1e293b';
     this.ctx.fill();
+    this.ctx.strokeStyle = '#334155';
+    this.ctx.lineWidth = 1.5;
+    this.ctx.stroke();
 
-    // Ressort spirale (Tension dynamique visuelle)
+    // Axe central (Arbor)
     this.ctx.beginPath();
-    const turns = 2.5 + (power / 15); 
-    const tightness = power / 100;
+    this.ctx.arc(0, 0, 5, 0, Math.PI * 2);
+    this.ctx.fillStyle = '#d97706';
+    this.ctx.fill();
 
-    for (let i = 0; i <= 180; i++) {
-      const t = i / 180;
+    // --- CINÉMATIQUE DU RESSORT MOTEUR ---
+    // power = 0 : Détendu (spires éparpillées vers l'extérieur)
+    // power = 100 : Comprimé (spires serrées et denses autour de l'axe central)
+    this.ctx.beginPath();
+    const minTurns = 2.0;
+    const maxTurns = 5.5;
+    const turns = minTurns + (power / 100) * (maxTurns - minTurns);
+    
+    const innerR = 6;
+    const outerR = r * 0.75;
+
+    for (let i = 0; i <= 200; i++) {
+      const t = i / 200;
       const theta = t * Math.PI * 2 * turns;
-      const maxR = r * 0.75;
-      const minR = 4;
-      const actualR = minR + (maxR - minR) * Math.pow(t, 1 + tightness * 1.2);
       
-      if (i === 0) this.ctx.moveTo(0, 0);
-      else this.ctx.lineTo(Math.cos(theta) * actualR, Math.sin(theta) * actualR);
+      // Lorsque power est haut (100), les spires se tassent vers le centre (minR)
+      // Lorsque power est bas (0), les spires se détendent vers l'extérieur (outerR)
+      const tightnessFactor = power / 100; // 0 à 1
+      const exponent = 1.0 + (1 - tightnessFactor) * 1.5; // Ajuste la courbe de répartition
+      const currentR = innerR + (outerR - innerR) * Math.pow(t, exponent);
+      
+      if (i === 0) {
+        this.ctx.moveTo(Math.cos(theta) * currentR, Math.sin(theta) * currentR);
+      } else {
+        this.ctx.lineTo(Math.cos(theta) * currentR, Math.sin(theta) * currentR);
+      }
     }
-    this.ctx.strokeStyle = '#cbd5e1';
-    this.ctx.lineWidth = 2;
+
+    // Couleur dynamique du ressort : Brillant/doré sous tension, gris acier détendu
+    const red = Math.floor(200 - (power * 0.3));
+    const green = Math.floor(200 - (power * 0.3));
+    const blue = Math.floor(205 + (power * 0.3));
+    this.ctx.strokeStyle = `rgb(${red}, ${green}, ${blue})`;
+    this.ctx.lineWidth = 2.2;
     this.ctx.stroke();
     
     this.ctx.restore();
