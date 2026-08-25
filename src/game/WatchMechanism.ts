@@ -7,7 +7,7 @@ export class WatchMechanism {
   public timeOffset: number = 0; 
   public showDial: boolean = true; 
   
-  // Angles de rotation
+  // Angles de rotation synchronisés
   private wormOffset: number = 0;
   private angleBarrel: number = 0;
   private angleHours: number = 0;
@@ -21,27 +21,30 @@ export class WatchMechanism {
   }
 
   public update(deltaTime: number, placedParts: string[], isWinding: boolean): void {
-    const isComplete = placedParts.length >= 5;
+    const hasSpring = placedParts.includes('spring');
+    const hasCrown = placedParts.includes('crown');
 
-    // Remontage via la molette
-    if (isWinding && placedParts.includes('crown')) {
-      this.power = Math.min(100, this.power + deltaTime * 0.05);
-      this.wormOffset = (this.wormOffset + deltaTime * 0.05) % 12;
+    // Remontage via la molette : le barillet tourne et le ressort se tend immédiatement
+    if (isWinding && hasCrown) {
+      this.power = Math.min(100, this.power + deltaTime * 0.06);
+      this.wormOffset = (this.wormOffset + deltaTime * 0.08) % 12;
       
-      if (placedParts.includes('spring')) {
-        this.angleBarrel -= deltaTime * 0.002; 
+      if (hasSpring) {
+        this.angleBarrel -= deltaTime * 0.004; // Rotation visible en direct lors du remontage
       }
     }
 
-    // Décharge (Fonctionnement de l'horloge)
-    if (isComplete && this.power > 0 && !isWinding) {
-      this.power = Math.max(0, this.power - deltaTime * 0.003); // Autonomie ~30 secondes
+    // Décharge (Fonctionnement de l'horloge dès que le barillet et la molette sont présents)
+    if (hasSpring && hasCrown && this.power > 0 && !isWinding) {
+      this.power = Math.max(0, this.power - deltaTime * 0.0025); // Autonomie ~40 secondes
       
-      const speed = 0.001;
+      const energyFactor = this.power / 100;
+      const speed = 0.0012 * energyFactor;
+
       this.angleSeconds += speed * 40;   
       this.angleMinutes += speed * 5;    
       this.angleHours += speed * 0.5;    
-      this.angleBarrel += speed * 0.2;  
+      this.angleBarrel += speed * 0.3;  // Le barillet tourne visiblement en se déchargeant
       
       this.timeOffset = this.angleMinutes;
     }
@@ -60,7 +63,7 @@ export class WatchMechanism {
       this.drawHorizontalWormGear(-170, 0, this.wormOffset, isWinding);
     });
 
-    // 3. Barillet & Ressort avec reflets tournants
+    // 3. Barillet & Ressort (Tourne avec angleBarrel)
     this.drawPart('spring', placedParts, unlockedParts, -80, 0, () => {
       this.drawBarrel(-80, 0, 45, 18, this.angleBarrel, this.power);
     });
@@ -176,13 +179,14 @@ export class WatchMechanism {
   }
 
   private drawBarrel(x: number, y: number, r: number, teeth: number, angle: number, power: number) {
+    // Le tambour extérieur et ses dents tournent avec angleBarrel
     this.drawGear(x, y, r, teeth, angle, '#94a3b8', '#475569', 0, 0);
 
     this.ctx.save();
     this.ctx.translate(x, y);
-    this.ctx.rotate(angle); // Fait pivoter le contenu du barillet (y compris le ressort) pour voir le mouvement
+    this.ctx.rotate(angle); // Tout ce qui est à l'intérieur tourne solidairement avec le tambour
     
-    // Tambour du barillet
+    // Intérieur du tambour
     this.ctx.beginPath();
     this.ctx.arc(0, 0, r * 0.82, 0, Math.PI * 2);
     this.ctx.fillStyle = '#1e293b';
@@ -191,13 +195,13 @@ export class WatchMechanism {
     this.ctx.lineWidth = 1.5;
     this.ctx.stroke();
 
-    // Axe central (Arbor)
+    // Axe central
     this.ctx.beginPath();
     this.ctx.arc(0, 0, 5, 0, Math.PI * 2);
     this.ctx.fillStyle = '#d97706';
     this.ctx.fill();
 
-    // --- RESSORT AVEC POINTS DE REFLET ROTATIFS ---
+    // --- RESSORT SPIRALE ET SES REFLETS ROTATIFS ---
     this.ctx.beginPath();
     const turns = 5.0; 
     const innerR = 5;
@@ -230,12 +234,12 @@ export class WatchMechanism {
     this.ctx.lineWidth = 2.2;
     this.ctx.stroke();
 
-    // Petits points lumineux / reflets le long du ressort pour matérialiser sa rotation
+    // Reflets brillants fixés aux spires en rotation
     this.ctx.fillStyle = '#ffffff';
-    for (let i = 25; i < points.length; i += 35) {
+    for (let i = 20; i < points.length; i += 30) {
       const pt = points[i];
       this.ctx.beginPath();
-      this.ctx.arc(pt.x, pt.y, 1.4, 0, Math.PI * 2);
+      this.ctx.arc(pt.x, pt.y, 1.8, 0, Math.PI * 2);
       this.ctx.fill();
     }
     
