@@ -4,10 +4,9 @@ export class WatchMechanism {
   private height: number;
   
   public power: number = 0; // Énergie du ressort (0 à 100)
-  public timeOffset: number = 0; 
   public showDial: boolean = true; 
   
-  // Angles de rotation synchronisés
+  // Angles de rotation synchronisés par la cinématique
   private wormOffset: number = 0;
   private angleBarrel: number = 0;
   private angleHours: number = 0;
@@ -24,7 +23,7 @@ export class WatchMechanism {
     const hasSpring = placedParts.includes('spring');
     const hasCrown = placedParts.includes('crown');
 
-    // Remontage via la molette : le barillet tourne et le ressort se tend immédiatement
+    // Remontage via la molette horizontale
     if (isWinding && hasCrown) {
       this.power = Math.min(100, this.power + deltaTime * 0.06);
       this.wormOffset = (this.wormOffset + deltaTime * 0.08) % 12;
@@ -34,20 +33,18 @@ export class WatchMechanism {
       }
     }
 
-    // Décharge (Fonctionnement de l'horloge dès que le barillet et la molette sont présents)
+    // Décharge (Fonctionnement et transmission par engrenages)
     if (hasSpring && hasCrown && this.power > 0 && !isWinding) {
       this.power = Math.max(0, this.power - deltaTime * 0.0025); // Autonomie ~40 secondes
       
       const energyFactor = this.power / 100;
-      // CORRECTION : Multiplication par deltaTime pour que le mouvement soit fluide et visible
       const movement = 0.0012 * energyFactor * deltaTime;
 
-      this.angleSeconds += movement * 40;   
-      this.angleMinutes += movement * 5;    
-      this.angleHours += movement * 0.5;    
+      // Rapports d'engrenage réels entre le barillet et les roues coaxiales centrales
       this.angleBarrel += movement * 0.3;  
-      
-      this.timeOffset = this.angleMinutes;
+      this.angleMinutes += movement * 5;    // Roue des minutes (Bleue)
+      this.angleHours += movement * 0.4;    // Roue des heures (Or - 12x plus lente)
+      this.angleSeconds += movement * 35;   // Roue des secondes (Rouge - rapide)
     }
   }
 
@@ -59,34 +56,34 @@ export class WatchMechanism {
     // 1. Platine de base
     this.drawBasePlate();
 
-    // 2. Molette & Vis sans fin
-    this.drawPart('crown', placedParts, unlockedParts, -170, 0, () => {
-      this.drawHorizontalWormGear(-170, 0, this.wormOffset, isWinding);
+    // 2. Molette & Vis sans fin horizontale (à gauche)
+    this.drawPart('crown', placedParts, unlockedParts, -160, 0, () => {
+      this.drawHorizontalWormGear(-160, 0, this.wormOffset, isWinding);
     });
 
-    // 3. Barillet & Ressort (Tourne avec angleBarrel)
-    this.drawPart('spring', placedParts, unlockedParts, -80, 0, () => {
-      this.drawBarrel(-80, 0, 45, 18, this.angleBarrel, this.power);
+    // 3. Barillet & Ressort (Positionné à -70 pour s'engrener parfaitement avec le centre 0,0)
+    this.drawPart('spring', placedParts, unlockedParts, -70, 0, () => {
+      this.drawBarrel(-70, 0, 35, 20, this.angleBarrel, this.power);
     });
 
-    // 4. Engrenage Heures (Fond, Or)
+    // 4. Engrenage des Heures (Grand, Or, empilé au fond)
     this.drawPart('hours', placedParts, unlockedParts, 0, 0, () => {
-      this.drawGear(0, 0, 55, 24, this.angleHours, '#fbbf24', '#b45309', 10, 5);
+      this.drawGear(0, 0, 45, 26, this.angleHours, '#fbbf24', '#b45309', 10, 5);
     });
 
-    // 5. Engrenage Minutes (Milieu, Bleu)
+    // 5. Engrenage des Minutes (Moyen, Bleu, empilé au milieu - s'engrène directement avec le barillet)
     this.drawPart('minutes', placedParts, unlockedParts, 0, 0, () => {
-      this.drawGear(0, 0, 40, 16, this.angleMinutes, '#38bdf8', '#0284c7', 8, 4);
+      this.drawGear(0, 0, 35, 20, this.angleMinutes, '#38bdf8', '#0284c7', 8, 4);
     });
 
-    // 6. Engrenage Secondes (Haut, Rouge)
+    // 6. Engrenage des Secondes (Petit, Rouge, empilé sur le dessus)
     this.drawPart('seconds', placedParts, unlockedParts, 0, 0, () => {
-      this.drawGear(0, 0, 25, 10, this.angleSeconds, '#f43f5e', '#be123c', 6, 3);
+      this.drawGear(0, 0, 22, 12, this.angleSeconds, '#f43f5e', '#be123c', 6, 3);
     });
 
-    // 7. Cadran & Aiguilles
+    // 7. Cadran & Aiguilles colorées correspondantes
     if (placedParts.length >= 5) {
-      this.drawDialAndHands(0, 0, 120, this.timeOffset);
+      this.drawDialAndHands(0, 0, 120, this.angleHours, this.angleMinutes, this.angleSeconds);
     }
 
     this.ctx.restore();
@@ -122,7 +119,7 @@ export class WatchMechanism {
     this.ctx.strokeStyle = '#334155';
     this.ctx.stroke();
 
-    const rubies = [[0, 0], [-80, 0]];
+    const rubies = [[0, 0], [-70, 0]];
     rubies.forEach(([rx, ry]) => {
       this.ctx.beginPath();
       this.ctx.arc(rx, ry, 4, 0, Math.PI * 2);
@@ -180,6 +177,7 @@ export class WatchMechanism {
   }
 
   private drawBarrel(x: number, y: number, r: number, teeth: number, angle: number, power: number) {
+    // Le barillet s'engrène directement avec la roue des minutes au centre (0,0)
     this.drawGear(x, y, r, teeth, angle, '#94a3b8', '#475569', 0, 0);
 
     this.ctx.save();
@@ -199,6 +197,7 @@ export class WatchMechanism {
     this.ctx.fillStyle = '#d97706';
     this.ctx.fill();
 
+    // Ressort spirale et ses reflets
     this.ctx.beginPath();
     const turns = 5.0; 
     const innerR = 5;
@@ -217,11 +216,8 @@ export class WatchMechanism {
       const py = Math.sin(theta) * currentR;
       points.push({x: px, y: py});
 
-      if (i === 0) {
-        this.ctx.moveTo(px, py);
-      } else {
-        this.ctx.lineTo(px, py);
-      }
+      if (i === 0) this.ctx.moveTo(px, py);
+      else this.ctx.lineTo(px, py);
     }
 
     const red = Math.floor(200 - (power * 0.3));
@@ -287,7 +283,7 @@ export class WatchMechanism {
     this.ctx.restore();
   }
 
-  private drawDialAndHands(x: number, y: number, r: number, time: number) {
+  private drawDialAndHands(x: number, y: number, r: number, angleHours: number, angleMinutes: number, angleSeconds: number) {
     this.ctx.save();
     this.ctx.translate(x, y);
     
@@ -317,22 +313,35 @@ export class WatchMechanism {
       this.ctx.stroke();
     }
 
+    // --- AIGUILLE DES HEURES (Or / Jaune, correspondant à l'engrenage des heures #fbbf24) ---
     this.ctx.save();
-    this.ctx.rotate(time);
+    this.ctx.rotate(angleHours);
     this.ctx.beginPath();
-    this.ctx.moveTo(-4, 0); this.ctx.lineTo(0, -r * 0.85); this.ctx.lineTo(4, 0);
-    this.ctx.fillStyle = this.showDial ? '#0f172a' : '#f8fafc';
+    this.ctx.moveTo(-4, 0); this.ctx.lineTo(0, -r * 0.55); this.ctx.lineTo(4, 0);
+    this.ctx.fillStyle = '#d97706'; // Or sombre assorti
     this.ctx.fill();
     this.ctx.restore();
 
+    // --- AIGUILLE DES MINUTES (Bleue, correspondant à l'engrenage des minutes #38bdf8) ---
     this.ctx.save();
-    this.ctx.rotate(time / 12);
+    this.ctx.rotate(angleMinutes);
     this.ctx.beginPath();
-    this.ctx.moveTo(-5, 0); this.ctx.lineTo(0, -r * 0.55); this.ctx.lineTo(5, 0);
-    this.ctx.fillStyle = this.showDial ? '#0f172a' : '#f8fafc';
+    this.ctx.moveTo(-3, 0); this.ctx.lineTo(0, -r * 0.85); this.ctx.lineTo(3, 0);
+    this.ctx.fillStyle = '#0284c7'; // Bleu assorti
     this.ctx.fill();
     this.ctx.restore();
 
+    // --- AIGUILLE DES SECONDES (Rouge, correspondant à l'engrenage des secondes #f43f5e) ---
+    this.ctx.save();
+    this.ctx.rotate(angleSeconds);
+    this.ctx.beginPath();
+    this.ctx.moveTo(-1.5, 10); this.ctx.lineTo(0, -r * 0.9); this.ctx.lineTo(1.5, 10);
+    this.ctx.strokeStyle = '#e11d48'; // Rouge assorti
+    this.ctx.lineWidth = 1.5;
+    this.ctx.stroke();
+    this.ctx.restore();
+
+    // Pivot central doré
     this.ctx.beginPath();
     this.ctx.arc(0, 0, 5, 0, Math.PI * 2);
     this.ctx.fillStyle = '#d97706';
