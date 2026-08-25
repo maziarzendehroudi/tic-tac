@@ -109,8 +109,9 @@ export class GameEngine {
       this.lastTime = time;
       
       if (this.watchMechanism) {
+        // Le mécanisme reçoit l'état "isWinding" en temps réel
         this.watchMechanism.update(deltaTime, this.saveData.placedParts, this.isWinding);
-        this.watchMechanism.draw(this.saveData.placedParts, this.saveData.unlockedParts);
+        this.watchMechanism.draw(this.saveData.placedParts, this.saveData.unlockedParts, this.isWinding);
         
         const powerBar = document.getElementById('power-bar');
         if (powerBar) powerBar.style.width = `${this.watchMechanism.power}%`;
@@ -155,57 +156,30 @@ export class GameEngine {
     document.getElementById('atelier-back-btn')?.addEventListener('click', () => this.returnToMenu());
     document.getElementById('back-menu-btn')?.addEventListener('click', () => this.returnToMenu());
 
-    // --- INTERACTION CANVAS ATELIER (Remontage & Démontage) ---
-    const atelierCanvas = document.getElementById('atelierCanvas') as HTMLCanvasElement;
-    if (atelierCanvas) {
-      const getAtelierPos = (e: MouseEvent | TouchEvent) => {
-        const rect = atelierCanvas.getBoundingClientRect();
-        const clientX = 'touches' in e ? e.touches[0].clientX : (e as MouseEvent).clientX;
-        const clientY = 'touches' in e ? e.touches[0].clientY : (e as MouseEvent).clientY;
-        // Map to 400x400 internal canvas relative to center
-        const x = (clientX - rect.left) * (atelierCanvas.width / rect.width) - atelierCanvas.width / 2;
-        const y = (clientY - rect.top) * (atelierCanvas.height / rect.height) - atelierCanvas.height / 2;
-        return { x, y };
-      };
-
-      const handleAtelierDown = (e: MouseEvent | TouchEvent) => {
-        e.preventDefault();
-        const pos = getAtelierPos(e);
-        
-        // Zone de la Molette (Gauche, X < -140)
-        const isCrownHit = pos.x < -140 && pos.x > -200 && pos.y > -40 && pos.y < 40;
-        // Zone du centre (Pour masquer/afficher cadran)
-        const isCenterHit = Math.hypot(pos.x, pos.y) < 60;
-        // Zone de la platine globale (Pour démonter)
-        const isBasePlateHit = Math.hypot(pos.x, pos.y) < 170;
-
-        if (isCrownHit && this.saveData.placedParts.includes('crown')) {
-          this.isWinding = true; // Remontage !
-        } else if (e.type === 'mousedown' || e.type === 'touchstart') {
-          // Actions au clic simple
-          if (this.saveData.placedParts.length >= 5 && isCenterHit) {
-            this.watchMechanism.showDial = !this.watchMechanism.showDial;
-          } else if (isBasePlateHit && this.saveData.placedParts.length > 0) {
-            const lastPart = this.saveData.placedParts.pop();
-            if (lastPart) {
-              SaveManager.save(this.saveData);
-              this.renderAtelier();
-            }
-          }
-        }
-      };
-
+    // --- HITBOXES ROBUSTES POUR L'ATELIER (Mobile First) ---
+    const crownHitbox = document.getElementById('crown-hitbox');
+    if (crownHitbox) {
+      const startWinding = (e: Event) => { e.preventDefault(); this.isWinding = true; };
       const stopWinding = () => { this.isWinding = false; };
-
-      atelierCanvas.addEventListener('mousedown', handleAtelierDown);
-      atelierCanvas.addEventListener('touchstart', handleAtelierDown, { passive: false });
       
+      crownHitbox.addEventListener('mousedown', startWinding);
+      crownHitbox.addEventListener('touchstart', startWinding, { passive: false });
       window.addEventListener('mouseup', stopWinding);
       window.addEventListener('touchend', stopWinding);
-      atelierCanvas.addEventListener('mouseleave', stopWinding);
+      crownHitbox.addEventListener('mouseleave', stopWinding);
     }
 
-    // Événements jeu (horloge)
+    const dialHitbox = document.getElementById('dial-hitbox');
+    if (dialHitbox) {
+      dialHitbox.addEventListener('click', (e) => {
+        e.preventDefault();
+        if (this.watchMechanism) {
+          this.watchMechanism.showDial = !this.watchMechanism.showDial;
+        }
+      });
+    }
+
+    // Événements jeu (horloge apprentissage)
     const getPointerPos = (e: MouseEvent | TouchEvent) => {
       const rect = this.canvas.getBoundingClientRect();
       const clientX = 'touches' in e ? e.touches[0].clientX : (e as MouseEvent).clientX;
@@ -289,34 +263,49 @@ export class GameEngine {
     const inventoryContainer = document.getElementById('inventory-items');
     const watchControls = document.getElementById('watch-controls');
     const dialHint = document.getElementById('dial-hint');
+    const crownHitbox = document.getElementById('crown-hitbox');
+    const dialHitbox = document.getElementById('dial-hitbox');
 
     if (!inventoryContainer) return;
     inventoryContainer.innerHTML = '';
 
+    // Gestion du montage/démontage via l'inventaire
     this.saveData.unlockedParts.forEach(partId => {
-      if (!this.saveData.placedParts.includes(partId)) {
-        const partEl = document.createElement('div');
-        partEl.className = 'inventory-part';
-        partEl.innerHTML = `${this.getPartIcon(partId)} <span>${this.getPartName(partId)}</span>`;
-        
-        partEl.addEventListener('click', () => {
-          if (!this.saveData.placedParts.includes(partId)) {
-            this.saveData.placedParts.push(partId);
-            SaveManager.save(this.saveData);
-            this.renderAtelier();
-          }
-        });
-        inventoryContainer.appendChild(partEl);
-      }
+      const isPlaced = this.saveData.placedParts.includes(partId);
+      const partEl = document.createElement('div');
+      partEl.className = 'inventory-part' + (isPlaced ? ' placed' : '');
+      
+      const statusText = isPlaced ? ' (Enlever)' : ' (Monter)';
+      partEl.innerHTML = `${this.getPartIcon(partId)} <span>${this.getPartName(partId)}${statusText}</span>`;
+      
+      partEl.addEventListener('click', () => {
+        if (isPlaced) {
+          this.saveData.placedParts = this.saveData.placedParts.filter(p => p !== partId);
+        } else {
+          this.saveData.placedParts.push(partId);
+        }
+        SaveManager.save(this.saveData);
+        this.renderAtelier();
+      });
+      inventoryContainer.appendChild(partEl);
     });
 
+    // Activation de la couronne si placée
+    if (this.saveData.placedParts.includes('crown')) {
+      crownHitbox?.classList.remove('hidden');
+    } else {
+      crownHitbox?.classList.add('hidden');
+    }
+
+    // Affichage interface si horloge complète
     if (this.saveData.placedParts.length >= 5) {
-      inventoryContainer.innerHTML = '<span style="font-size:0.85rem; color:#94a3b8;">Mouvement complet et assemblé ! 🌟</span>';
       watchControls?.classList.remove('hidden');
       dialHint?.classList.remove('hidden');
+      dialHitbox?.classList.remove('hidden');
     } else {
       watchControls?.classList.add('hidden');
       dialHint?.classList.add('hidden');
+      dialHitbox?.classList.add('hidden');
     }
   }
 

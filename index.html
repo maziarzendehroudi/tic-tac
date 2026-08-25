@@ -76,11 +76,16 @@
           <h2>Atelier Mécanique</h2>
           <span></span>
         </div>
-        <p id="atelier-instruction" class="atelier-instruction">Clique en bas pour monter une pièce.</p>
+        <p id="atelier-instruction" class="atelier-instruction">Clique sur une pièce de l'établi pour la monter ou la démonter.</p>
         
         <div id="watch-blueprint">
           <canvas id="atelierCanvas" width="400" height="400"></canvas>
-          <div id="dial-hint" class="hidden">👆 Clic au centre : Masquer cadran<br>🔄 Maintiens la molette (à gauche) pour remonter !</div>
+          
+          <!-- Hitboxes HTML robustes pour mobile -->
+          <button id="crown-hitbox" class="hidden" title="Maintenir pour remonter"></button>
+          <button id="dial-hitbox" class="hidden" title="Cliquer pour afficher/masquer le cadran"></button>
+          
+          <div id="dial-hint" class="hidden">👆 Clic au centre : Masquer cadran</div>
         </div>
 
         <div id="watch-controls" class="hidden">
@@ -90,7 +95,7 @@
         </div>
 
         <div id="parts-inventory">
-          <h3>Pièces sur l'établi :</h3>
+          <h3>L'établi (Cliquer pour monter/démonter) :</h3>
           <div id="inventory-items"></div>
         </div>
       </div>
@@ -125,7 +130,6 @@
         </div>
       </div>
 
-      <!-- POPUP PWA -->
       <div id="pwa-install-modal" class="modal hidden">
         <div class="modal-content install-modal-content">
           <div class="install-icon">⏰</div>
