@@ -30,7 +30,7 @@ export class WatchMechanism {
       this.wormOffset = (this.wormOffset + deltaTime * 0.08) % 12;
       
       if (hasSpring) {
-        this.angleBarrel -= deltaTime * 0.004; // Rotation visible en direct lors du remontage
+        this.angleBarrel -= deltaTime * 0.004; 
       }
     }
 
@@ -39,12 +39,13 @@ export class WatchMechanism {
       this.power = Math.max(0, this.power - deltaTime * 0.0025); // Autonomie ~40 secondes
       
       const energyFactor = this.power / 100;
-      const speed = 0.0012 * energyFactor;
+      // CORRECTION : Multiplication par deltaTime pour que le mouvement soit fluide et visible
+      const movement = 0.0012 * energyFactor * deltaTime;
 
-      this.angleSeconds += speed * 40;   
-      this.angleMinutes += speed * 5;    
-      this.angleHours += speed * 0.5;    
-      this.angleBarrel += speed * 0.3;  // Le barillet tourne visiblement en se déchargeant
+      this.angleSeconds += movement * 40;   
+      this.angleMinutes += movement * 5;    
+      this.angleHours += movement * 0.5;    
+      this.angleBarrel += movement * 0.3;  
       
       this.timeOffset = this.angleMinutes;
     }
@@ -179,14 +180,12 @@ export class WatchMechanism {
   }
 
   private drawBarrel(x: number, y: number, r: number, teeth: number, angle: number, power: number) {
-    // Le tambour extérieur et ses dents tournent avec angleBarrel
     this.drawGear(x, y, r, teeth, angle, '#94a3b8', '#475569', 0, 0);
 
     this.ctx.save();
     this.ctx.translate(x, y);
-    this.ctx.rotate(angle); // Tout ce qui est à l'intérieur tourne solidairement avec le tambour
+    this.ctx.rotate(angle); 
     
-    // Intérieur du tambour
     this.ctx.beginPath();
     this.ctx.arc(0, 0, r * 0.82, 0, Math.PI * 2);
     this.ctx.fillStyle = '#1e293b';
@@ -195,13 +194,11 @@ export class WatchMechanism {
     this.ctx.lineWidth = 1.5;
     this.ctx.stroke();
 
-    // Axe central
     this.ctx.beginPath();
     this.ctx.arc(0, 0, 5, 0, Math.PI * 2);
     this.ctx.fillStyle = '#d97706';
     this.ctx.fill();
 
-    // --- RESSORT SPIRALE ET SES REFLETS ROTATIFS ---
     this.ctx.beginPath();
     const turns = 5.0; 
     const innerR = 5;
@@ -234,7 +231,6 @@ export class WatchMechanism {
     this.ctx.lineWidth = 2.2;
     this.ctx.stroke();
 
-    // Reflets brillants fixés aux spires en rotation
     this.ctx.fillStyle = '#ffffff';
     for (let i = 20; i < points.length; i += 30) {
       const pt = points[i];
