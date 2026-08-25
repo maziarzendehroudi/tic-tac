@@ -11,8 +11,8 @@
     <link href="https://fonts.googleapis.com/css2?family=Fredoka:wght@400;600;700&display=swap" rel="stylesheet">
     <link rel="manifest" href="./manifest.json">
     <meta name="theme-color" content="#0f172a">
-    <script type="module" crossorigin src="/tic-tac/assets/index-Djrr-zZS.js"></script>
-    <link rel="stylesheet" crossorigin href="/tic-tac/assets/index-CvHRELC_.css">
+    <script type="module" crossorigin src="/tic-tac/assets/index-DOvP19sV.js"></script>
+    <link rel="stylesheet" crossorigin href="/tic-tac/assets/index-BDU88nsu.css">
   </head>
   <body>
     <div id="app">
@@ -78,11 +78,16 @@
           <h2>Atelier Mécanique</h2>
           <span></span>
         </div>
-        <p id="atelier-instruction" class="atelier-instruction">Clique en bas pour monter une pièce.</p>
+        <p id="atelier-instruction" class="atelier-instruction">Clique sur une pièce de l'établi pour la monter ou la démonter.</p>
         
         <div id="watch-blueprint">
           <canvas id="atelierCanvas" width="400" height="400"></canvas>
-          <div id="dial-hint" class="hidden">👆 Clic au centre : Masquer cadran<br>🔄 Maintiens la molette (à gauche) pour remonter !</div>
+          
+          <!-- Hitboxes HTML robustes pour mobile -->
+          <button id="crown-hitbox" class="hidden" title="Maintenir pour remonter"></button>
+          <button id="dial-hitbox" class="hidden" title="Cliquer pour afficher/masquer le cadran"></button>
+          
+          <div id="dial-hint" class="hidden">👆 Clic au centre : Masquer cadran</div>
         </div>
 
         <div id="watch-controls" class="hidden">
@@ -92,7 +97,7 @@
         </div>
 
         <div id="parts-inventory">
-          <h3>Pièces sur l'établi :</h3>
+          <h3>L'établi (Cliquer pour monter/démonter) :</h3>
           <div id="inventory-items"></div>
         </div>
       </div>
@@ -127,7 +132,6 @@
         </div>
       </div>
 
-      <!-- POPUP PWA -->
       <div id="pwa-install-modal" class="modal hidden">
         <div class="modal-content install-modal-content">
           <div class="install-icon">⏰</div>
