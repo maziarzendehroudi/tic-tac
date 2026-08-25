@@ -11,8 +11,8 @@
     <link href="https://fonts.googleapis.com/css2?family=Fredoka:wght@400;600;700&display=swap" rel="stylesheet">
     <link rel="manifest" href="./manifest.json">
     <meta name="theme-color" content="#0f172a">
-    <script type="module" crossorigin src="/tic-tac/assets/index-0zSmA6JI.js"></script>
-    <link rel="stylesheet" crossorigin href="/tic-tac/assets/index-BDU88nsu.css">
+    <script type="module" crossorigin src="/tic-tac/assets/index-BT762UOD.js"></script>
+    <link rel="stylesheet" crossorigin href="/tic-tac/assets/index-DWX1CwrK.css">
   </head>
   <body>
     <div id="app">
@@ -71,7 +71,7 @@
         <button id="open-atelier-btn">🛠️ Entrer dans l'Atelier</button>
       </div>
 
-      <!-- VUE 2 : L'ATELIER (Simulateur) -->
+      <!-- VUE 2 : L'ATELIER (Calibre horizontal plein écran) -->
       <div id="atelier-view" class="view hidden">
         <div id="atelier-top-bar">
           <button id="atelier-back-btn">🏠 Menu</button>
@@ -81,9 +81,8 @@
         <p id="atelier-instruction" class="atelier-instruction">Clique sur une pièce de l'établi pour la monter ou la démonter.</p>
         
         <div id="watch-blueprint">
-          <canvas id="atelierCanvas" width="400" height="400"></canvas>
+          <canvas id="atelierCanvas" width="440" height="200"></canvas>
           
-          <!-- Hitboxes HTML robustes pour mobile -->
           <button id="crown-hitbox" class="hidden" title="Maintenir pour remonter"></button>
           <button id="dial-hitbox" class="hidden" title="Cliquer pour afficher/masquer le cadran"></button>
           
