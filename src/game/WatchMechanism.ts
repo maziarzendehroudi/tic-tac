@@ -60,7 +60,7 @@ export class WatchMechanism {
       this.drawHorizontalWormGear(-170, 0, this.wormOffset, isWinding);
     });
 
-    // 3. Barillet & Ressort à longueur constante (compression par redistribution des spires)
+    // 3. Barillet & Ressort avec reflets tournants
     this.drawPart('spring', placedParts, unlockedParts, -80, 0, () => {
       this.drawBarrel(-80, 0, 45, 18, this.angleBarrel, this.power);
     });
@@ -131,7 +131,6 @@ export class WatchMechanism {
     this.ctx.save();
     this.ctx.translate(x, y);
     
-    // Vis
     this.ctx.fillStyle = '#94a3b8';
     this.ctx.fillRect(10, -8, 45, 16);
     this.ctx.strokeStyle = '#334155';
@@ -181,6 +180,7 @@ export class WatchMechanism {
 
     this.ctx.save();
     this.ctx.translate(x, y);
+    this.ctx.rotate(angle); // Fait pivoter le contenu du barillet (y compris le ressort) pour voir le mouvement
     
     // Tambour du barillet
     this.ctx.beginPath();
@@ -197,27 +197,29 @@ export class WatchMechanism {
     this.ctx.fillStyle = '#d97706';
     this.ctx.fill();
 
-    // --- RESSORT À LONGUEUR CONSTANTE (Répartition dynamique des spires) ---
+    // --- RESSORT AVEC POINTS DE REFLET ROTATIFS ---
     this.ctx.beginPath();
-    const turns = 5.0; // Nombre de tours strictement FIXE pour garder une longueur de ruban constante
+    const turns = 5.0; 
     const innerR = 5;
     const outerR = r * 0.75;
+    const tightness = power / 100; 
+    const exponent = 1.0 + tightness * 3.0; 
 
-    // Lorsque power = 100 (Comprimé), l'exposant est élevé -> spires serrées et denses au centre.
-    // Lorsque power = 0 (Détendu), l'exposant est bas -> spires écartées vers l'extérieur.
-    const tightness = power / 100; // 0 à 1
-    const exponent = 1.0 + tightness * 3.0; // Varie de 1.0 (détendu) à 4.0 (comprimé)
+    const points: {x: number, y: number}[] = [];
 
     for (let i = 0; i <= 200; i++) {
       const t = i / 200;
       const theta = t * Math.PI * 2 * turns;
-      
       const currentR = innerR + (outerR - innerR) * Math.pow(t, exponent);
       
+      const px = Math.cos(theta) * currentR;
+      const py = Math.sin(theta) * currentR;
+      points.push({x: px, y: py});
+
       if (i === 0) {
-        this.ctx.moveTo(Math.cos(theta) * currentR, Math.sin(theta) * currentR);
+        this.ctx.moveTo(px, py);
       } else {
-        this.ctx.lineTo(Math.cos(theta) * currentR, Math.sin(theta) * currentR);
+        this.ctx.lineTo(px, py);
       }
     }
 
@@ -227,6 +229,15 @@ export class WatchMechanism {
     this.ctx.strokeStyle = `rgb(${red}, ${green}, ${blue})`;
     this.ctx.lineWidth = 2.2;
     this.ctx.stroke();
+
+    // Petits points lumineux / reflets le long du ressort pour matérialiser sa rotation
+    this.ctx.fillStyle = '#ffffff';
+    for (let i = 25; i < points.length; i += 35) {
+      const pt = points[i];
+      this.ctx.beginPath();
+      this.ctx.arc(pt.x, pt.y, 1.4, 0, Math.PI * 2);
+      this.ctx.fill();
+    }
     
     this.ctx.restore();
   }
