@@ -155,40 +155,54 @@ export class GameEngine {
     document.getElementById('atelier-back-btn')?.addEventListener('click', () => this.returnToMenu());
     document.getElementById('back-menu-btn')?.addEventListener('click', () => this.returnToMenu());
 
-    // Couronne de remontage interactive
-    const crownBtn = document.getElementById('crown-btn');
-    if (crownBtn) {
-      const startWinding = (e: Event) => { e.preventDefault(); this.isWinding = true; };
-      const stopWinding = () => { this.isWinding = false; };
-      
-      crownBtn.addEventListener('mousedown', startWinding);
-      crownBtn.addEventListener('touchstart', startWinding, { passive: false });
-      window.addEventListener('mouseup', stopWinding);
-      window.addEventListener('touchend', stopWinding);
-    }
-
-    // Interaction du clic central dans le canvas d'Atelier pour cacher/montrer le cadran ou démonter
+    // --- INTERACTION CANVAS ATELIER (Remontage & Démontage) ---
     const atelierCanvas = document.getElementById('atelierCanvas') as HTMLCanvasElement;
     if (atelierCanvas) {
-      atelierCanvas.addEventListener('click', (e) => {
+      const getAtelierPos = (e: MouseEvent | TouchEvent) => {
         const rect = atelierCanvas.getBoundingClientRect();
-        const clickX = e.clientX - rect.left - rect.width / 2;
-        const clickY = e.clientY - rect.top - rect.height / 2;
+        const clientX = 'touches' in e ? e.touches[0].clientX : (e as MouseEvent).clientX;
+        const clientY = 'touches' in e ? e.touches[0].clientY : (e as MouseEvent).clientY;
+        // Map to 400x400 internal canvas relative to center
+        const x = (clientX - rect.left) * (atelierCanvas.width / rect.width) - atelierCanvas.width / 2;
+        const y = (clientY - rect.top) * (atelierCanvas.height / rect.height) - atelierCanvas.height / 2;
+        return { x, y };
+      };
 
-        const isCenterClick = Math.hypot(clickX - 15, clickY - 0) < 50;
+      const handleAtelierDown = (e: MouseEvent | TouchEvent) => {
+        e.preventDefault();
+        const pos = getAtelierPos(e);
+        
+        // Zone de la Molette (Gauche, X < -140)
+        const isCrownHit = pos.x < -140 && pos.x > -200 && pos.y > -40 && pos.y < 40;
+        // Zone du centre (Pour masquer/afficher cadran)
+        const isCenterHit = Math.hypot(pos.x, pos.y) < 60;
+        // Zone de la platine globale (Pour démonter)
+        const isBasePlateHit = Math.hypot(pos.x, pos.y) < 170;
 
-        if (this.saveData.placedParts.length >= 5 && isCenterClick) {
-          // Si terminé, clic central = masquer/afficher le cadran
-          if (this.watchMechanism) this.watchMechanism.showDial = !this.watchMechanism.showDial;
-        } else if (this.saveData.placedParts.length > 0) {
-          // Sinon on démonte la dernière pièce
-          const lastPart = this.saveData.placedParts.pop();
-          if (lastPart) {
-            SaveManager.save(this.saveData);
-            this.renderAtelier();
+        if (isCrownHit && this.saveData.placedParts.includes('crown')) {
+          this.isWinding = true; // Remontage !
+        } else if (e.type === 'mousedown' || e.type === 'touchstart') {
+          // Actions au clic simple
+          if (this.saveData.placedParts.length >= 5 && isCenterHit) {
+            this.watchMechanism.showDial = !this.watchMechanism.showDial;
+          } else if (isBasePlateHit && this.saveData.placedParts.length > 0) {
+            const lastPart = this.saveData.placedParts.pop();
+            if (lastPart) {
+              SaveManager.save(this.saveData);
+              this.renderAtelier();
+            }
           }
         }
-      });
+      };
+
+      const stopWinding = () => { this.isWinding = false; };
+
+      atelierCanvas.addEventListener('mousedown', handleAtelierDown);
+      atelierCanvas.addEventListener('touchstart', handleAtelierDown, { passive: false });
+      
+      window.addEventListener('mouseup', stopWinding);
+      window.addEventListener('touchend', stopWinding);
+      atelierCanvas.addEventListener('mouseleave', stopWinding);
     }
 
     // Événements jeu (horloge)
@@ -319,8 +333,8 @@ export class GameEngine {
 
   private getPartName(partId: string): string {
     switch(partId) {
-      case 'crown': return 'Vis sans fin';
-      case 'spring': return 'Le Ressort';
+      case 'crown': return 'Molette';
+      case 'spring': return 'Ressort';
       case 'hours': return 'Engr. Heures';
       case 'minutes': return 'Engr. Minutes';
       case 'seconds': return 'Engr. Secondes';
