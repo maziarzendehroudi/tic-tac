@@ -11,8 +11,8 @@
     <link href="https://fonts.googleapis.com/css2?family=Fredoka:wght@400;600;700&display=swap" rel="stylesheet">
     <link rel="manifest" href="./manifest.json">
     <meta name="theme-color" content="#0f172a">
-    <script type="module" crossorigin src="/tic-tac/assets/index-C25fCuIV.js"></script>
-    <link rel="stylesheet" crossorigin href="/tic-tac/assets/index-YhDOah4U.css">
+    <script type="module" crossorigin src="/tic-tac/assets/index-h9JElN-r.js"></script>
+    <link rel="stylesheet" crossorigin href="/tic-tac/assets/index-y6afk9MN.css">
   </head>
   <body>
     <div id="app">
@@ -80,7 +80,7 @@
         </div>
         
         <div id="watch-blueprint">
-          <canvas id="atelierCanvas" width="400" height="400"></canvas>
+          <canvas id="atelierCanvas" width="500" height="500"></canvas>
           <button id="crown-hitbox" class="hidden" title="Maintenir pour remonter"></button>
           <button id="dial-hitbox" class="hidden" title="Cliquer pour afficher/masquer le cadran"></button>
         </div>
@@ -92,7 +92,6 @@
         </div>
 
         <div id="parts-inventory">
-          <h3>L'établi (Cliquer pour monter/démonter) :</h3>
           <div id="inventory-items"></div>
         </div>
       </div>
@@ -127,7 +126,7 @@
         </div>
       </div>
 
-      <!-- POPUP PWA INSTALLATION -->
+      <!-- POPUP PWA -->
       <div id="pwa-install-modal" class="modal hidden">
         <div class="modal-content install-modal-content">
           <div class="install-icon">⏰</div>
@@ -141,13 +140,14 @@
       </div>
     </div>
 
-    <!-- SCRIPT DE LANCEMENT ET ENREGISTREMENT PWA -->
     <script>
       if ('serviceWorker' in navigator) {
         window.addEventListener('load', () => {
-          navigator.serviceWorker.register('./sw.js')
-            .then(reg => console.log('Service Worker enregistré !', reg))
-            .catch(err => console.error('Erreur Service Worker', err));
+          navigator.serviceWorker.getRegistrations().then(registrations => {
+            for (let registration of registrations) registration.unregister(); 
+          }).then(() => {
+            navigator.serviceWorker.register('./sw.js').catch(err => console.error(err));
+          });
         });
       }
     </script>
