@@ -23,22 +23,22 @@ export class WatchMechanism {
   public update(deltaTime: number, placedParts: string[], isWinding: boolean): void {
     const isComplete = placedParts.length >= 5;
 
-    // Remontage via la vis sans fin
+    // Remontage via la vis sans fin horizontale
     if (isWinding && placedParts.includes('crown')) {
       this.power = Math.min(100, this.power + deltaTime * 0.04);
       this.wormOffset = (this.wormOffset + deltaTime * 0.05) % 12;
-      this.angleBarrel -= deltaTime * 0.002; // Le barillet se remonte
+      this.angleBarrel -= deltaTime * 0.002; 
     }
 
     // Décharge et rotation du mécanisme
     if (isComplete && this.power > 0 && !isWinding) {
-      this.power = Math.max(0, this.power - deltaTime * 0.003); // Autonomie ~30s
+      this.power = Math.max(0, this.power - deltaTime * 0.003); 
       
       const speed = 0.001;
-      this.angleSeconds += speed * 30;   // Rapide
-      this.angleMinutes += speed * 3;    // Moyen
-      this.angleHours += speed * 0.25;   // Lent
-      this.angleBarrel += speed * 0.1;   // Très lent
+      this.angleSeconds += speed * 35;   // Rapide
+      this.angleMinutes += speed * 4;    // Moyen
+      this.angleHours += speed * 0.4;    // Lent
+      this.angleBarrel += speed * 0.15;  // Très lent
       
       this.timeOffset = this.angleMinutes;
     }
@@ -52,34 +52,35 @@ export class WatchMechanism {
     // 1. Platine de base
     this.drawBasePlate();
 
-    // 2. Molette & Vis sans fin (à gauche)
-    this.drawPart('crown', placedParts, unlockedParts, -75, 0, () => {
-      this.drawWormGear(-75, 0, this.wormOffset);
+    // 2. Molette & Vis sans fin HORIZONTALE (sur le flanc gauche, seule la tête dépasse)
+    this.drawPart('crown', placedParts, unlockedParts, -90, 0, () => {
+      this.drawHorizontalWormGear(-90, 0, this.wormOffset);
     });
 
-    // 3. Le Ressort / Barillet (s'engrène avec la vis)
-    this.drawPart('spring', placedParts, unlockedParts, -30, 0, () => {
-      this.drawBarrel(-30, 0, 30, 18, this.angleBarrel, this.power);
+    // 3. Le Ressort / Barillet (s'engrène avec la vis horizontale)
+    this.drawPart('spring', placedParts, unlockedParts, -45, 0, () => {
+      this.drawBarrel(-45, 0, 32, 16, this.angleBarrel, this.power);
     });
 
-    // 4. Engrenage des Heures (Grand, Or, empilé en bas)
-    this.drawPart('hours', placedParts, unlockedParts, 15, 0, () => {
-      this.drawGear(15, 0, 42, 24, this.angleHours, '#fbbf24', '#b45309');
+    // 4. Axe central partagé pour les trois aiguilles/engrenages (co-axiaux au centre 0,0)
+    // Engrenage des Heures (Grand, Or)
+    this.drawPart('hours', placedParts, unlockedParts, 0, 0, () => {
+      this.drawGear(0, 0, 40, 22, this.angleHours, '#fbbf24', '#b45309', 8);
     });
 
-    // 5. Engrenage des Minutes (Moyen, Bleu, empilé au milieu)
-    this.drawPart('minutes', placedParts, unlockedParts, 15, 0, () => {
-      this.drawGear(15, 0, 30, 16, this.angleMinutes, '#38bdf8', '#0284c7');
+    // Engrenage des Minutes (Moyen, Bleu)
+    this.drawPart('minutes', placedParts, unlockedParts, 0, 0, () => {
+      this.drawGear(0, 0, 28, 16, this.angleMinutes, '#38bdf8', '#0284c7', 6);
     });
 
-    // 6. Engrenage des Secondes (Petit, Rouge, empilé en haut)
-    this.drawPart('seconds', placedParts, unlockedParts, 15, 0, () => {
-      this.drawGear(15, 0, 18, 10, this.angleSeconds, '#f43f5e', '#be123c');
+    // Engrenage des Secondes (Petit, Rouge)
+    this.drawPart('seconds', placedParts, unlockedParts, 0, 0, () => {
+      this.drawGear(0, 0, 16, 10, this.angleSeconds, '#f43f5e', '#be123c', 4);
     });
 
-    // 7. Cadran (Masquable) & Aiguilles
+    // 5. Cadran (Masquable) & Aiguilles
     if (placedParts.length >= 5) {
-      this.drawDialAndHands(15, 0, 85, this.timeOffset);
+      this.drawDialAndHands(0, 0, 95, this.timeOffset);
     }
 
     this.ctx.restore();
@@ -98,9 +99,8 @@ export class WatchMechanism {
       this.ctx.filter = 'none';
       this.ctx.globalAlpha = 1;
 
-      // Pointillé pour l'emplacement
       this.ctx.beginPath();
-      this.ctx.arc(x, y, id === 'crown' ? 10 : 20, 0, Math.PI * 2);
+      this.ctx.arc(x, y, id === 'crown' ? 12 : 20, 0, Math.PI * 2);
       this.ctx.setLineDash([4, 4]);
       this.ctx.strokeStyle = '#64748b';
       this.ctx.lineWidth = 1.5;
@@ -118,7 +118,8 @@ export class WatchMechanism {
     this.ctx.strokeStyle = '#334155';
     this.ctx.stroke();
 
-    const rubies = [[-30, 0], [15, 0], [-75, -45], [-75, 45]];
+    // Rubis d'horlogerie positionnés sur les axes exacts
+    const rubies = [[0, 0], [-45, 0], [-90, 0]];
     rubies.forEach(([rx, ry]) => {
       this.ctx.beginPath();
       this.ctx.arc(rx, ry, 3, 0, Math.PI * 2);
@@ -127,60 +128,64 @@ export class WatchMechanism {
     });
   }
 
-  private drawWormGear(x: number, y: number, offset: number) {
+  private drawHorizontalWormGear(x: number, y: number, offset: number) {
     this.ctx.save();
     this.ctx.translate(x, y);
     
-    // Axe de la vis
+    // Axe horizontal de la vis
     this.ctx.fillStyle = '#94a3b8';
-    this.ctx.fillRect(-6, -40, 12, 80);
+    this.ctx.fillRect(-15, -6, 50, 12);
     this.ctx.strokeStyle = '#334155';
     this.ctx.lineWidth = 2;
-    this.ctx.strokeRect(-6, -40, 12, 80);
+    this.ctx.strokeRect(-15, -6, 50, 12);
 
-    // Filetage hélicoïdal animé
+    // Filetage hélicoïdal horizontal animé
     this.ctx.beginPath();
-    for (let i = -40; i < 40; i += 12) {
-      const threadY = i + offset;
-      if (threadY > -40 && threadY < 40) {
-        this.ctx.moveTo(-6, threadY);
-        this.ctx.lineTo(6, threadY + 6);
+    for (let i = -15; i < 35; i += 8) {
+      const threadX = i + (offset % 8);
+      if (threadX > -15 && threadX < 35) {
+        this.ctx.moveTo(threadX, -6);
+        this.ctx.lineTo(threadX + 4, 6);
       }
     }
     this.ctx.strokeStyle = '#cbd5e1';
-    this.ctx.lineWidth = 3;
+    this.ctx.lineWidth = 2.5;
     this.ctx.stroke();
     
-    // Molette (Couronne)
+    // Seule la molette crantée dépasse à gauche du boîtier (à l'extérieur)
     this.ctx.fillStyle = '#d97706';
-    this.ctx.fillRect(-12, -50, 24, 15);
-    this.ctx.strokeRect(-12, -50, 24, 15);
+    this.ctx.beginPath();
+    this.ctx.arc(-22, 0, 10, 0, Math.PI * 2);
+    this.ctx.fill();
+    this.ctx.strokeStyle = '#78350f';
+    this.ctx.lineWidth = 2;
+    this.ctx.stroke();
 
     this.ctx.restore();
   }
 
   private drawBarrel(x: number, y: number, r: number, teeth: number, angle: number, power: number) {
-    this.drawGear(x, y, r, teeth, angle, '#94a3b8', '#475569');
+    this.drawGear(x, y, r, teeth, angle, '#94a3b8', '#475569', 8);
 
     this.ctx.save();
     this.ctx.translate(x, y);
     
     this.ctx.beginPath();
-    this.ctx.arc(0, 0, r * 0.8, 0, Math.PI * 2);
+    this.ctx.arc(0, 0, r * 0.78, 0, Math.PI * 2);
     this.ctx.fillStyle = '#1e293b';
     this.ctx.fill();
 
     // Compression dynamique du ressort spirale
     this.ctx.beginPath();
-    const turns = 2 + (power / 20); // S'enroule de plus en plus
+    const turns = 2 + (power / 20); 
     const tightness = power / 100;
 
     for (let i = 0; i <= 150; i++) {
       const t = i / 150;
       const theta = t * Math.PI * 2 * turns;
       
-      const maxR = r * 0.75;
-      const minR = 4;
+      const maxR = r * 0.7;
+      const minR = 3;
       const actualR = minR + (maxR - minR) * Math.pow(t, 1 + tightness);
       
       if (i === 0) this.ctx.moveTo(0, 0);
@@ -193,21 +198,21 @@ export class WatchMechanism {
     this.ctx.restore();
   }
 
-  private drawGear(x: number, y: number, r: number, teeth: number, angle: number, fillColor: string, strokeColor: string) {
+  private drawGear(x: number, y: number, r: number, teeth: number, angle: number, fillColor: string, strokeColor: string, holeRadius: number) {
     this.ctx.save();
     this.ctx.translate(x, y);
     this.ctx.rotate(angle);
     
-    // Dents crantées réalistes
+    // Dents crantées spécifiques et distinctes par engrenage
     this.ctx.beginPath();
     for (let i = 0; i < teeth; i++) {
       const a = (i / teeth) * Math.PI * 2;
-      const rInner = r * 0.8;
+      const rInner = r * 0.78;
       const tW = (Math.PI * 2) / (teeth * 2);
       
       this.ctx.lineTo(Math.cos(a - tW/2) * rInner, Math.sin(a - tW/2) * rInner);
-      this.ctx.lineTo(Math.cos(a - tW/4) * r, Math.sin(a - tW/4) * r);
-      this.ctx.lineTo(Math.cos(a + tW/4) * r, Math.sin(a + tW/4) * r);
+      this.ctx.lineTo(Math.cos(a - tW/5) * r, Math.sin(a - tW/5) * r);
+      this.ctx.lineTo(Math.cos(a + tW/5) * r, Math.sin(a + tW/5) * r);
       this.ctx.lineTo(Math.cos(a + tW/2) * rInner, Math.sin(a + tW/2) * rInner);
     }
     this.ctx.closePath();
@@ -217,23 +222,25 @@ export class WatchMechanism {
     this.ctx.lineWidth = 1.5;
     this.ctx.stroke();
 
-    // Trou central et évidements
+    // Évidements ( rayons intérieurs )
     this.ctx.globalCompositeOperation = 'destination-out';
     this.ctx.beginPath();
-    this.ctx.arc(0, 0, r * 0.2, 0, Math.PI * 2);
+    this.ctx.arc(0, 0, holeRadius, 0, Math.PI * 2);
     this.ctx.fill();
     
-    for (let i = 0; i < 4; i++) {
-      const a = (i / 4) * Math.PI * 2;
-      this.ctx.beginPath();
-      this.ctx.arc(Math.cos(a) * (r * 0.55), Math.sin(a) * (r * 0.55), r * 0.2, 0, Math.PI * 2);
-      this.ctx.fill();
+    if (r > 20) {
+      for (let i = 0; i < 4; i++) {
+        const a = (i / 4) * Math.PI * 2;
+        this.ctx.beginPath();
+        this.ctx.arc(Math.cos(a) * (r * 0.5), Math.sin(a) * (r * 0.5), r * 0.18, 0, Math.PI * 2);
+        this.ctx.fill();
+      }
     }
     this.ctx.globalCompositeOperation = 'source-over';
     
-    // Axe
+    // Axe central
     this.ctx.beginPath();
-    this.ctx.arc(0, 0, r * 0.15, 0, Math.PI * 2);
+    this.ctx.arc(0, 0, holeRadius * 0.6, 0, Math.PI * 2);
     this.ctx.fillStyle = '#334155';
     this.ctx.fill();
 
@@ -263,7 +270,6 @@ export class WatchMechanism {
         this.ctx.fillText(numerals[i], Math.cos(angle) * (r * 0.8), Math.sin(angle) * (r * 0.8));
       }
     } else {
-      // Si cadran masqué, on trace juste l'anneau de verre extérieur
       this.ctx.beginPath();
       this.ctx.arc(0, 0, r, 0, Math.PI * 2);
       this.ctx.lineWidth = 2;
@@ -271,7 +277,7 @@ export class WatchMechanism {
       this.ctx.stroke();
     }
 
-    // Aiguilles toujours visibles
+    // Aiguilles alignées sur l'axe central (0,0)
     this.ctx.save();
     this.ctx.rotate(time);
     this.ctx.beginPath();
