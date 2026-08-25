@@ -26,17 +26,17 @@ export class GameEngine {
   private phaseSuccessCount: number = 0;
 
   private isDragging: boolean = false;
-  private isWinding: boolean = false; // Suivi de l'appui sur la couronne
+  private isWinding: boolean = false;
   private activeHand: 'hour' | 'minute' = 'minute';
   private animFrameId: number = 0;
   private lastTime: number = performance.now();
 
   private levelPartsMap: { [key: number]: string } = {
-    1: 'spring',
-    2: 'gears',
-    3: 'escapement',
-    4: 'balance',
-    5: 'hands'
+    1: 'crown',
+    2: 'spring',
+    3: 'hours',
+    4: 'minutes',
+    5: 'seconds'
   };
 
   constructor(canvas: HTMLCanvasElement) {
@@ -109,14 +109,11 @@ export class GameEngine {
       this.lastTime = time;
       
       if (this.watchMechanism) {
-        // Envoie de l'état "isWinding" au mécanisme
         this.watchMechanism.update(deltaTime, this.saveData.placedParts, this.isWinding);
         this.watchMechanism.draw(this.saveData.placedParts, this.saveData.unlockedParts);
         
         const powerBar = document.getElementById('power-bar');
-        if (powerBar) {
-          powerBar.style.width = `${this.watchMechanism.power}%`;
-        }
+        if (powerBar) powerBar.style.width = `${this.watchMechanism.power}%`;
       }
       
       this.animFrameId = requestAnimationFrame(loop);
@@ -149,11 +146,8 @@ export class GameEngine {
       rect.addEventListener('click', (e) => {
         const target = e.currentTarget as HTMLElement;
         const level = parseInt(target.getAttribute('data-level') || '1', 10);
-        if (level <= (this.saveData.maxUnlockedLevel || 1)) {
-          this.startLevel(level);
-        } else {
-          alert("🔒 Ce niveau est verrouillé ! Termine le niveau précédent.");
-        }
+        if (level <= (this.saveData.maxUnlockedLevel || 1)) this.startLevel(level);
+        else alert("🔒 Ce niveau est verrouillé ! Termine le niveau précédent.");
       });
     });
 
@@ -161,7 +155,7 @@ export class GameEngine {
     document.getElementById('atelier-back-btn')?.addEventListener('click', () => this.returnToMenu());
     document.getElementById('back-menu-btn')?.addEventListener('click', () => this.returnToMenu());
 
-    // --- CONTRÔLE DE LA MOLETTE DE REMONTAGE ---
+    // Couronne de remontage interactive
     const crownBtn = document.getElementById('crown-btn');
     if (crownBtn) {
       const startWinding = (e: Event) => { e.preventDefault(); this.isWinding = true; };
@@ -169,33 +163,35 @@ export class GameEngine {
       
       crownBtn.addEventListener('mousedown', startWinding);
       crownBtn.addEventListener('touchstart', startWinding, { passive: false });
-      
       window.addEventListener('mouseup', stopWinding);
       window.addEventListener('touchend', stopWinding);
     }
 
-    document.getElementById('toggle-dial-btn')?.addEventListener('click', () => {
-      if (this.watchMechanism) {
-        this.watchMechanism.showDial = !this.watchMechanism.showDial;
-        const btn = document.getElementById('toggle-dial-btn');
-        if (btn) btn.textContent = this.watchMechanism.showDial ? '👁️ Cacher Cadran' : '👁️ Afficher Cadran';
-      }
-    });
+    // Interaction du clic central dans le canvas d'Atelier pour cacher/montrer le cadran ou démonter
+    const atelierCanvas = document.getElementById('atelierCanvas') as HTMLCanvasElement;
+    if (atelierCanvas) {
+      atelierCanvas.addEventListener('click', (e) => {
+        const rect = atelierCanvas.getBoundingClientRect();
+        const clickX = e.clientX - rect.left - rect.width / 2;
+        const clickY = e.clientY - rect.top - rect.height / 2;
 
-    // Démontage des pièces depuis le Canvas de l'atelier
-    const overlays = document.querySelectorAll('.slot-overlay');
-    overlays.forEach(overlay => {
-      overlay.addEventListener('click', (e) => {
-        const partId = (e.currentTarget as HTMLElement).getAttribute('data-part');
-        if (partId && this.saveData.placedParts.includes(partId)) {
-          this.saveData.placedParts = this.saveData.placedParts.filter(p => p !== partId);
-          SaveManager.save(this.saveData);
-          this.renderAtelier();
+        const isCenterClick = Math.hypot(clickX - 15, clickY - 0) < 50;
+
+        if (this.saveData.placedParts.length >= 5 && isCenterClick) {
+          // Si terminé, clic central = masquer/afficher le cadran
+          if (this.watchMechanism) this.watchMechanism.showDial = !this.watchMechanism.showDial;
+        } else if (this.saveData.placedParts.length > 0) {
+          // Sinon on démonte la dernière pièce
+          const lastPart = this.saveData.placedParts.pop();
+          if (lastPart) {
+            SaveManager.save(this.saveData);
+            this.renderAtelier();
+          }
         }
       });
-    });
+    }
 
-    // Horloge tactile (Jeu)
+    // Événements jeu (horloge)
     const getPointerPos = (e: MouseEvent | TouchEvent) => {
       const rect = this.canvas.getBoundingClientRect();
       const clientX = 'touches' in e ? e.touches[0].clientX : (e as MouseEvent).clientX;
@@ -219,11 +215,8 @@ export class GameEngine {
       const diffHr = Math.abs(this.normalizeAngle(angle - hrAngle));
       const distFromCenter = Math.sqrt(pos.x * pos.x + pos.y * pos.y);
 
-      if (diffMin < diffHr || distFromCenter > this.radius * 0.6) {
-        this.activeHand = 'minute';
-      } else {
-        this.activeHand = 'hour';
-      }
+      if (diffMin < diffHr || distFromCenter > this.radius * 0.6) this.activeHand = 'minute';
+      else this.activeHand = 'hour';
 
       this.isDragging = true;
       this.updateFromPointer(pos.x, pos.y);
@@ -281,7 +274,7 @@ export class GameEngine {
   private renderAtelier(): void {
     const inventoryContainer = document.getElementById('inventory-items');
     const watchControls = document.getElementById('watch-controls');
-    const atelierInstruction = document.getElementById('atelier-instruction');
+    const dialHint = document.getElementById('dial-hint');
 
     if (!inventoryContainer) return;
     inventoryContainer.innerHTML = '';
@@ -304,43 +297,33 @@ export class GameEngine {
     });
 
     if (this.saveData.placedParts.length >= 5) {
-      inventoryContainer.innerHTML = '<span style="font-size:0.85rem; color:#64748b;">Mouvement complet et assemblé ! 🌟</span>';
+      inventoryContainer.innerHTML = '<span style="font-size:0.85rem; color:#94a3b8;">Mouvement complet et assemblé ! 🌟</span>';
       watchControls?.classList.remove('hidden');
-      if (atelierInstruction) atelierInstruction.textContent = "Maintiens la molette appuyée pour remonter le ressort !";
+      dialHint?.classList.remove('hidden');
     } else {
       watchControls?.classList.add('hidden');
-      if (atelierInstruction) atelierInstruction.textContent = "Clique en bas pour monter, ou sur le mouvement pour démonter.";
+      dialHint?.classList.add('hidden');
     }
-
-    const overlays = document.querySelectorAll('.slot-overlay');
-    overlays.forEach(overlay => {
-      const partId = overlay.getAttribute('data-part');
-      if (partId && this.saveData.placedParts.includes(partId)) {
-        overlay.classList.add('removable');
-      } else {
-        overlay.classList.remove('removable');
-      }
-    });
   }
 
   private getPartIcon(partId: string): string {
     switch(partId) {
+      case 'crown': return '⚙️';
       case 'spring': return '🔋';
-      case 'gears': return '⚙️';
-      case 'escapement': return '⚓';
-      case 'balance': return '⚖️';
-      case 'hands': return '🧭';
+      case 'hours': return '🟡';
+      case 'minutes': return '🔵';
+      case 'seconds': return '🔴';
       default: return '🔧';
     }
   }
 
   private getPartName(partId: string): string {
     switch(partId) {
-      case 'spring': return 'Barillet';
-      case 'gears': return 'Rouage';
-      case 'escapement': return 'Échappement';
-      case 'balance': return 'Balancier';
-      case 'hands': return 'Cadran';
+      case 'crown': return 'Vis sans fin';
+      case 'spring': return 'Le Ressort';
+      case 'hours': return 'Engr. Heures';
+      case 'minutes': return 'Engr. Minutes';
+      case 'seconds': return 'Engr. Secondes';
       default: return partId;
     }
   }
@@ -393,9 +376,8 @@ export class GameEngine {
     this.triggerShakeEffect();
     const instructionEl = document.getElementById('instruction');
 
-    if (this.errorsCount >= 3) {
-      this.showHelp();
-    } else {
+    if (this.errorsCount >= 3) this.showHelp();
+    else {
       if (instructionEl) instructionEl.innerHTML = `<span style="font-size: 2.5rem;">❌</span>`;
       setTimeout(() => { this.updateUI(); }, 1000);
     }
@@ -406,17 +388,12 @@ export class GameEngine {
     const helpText = document.getElementById('help-text');
     if (helpBox && helpText) {
       helpBox.classList.remove('hidden');
-      if (this.currentPhase === 1) {
-        helpText.textContent = `La bonne réponse est ${this.targetTime.text}.`;
-      } else {
-        helpText.textContent = `Pour ${this.targetTime.text}, place la petite aiguille sur ${this.targetTime.hours % 12 || 12} et la grande sur ${this.targetTime.minutes}.`;
-      }
+      if (this.currentPhase === 1) helpText.textContent = `La bonne réponse est ${this.targetTime.text}.`;
+      else helpText.textContent = `Pour ${this.targetTime.text}, place la petite aiguille sur ${this.targetTime.hours % 12 || 12} et la grande sur ${this.targetTime.minutes}.`;
     }
   }
 
-  private hideHelp(): void {
-    document.getElementById('help-box')?.classList.add('hidden');
-  }
+  private hideHelp(): void { document.getElementById('help-box')?.classList.add('hidden'); }
 
   private normalizeAngle(angle: number): number {
     while (angle <= -Math.PI) angle += 2 * Math.PI;
@@ -438,10 +415,7 @@ export class GameEngine {
   }
 
   private snapToGrid(): void {
-    if (this.currentLevel === 6) {
-      this.render();
-      return;
-    }
+    if (this.currentLevel === 6) { this.render(); return; }
     this.currentMinutes = Math.round(this.currentMinutes / 5) * 5;
     if (this.currentMinutes === 60) this.currentMinutes = 0;
     this.render();
@@ -501,9 +475,7 @@ export class GameEngine {
 
       const choiceBtns = document.querySelectorAll('.choice-btn');
       choiceBtns.forEach((btn, idx) => {
-        if (this.currentChoices[idx]) {
-          btn.textContent = this.currentChoices[idx].text;
-        }
+        if (this.currentChoices[idx]) btn.textContent = this.currentChoices[idx].text;
       });
     } else {
       if (checkBtn) checkBtn.classList.remove('hidden');
@@ -512,9 +484,7 @@ export class GameEngine {
     }
   }
 
-  private get radius(): number {
-    return Math.min(this.canvas.width / 2, this.canvas.height / 2) - 10;
-  }
+  private get radius(): number { return Math.min(this.canvas.width / 2, this.canvas.height / 2) - 10; }
 
   public render(): void {
     this.clock.draw(this.currentLevel);

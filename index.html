@@ -24,35 +24,35 @@
         <div id="levels-grid">
           <button class="level-rect lvl-1" data-level="1">
             <div class="lvl-content">
-              <span class="lvl-title">Niveau 1 ➔ 1. Le Barillet</span>
+              <span class="lvl-title">Niveau 1 ➔ 1. Molette & Vis</span>
               <span class="lvl-desc">Heures pleines</span>
             </div>
             <span class="lvl-check hidden">✅</span>
           </button>
           <button class="level-rect lvl-2 locked" data-level="2">
             <div class="lvl-content">
-              <span class="lvl-title">Niveau 2 ➔ 2. Le Rouage</span>
+              <span class="lvl-title">Niveau 2 ➔ 2. Le Ressort</span>
               <span class="lvl-desc">Demi-heures</span>
             </div>
             <span class="lvl-check hidden">✅</span>
           </button>
           <button class="level-rect lvl-3 locked" data-level="3">
             <div class="lvl-content">
-              <span class="lvl-title">Niveau 3 ➔ 3. L'Échappement</span>
+              <span class="lvl-title">Niveau 3 ➔ 3. Engrenage Heures</span>
               <span class="lvl-desc">Quarts d'heure</span>
             </div>
             <span class="lvl-check hidden">✅</span>
           </button>
           <button class="level-rect lvl-4 locked" data-level="4">
             <div class="lvl-content">
-              <span class="lvl-title">Niveau 4 ➔ 4. Le Balancier</span>
+              <span class="lvl-title">Niveau 4 ➔ 4. Engrenage Minutes</span>
               <span class="lvl-desc">Précision 5 minutes</span>
             </div>
             <span class="lvl-check hidden">✅</span>
           </button>
           <button class="level-rect lvl-5 locked" data-level="5">
             <div class="lvl-content">
-              <span class="lvl-title">Niveau 5 ➔ 5. Le Cadran</span>
+              <span class="lvl-title">Niveau 5 ➔ 5. Engrenage Secondes</span>
               <span class="lvl-desc">Les 24 heures</span>
             </div>
             <span class="lvl-check hidden">✅</span>
@@ -76,17 +76,13 @@
           <h2>Simulateur Mécanique</h2>
           <span></span>
         </div>
-        <p id="atelier-instruction" class="atelier-instruction">Clique en bas pour monter, ou sur le mouvement pour démonter.</p>
+        <p id="atelier-instruction" class="atelier-instruction">Clique en bas pour monter la pièce, ou sur le mouvement pour la démonter.</p>
         
         <div id="watch-blueprint">
           <canvas id="atelierCanvas" width="300" height="300"></canvas>
           
-          <!-- Zones de clic pour démonter le mécanisme (placées exactement sur les coordonnées du Canvas) -->
-          <div class="slot-overlay" data-part="spring" style="top: 25%; left: 25%;"></div>
-          <div class="slot-overlay" data-part="gears" style="top: 25%; right: 25%;"></div>
-          <div class="slot-overlay" data-part="escapement" style="bottom: 25%; left: 25%;"></div>
-          <div class="slot-overlay" data-part="balance" style="bottom: 25%; right: 25%;"></div>
-          <div class="slot-overlay center-slot" data-part="hands" style="top: 50%; left: 50%;"></div>
+          <!-- L'indication du clic central -->
+          <div id="dial-hint" class="hidden">👆 Clic central pour masquer le cadran</div>
         </div>
 
         <div id="watch-controls" class="hidden">
@@ -96,12 +92,7 @@
           
           <div class="crown-wrapper">
             <span class="crown-instruction">Maintenir pour remonter ➔</span>
-            <!-- La Molette réaliste ! -->
             <div id="crown-btn" class="crown-wheel"></div> 
-          </div>
-
-          <div class="control-buttons">
-            <button id="toggle-dial-btn">👁️ Cacher Cadran</button>
           </div>
         </div>
 
@@ -138,19 +129,6 @@
             <button class="choice-btn" data-index="2">--</button>
           </div>
           <button id="check-btn" class="hidden">Vérifier</button>
-        </div>
-      </div>
-
-      <!-- POPUP D'INSTALLATION PWA -->
-      <div id="pwa-install-modal" class="modal hidden">
-        <div class="modal-content install-modal-content">
-          <div class="install-icon">⏰</div>
-          <h2>Installe Tic-Tac !</h2>
-          <p id="install-text">Installe l'application sur ton écran pour y jouer sans internet !</p>
-          <div class="install-actions">
-            <button id="pwa-install-btn" class="choice-btn" style="padding: 12px 20px;">Installer</button>
-            <button id="pwa-close-btn" class="choice-btn" style="background-color: #cbd5e1; color: #334155;">Plus tard</button>
-          </div>
         </div>
       </div>
     </div>

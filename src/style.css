@@ -13,7 +13,6 @@ body { background: radial-gradient(circle at center, #1e293b 0%, #0f172a 100%); 
 #main-title-box p { color: #94a3b8; font-size: 0.9rem; }
 
 #levels-grid { display: flex; flex-direction: column; gap: 10px; width: 100%; margin-bottom: 15px; }
-
 .level-rect { border: none; border-radius: 18px; padding: 14px 18px; text-align: left; cursor: pointer; box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3); transition: all 0.2s cubic-bezier(0.34, 1.56, 0.64, 1); display: flex; justify-content: space-between; align-items: center; color: white; }
 .lvl-content { display: flex; flex-direction: column; gap: 2px; }
 
@@ -39,12 +38,12 @@ body { background: radial-gradient(circle at center, #1e293b 0%, #0f172a 100%); 
 #atelier-back-btn { background: #334155; color: #f8fafc; border: none; padding: 8px 14px; border-radius: 12px; font-weight: 700; cursor: pointer; }
 .atelier-instruction { font-size: 0.85rem; color: #94a3b8; text-align: center; margin-bottom: 15px; }
 
-#watch-blueprint { position: relative; width: 100%; max-width: 330px; aspect-ratio: 1; background: radial-gradient(circle, #1e293b 0%, #020617 100%); border: 3px solid #334155; border-radius: 50%; margin-bottom: 15px; box-shadow: inset 0 0 30px rgba(0,0,0,0.8); }
+#watch-blueprint { position: relative; width: 100%; max-width: 330px; aspect-ratio: 1; background: radial-gradient(circle, #1e293b 0%, #020617 100%); border: 3px solid #334155; border-radius: 50%; margin-bottom: 15px; box-shadow: inset 0 0 30px rgba(0,0,0,0.8); cursor: pointer; }
 #atelierCanvas { width: 100%; height: 100%; border-radius: 50%; }
 
-.slot-overlay { position: absolute; width: 70px; height: 70px; border-radius: 50%; transform: translate(-50%, -50%); cursor: pointer; transition: background 0.2s; }
-.slot-overlay.center-slot { width: 100px; height: 100px; transform: translate(-50%, -50%); }
-.slot-overlay.removable:hover { background: rgba(239, 68, 68, 0.3); border: 2px dashed #ef4444; }
+#dial-hint { position: absolute; bottom: -30px; width: 100%; text-align: center; font-size: 0.8rem; color: #38bdf8; font-weight: 700; animation: pulseHint 2s infinite; }
+#dial-hint.hidden { display: none; }
+@keyframes pulseHint { 0% { opacity: 0.5; } 50% { opacity: 1; } 100% { opacity: 0.5; } }
 
 #watch-controls { width: 100%; background: #1e293b; padding: 12px; border-radius: 16px; margin-bottom: 15px; border: 1px solid #334155; }
 #watch-controls.hidden { display: none; }
@@ -52,20 +51,16 @@ body { background: radial-gradient(circle at center, #1e293b 0%, #0f172a 100%); 
 #power-bar-container { width: 100%; height: 14px; background: #0f172a; border-radius: 7px; margin-bottom: 15px; overflow: hidden; border: 1px solid #475569; }
 #power-bar { height: 100%; width: 0%; background: linear-gradient(90deg, #ef4444, #f59e0b, #10b981); transition: width 0.1s linear; }
 
-/* La Molette / Couronne */
-.crown-wrapper { display: flex; align-items: center; justify-content: center; gap: 15px; margin-bottom: 15px; }
+/* La Molette de Remontage */
+.crown-wrapper { display: flex; align-items: center; justify-content: center; gap: 15px; }
 .crown-instruction { font-size: 0.95rem; color: #cbd5e1; font-weight: 700; }
 .crown-wheel { width: 70px; height: 35px; border-radius: 6px; background: repeating-linear-gradient(90deg, #64748b 0px, #64748b 3px, #cbd5e1 3px, #cbd5e1 6px); box-shadow: 0 4px 10px rgba(0,0,0,0.5), inset 0 2px 8px rgba(255,255,255,0.4); cursor: grab; transition: transform 0.1s; }
 .crown-wheel:active { cursor: grabbing; transform: scale(0.92); box-shadow: 0 2px 5px rgba(0,0,0,0.5), inset 0 2px 8px rgba(255,255,255,0.4); }
 
-.control-buttons { display: flex; gap: 8px; }
-.control-buttons button { flex: 1; border: none; padding: 12px; border-radius: 14px; font-weight: 700; cursor: pointer; font-size: 0.95rem; }
-#toggle-dial-btn { background: #475569; color: white; }
-
 #parts-inventory { width: 100%; background: #020617; padding: 12px; border-radius: 16px; border: 1px solid #1e293b; }
 #parts-inventory h3 { font-size: 0.85rem; color: #94a3b8; margin-bottom: 8px; }
 #inventory-items { display: flex; gap: 8px; flex-wrap: wrap; }
-.inventory-part { background: linear-gradient(135deg, #d97706, #b45309); color: white; padding: 8px 12px; border-radius: 12px; font-size: 0.8rem; font-weight: 700; cursor: pointer; box-shadow: 0 4px 10px rgba(217, 119, 6, 0.3); display: flex; align-items: center; gap: 6px; border: 1px solid #fcd34d; }
+.inventory-part { background: linear-gradient(135deg, #334155, #1e293b); color: white; padding: 8px 12px; border-radius: 12px; font-size: 0.8rem; font-weight: 700; cursor: pointer; box-shadow: 0 4px 10px rgba(0,0,0,0.3); display: flex; align-items: center; gap: 6px; border: 1px solid #475569; }
 .inventory-part:active { transform: scale(0.95); }
 
 /* Écran de Jeu */
@@ -85,13 +80,3 @@ canvas { display: block; width: 100%; height: 100%; touch-action: none; }
 #choices-container.hidden { display: none; }
 .choice-btn { background: #1e293b; border: 3px solid #334155; color: #f8fafc; padding: 16px 10px; font-size: 1.25rem; font-weight: 700; border-radius: 18px; cursor: pointer; box-shadow: 0 4px 10px rgba(0, 0, 0, 0.2); transition: all 0.15s; }
 .choice-btn:hover { border-color: #fbbf24; background: #0f172a; color: #fbbf24; }
-
-/* Modale */
-.modal { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(15, 23, 42, 0.65); backdrop-filter: blur(4px); display: flex; justify-content: center; align-items: center; z-index: 100; padding: 15px; }
-.modal.hidden { display: none; }
-.modal-content { background: white; padding: 24px; border-radius: 28px; width: 100%; max-width: 400px; text-align: center; display: flex; flex-direction: column; }
-.install-icon { font-size: 3rem; background: #ede9fe; width: 70px; height: 70px; display: flex; align-items: center; justify-content: center; border-radius: 50%; margin: 0 auto 12px; }
-.install-actions { display: flex; gap: 10px; width: 100%; margin-top: 10px; }
-.install-actions button { flex: 1; border: none; padding: 12px; border-radius: 14px; font-weight: 700; cursor: pointer; }
-#pwa-install-btn { background: #4f46e5; color: white; }
-#pwa-close-btn { background: #e2e8f0; color: #475569; }
