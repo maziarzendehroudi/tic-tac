@@ -7,10 +7,17 @@ if (canvas) {
 }
 
 // Enregistrement du Service Worker pour la PWA
+// Nettoyage radical des anciens Service Workers bloquants et enregistrement du nouveau
 if ('serviceWorker' in navigator) {
   window.addEventListener('load', () => {
-    navigator.serviceWorker.register('./sw.js').catch((err) => {
-      console.log('Erreur d enregistrement du Service Worker :', err);
+    navigator.serviceWorker.getRegistrations().then(registrations => {
+      for (let registration of registrations) {
+        registration.unregister(); // Force le nettoyage du cache persistant
+      }
+    }).then(() => {
+      navigator.serviceWorker.register(`${import.meta.env.BASE_URL}sw.js`).catch(err => {
+        console.log('Erreur SW:', err);
+      });
     });
   });
 }

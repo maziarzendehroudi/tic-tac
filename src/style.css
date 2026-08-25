@@ -1,78 +1,61 @@
 * { box-sizing: border-box; margin: 0; padding: 0; font-family: 'Fredoka', 'Comic Sans MS', sans-serif; user-select: none; -webkit-tap-highlight-color: transparent; }
 
-/* =========================================
-   1. LAYOUT MOBILE STRICT (Plein écran forcé)
-   ========================================= */
+/* --- 1. MOBILE FIRST (Propre, sans déformation) --- */
 html, body {
-  width: 100vw;
-  height: 100vh;
-  margin: 0;
-  padding: 0;
+  width: 100%;
+  min-height: 100dvh;
   background-color: #0f172a;
   color: #f8fafc;
-  overflow: hidden; /* Empêche tout scroll ou rognage du navigateur */
+  overflow-x: hidden;
 }
 
 body {
-  display: block;
-}
-
-#app {
-  width: 100vw !important;
-  height: 100vh !important;
-  max-width: 100vw !important;
-  margin: 0 !important;
-  padding: 15px 10px !important;
   display: flex;
   flex-direction: column;
   align-items: center;
   justify-content: flex-start;
-  background-color: #0f172a;
-  border: none !important;
-  box-shadow: none !important;
-  border-radius: 0 !important;
-  overflow-y: auto; /* Le scroll est autorisé à l'intérieur de l'app uniquement */
 }
 
-/* =========================================
-   2. LAYOUT PC / TABLETTE (> 850px)
-   ========================================= */
-@media (min-width: 850px) {
-  html, body {
-    overflow: auto; 
-  }
+#app {
+  width: 100%;
+  max-width: 500px;
+  min-height: 100dvh;
+  padding: 15px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  background-color: #0f172a;
+  border: none;
+  box-shadow: none;
+  border-radius: 0;
+}
+
+/* --- 2. TABLETTE & PC (> 768px) --- */
+@media (min-width: 768px) {
   body {
-    display: flex;
     justify-content: center;
-    align-items: center;
     background: radial-gradient(circle at center, #1e293b 0%, #0f172a 100%);
   }
   #app {
-    width: 100% !important;
-    max-width: 440px !important;
-    height: auto !important;
-    min-height: 90vh !important;
-    margin: 20px auto !important;
-    padding: 30px !important;
-    border-radius: 36px !important;
-    box-shadow: 0 25px 50px rgba(0, 0, 0, 0.6) !important;
-    border: 3px solid #334155 !important;
-    overflow-y: visible;
+    min-height: auto;
+    border-radius: 36px;
+    box-shadow: 0 25px 50px rgba(0, 0, 0, 0.6);
+    border: 3px solid #334155;
+    margin: 20px 0;
+    padding: 30px;
   }
 }
 
-/* =========================================
-   3. COMPOSANTS DE L'INTERFACE
-   ========================================= */
+/* --- 3. TOUS LES COMPOSANTS --- */
 .view { width: 100%; display: flex; flex-direction: column; align-items: center; }
 .view.hidden { display: none; }
 
-#main-title-box { text-align: center; margin-bottom: 20px; }
+#main-title-box { text-align: center; margin-bottom: 20px; width: 100%; }
 #main-title-box h1 { font-size: 2.1rem; color: #fbbf24; margin-bottom: 4px; text-shadow: 0 2px 10px rgba(251, 191, 36, 0.3); }
 #main-title-box p { color: #94a3b8; font-size: 0.9rem; }
 
 #levels-grid { display: flex; flex-direction: column; gap: 10px; width: 100%; margin-bottom: 15px; }
-.level-rect { border: none; border-radius: 18px; padding: 14px 18px; text-align: left; cursor: pointer; box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3); transition: all 0.2s cubic-bezier(0.34, 1.56, 0.64, 1); display: flex; justify-content: space-between; align-items: center; color: white; }
+.level-rect { border: none; border-radius: 18px; padding: 14px 18px; text-align: left; cursor: pointer; box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3); transition: all 0.2s cubic-bezier(0.34, 1.56, 0.64, 1); display: flex; justify-content: space-between; align-items: center; color: white; background: #1e293b; }
 .lvl-content { display: flex; flex-direction: column; gap: 2px; }
 
 .level-rect.lvl-1 { background: linear-gradient(135deg, #0284c7, #0369a1); }
@@ -106,12 +89,19 @@ body {
 #crown-hitbox:active { background: rgba(251, 191, 36, 0.2); }
 #crown-hitbox.hidden { display: none; }
 
+#dial-hitbox {
+  position: absolute; left: 50%; top: 50%; transform: translate(-50%, -50%);
+  width: 60% !important; height: 60% !important; background: transparent; border-radius: 50%;
+  cursor: pointer; z-index: 10; touch-action: none; border: none;
+}
+#dial-hitbox.hidden { display: none; }
+
 #watch-controls { width: 100%; margin-bottom: 12px; }
 #watch-controls.hidden { display: none; }
 #power-bar-container { width: 100%; height: 16px; background: #0f172a; border-radius: 8px; overflow: hidden; border: 2px solid #334155; }
 #power-bar { height: 100%; width: 0%; background: linear-gradient(90deg, #ef4444, #f59e0b, #10b981); transition: width 0.1s linear; }
 
-#parts-inventory { width: 100%; background: #020617; padding: 12px; border-radius: 16px; border: 1px solid #1e293b; flex-grow: 1; }
+#parts-inventory { width: 100%; background: #020617; padding: 12px; border-radius: 16px; border: 1px solid #1e293b; }
 #parts-inventory h3 { font-size: 0.85rem; color: #94a3b8; margin-bottom: 8px; }
 #inventory-items { display: flex; gap: 8px; flex-wrap: wrap; justify-content: center; }
 

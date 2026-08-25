@@ -1,40 +1,30 @@
-const CACHE_NAME = 'tic-tac-v2';
-const urlsToCache = [
-  './',
-  './index.html',
-  './manifest.json'
-];
+const CACHE_NAME = 'tic-tac-v3';
 
-// Installation et forçage de la nouvelle version
 self.addEventListener('install', (event) => {
-  self.skipWaiting(); 
-  event.waitUntil(
-    caches.open(CACHE_NAME).then((cache) => {
-      return cache.addAll(urlsToCache);
-    })
-  );
+  self.skipWaiting(); // S'active immédiatement
 });
 
-// Nettoyage de l'ancien cache (v1)
 self.addEventListener('activate', (event) => {
   event.waitUntil(
-    caches.keys().then((cacheNames) => {
+    caches.keys().then(keys => {
       return Promise.all(
-        cacheNames.map((cache) => {
-          if (cache !== CACHE_NAME) {
-            return caches.delete(cache);
-          }
+        keys.map(key => {
+          if (key !== CACHE_NAME) return caches.delete(key); // Détruit les anciens caches
         })
       );
     }).then(() => self.clients.claim())
   );
 });
 
-// Stratégie "Network First" : Toujours chercher la mise à jour en priorité
+// Network First absolu
 self.addEventListener('fetch', (event) => {
   event.respondWith(
-    fetch(event.request).catch(() => {
-      return caches.match(event.request);
-    })
+    fetch(event.request)
+      .then(response => {
+        const clone = response.clone();
+        caches.open(CACHE_NAME).then(cache => cache.put(event.request, clone));
+        return response;
+      })
+      .catch(() => caches.match(event.request))
   );
 });
