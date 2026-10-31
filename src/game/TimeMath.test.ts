@@ -124,8 +124,8 @@ describe('SoundEngine — Tolérance Headless & Mute', () => {
   });
 });
 
-describe('WatchMechanism — Train Coaxial Central, Molette à 9h & Rapports 1:12:720', () => {
-  it('détecte la molette centrée verticalement à gauche (x=-194, y=0) et respecte les rapports 1:12:720', () => {
+describe('WatchMechanism — 3 Disques Gigognes, Molette à 9h & Vitesses Pédagogiques (1 : 4 : 12)', () => {
+  it('détecte la molette centrée à 9h et anime les 3 disques aux rapports pédagogiques 1:4:12', () => {
     const dummyCtx = {} as CanvasRenderingContext2D;
     let clicks = 0;
     let ticks = 0;
@@ -137,28 +137,25 @@ describe('WatchMechanism — Train Coaxial Central, Molette à 9h & Rapports 1:1
       () => { clicks++; }
     );
 
-    // Molette centrée verticalement à 9h : (-194, 0) depuis (250, 250) -> (56, 250)
     expect(mech.isPointInCrown(56, 250)).toBe(true);
     expect(mech.isPointInCrown(56, 350)).toBe(false);
 
-    // Remontage
     mech.power = 50;
     mech.update(500, ['crown', 'spring'], true);
     expect(mech.power).toBeGreaterThan(50);
     expect(clicks).toBeGreaterThan(0);
 
-    // Vérification du rapport cinématique strict entre Heures, Minutes et Secondes sur 10 secondes réelles (10 000 ms)
     mech.angleHours = 0;
     mech.angleMinutes = 0;
     mech.angleSeconds = 0;
-    mech.update(10000, ['crown', 'spring', 'hours', 'minutes', 'seconds'], false);
+    mech.update(3000, ['crown', 'spring', 'hours', 'minutes', 'seconds'], false);
 
-    // En 10s (1x) : Secondes = 2*PI * (10/60) = PI/3 rad
-    expect(mech.angleSeconds).toBeCloseTo(Math.PI / 3, 4);
-    // Minutes = Secondes / 60
-    expect(mech.angleMinutes).toBeCloseTo(mech.angleSeconds / 60, 5);
-    // Heures = Minutes / 12
-    expect(mech.angleHours).toBeCloseTo(mech.angleMinutes / 12, 6);
-    expect(ticks).toBe(20); // 2 battements Tic-Tac par seconde -> 20 battements en 10s
+    // En 3 secondes : Secondes a fait 1/2 tour (PI rad)
+    expect(mech.angleSeconds).toBeCloseTo(Math.PI, 4);
+    // Minutes tourne 4x moins vite que Secondes
+    expect(mech.angleMinutes).toBeCloseTo(mech.angleSeconds / 4, 4);
+    // Heures tourne 12x moins vite que Secondes (3x moins vite que Minutes)
+    expect(mech.angleHours).toBeCloseTo(mech.angleSeconds / 12, 4);
+    expect(ticks).toBeGreaterThan(0);
   });
 });

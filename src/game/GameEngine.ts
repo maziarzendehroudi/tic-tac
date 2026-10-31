@@ -111,7 +111,7 @@ export class GameEngine {
     document.getElementById('main-menu')?.classList.add('hidden');
     document.getElementById('atelier-view')?.classList.remove('hidden');
     if (this.watchMechanism && this.saveData.placedParts.includes('spring') && this.watchMechanism.power < 15) {
-      this.watchMechanism.power = 65;
+      this.watchMechanism.power = 75;
     }
     this.renderAtelier();
     this.startAnimation();
@@ -132,7 +132,7 @@ export class GameEngine {
         const powerBar = document.getElementById('power-bar');
         const powerLabel = document.getElementById('power-label');
         if (powerBar) powerBar.style.width = `${powerPct}%`;
-        if (powerLabel) powerLabel.textContent = `🔋 Réserve : ${powerPct}%`;
+        if (powerLabel) powerLabel.textContent = `🔋 Énergie du ressort : ${powerPct}%`;
 
         this.updateAtelierStatusBanner(powerPct);
       }
@@ -154,24 +154,20 @@ export class GameEngine {
     const hasSeconds = placed.includes('seconds');
 
     if (placed.length === 0) {
-      banner.textContent = '🛠️ Clique sur les pièces en bas (1 ➔ 5) pour assembler les roues au centre !';
+      banner.textContent = '🛠️ Touche les boutons en bas (de 1 à 5) pour construire ta montre !';
     } else if (!hasCrown || !hasSpring) {
-      banner.textContent = '⚙️ Monte la Molette à 9h (1) et le Barillet à Ressort (2) pour alimenter la montre.';
+      banner.textContent = '⚙️ Monte la Molette (1) à gauche et le Ressort (2) pour donner de la force à la montre.';
     } else if (this.isWinding) {
       banner.textContent =
         powerPct >= 100
-          ? '✅ Ressort tendu à 100% ! Relâche la molette.'
-          : '🔄 Remontage : la tige à 9h enroule le ressort spiral du barillet...';
+          ? '✅ Le ressort est plein d’énergie (100%) ! Tu peux relâcher.'
+          : '🔄 Bravo ! La molette resserre le ressort orange pour faire le plein d’énergie...';
     } else if (powerPct === 0) {
-      banner.textContent = '⚡ Ressort détendu ! Maintiens la Molette à gauche (9h) ou le bouton « Remonter ».';
+      banner.textContent = '⚡ Le ressort est fatigué ! Maintiens la Molette à gauche ou le bouton « Remonter ».';
     } else if (!hasHours || !hasMinutes || !hasSeconds) {
-      banner.textContent = '⏱️ Monte les 3 roues coaxiales au centre : 3. Heures (Jaune), 4. Minutes (Bleue), 5. Secondes (Rouge).';
+      banner.textContent = '⏱️ Empile les 3 roues au milieu : Grande Jaune (Heures), Moyenne Bleue (Minutes), Petite Rouge (Secondes) !';
     } else {
-      const speed = this.watchMechanism?.speedMultiplier ?? 1;
-      banner.textContent =
-        speed === 1
-          ? '🏆 Calibre coaxial en marche (1x Temps réel) : passe en 12x ou 60x pour accélérer les Minutes et Heures !'
-          : `🚀 Calibre coaxial accéléré (${speed}x) : les Minutes tournent 12x plus vite que les Heures !`;
+      banner.textContent = '✨ Regarde : la petite roue rouge tourne vite, la bleue plus doucement, et la grande jaune lentement !';
     }
   }
 
@@ -248,8 +244,7 @@ export class GameEngine {
         this.soundEngine.playSnap();
       } else {
         this.saveData = SaveManager.unlockAll(currentMuted);
-        // En mode test, si on débloque tout, on pré-équipe une réserve d'énergie de 75%
-        if (this.watchMechanism) this.watchMechanism.power = 75;
+        if (this.watchMechanism) this.watchMechanism.power = 80;
         this.soundEngine.playLevelComplete();
       }
       this.updateDevButtonUI();
@@ -259,7 +254,7 @@ export class GameEngine {
       this.render();
     });
 
-    // --- CONTRÔLES DE REMONTAGE, VITESSE & CADRAN DE L'ATELIER ---
+    // --- CONTRÔLES DE REMONTAGE & CADRAN DE L'ATELIER ---
     const startWinding = (e: Event) => {
       e.preventDefault();
       if (this.saveData.placedParts.includes('crown')) {
@@ -282,14 +277,6 @@ export class GameEngine {
     });
     window.addEventListener('mouseup', stopWinding);
     window.addEventListener('touchend', stopWinding);
-
-    const speedBtn = document.getElementById('speed-watch-btn');
-    speedBtn?.addEventListener('click', () => {
-      if (!this.watchMechanism) return;
-      const mult = this.watchMechanism.cycleSpeedMultiplier();
-      speedBtn.textContent = mult === 1 ? '⏱️ Vitesse : 1x' : mult === 12 ? '⏩ Vitesse : 12x' : '🚀 Vitesse : 60x';
-      this.soundEngine.playSnap();
-    });
 
     const atelierCanvas = document.getElementById('atelierCanvas') as HTMLCanvasElement | null;
     if (atelierCanvas) {
@@ -318,7 +305,7 @@ export class GameEngine {
     toggleDialBtn?.addEventListener('click', () => {
       if (this.watchMechanism) {
         this.watchMechanism.showDial = !this.watchMechanism.showDial;
-        toggleDialBtn.textContent = this.watchMechanism.showDial ? '👁️ Cadran : Visible' : '👁️ Cadran : Squelette';
+        toggleDialBtn.textContent = this.watchMechanism.showDial ? '👁️ Chiffres : Oui' : '👁️ Chiffres : Non';
         this.soundEngine.playSnap();
       }
     });
@@ -545,7 +532,7 @@ export class GameEngine {
         } else {
           this.saveData.placedParts.push(partId);
           if (partId === 'spring' && this.watchMechanism && this.watchMechanism.power < 25) {
-            this.watchMechanism.power = 65;
+            this.watchMechanism.power = 75;
           }
         }
         this.soundEngine.playSnap();
@@ -580,9 +567,9 @@ export class GameEngine {
     switch (partId) {
       case 'crown': return 'Molette';
       case 'spring': return 'Ressort';
-      case 'hours': return 'Engr. Heures';
-      case 'minutes': return 'Engr. Minutes';
-      case 'seconds': return 'Engr. Secondes';
+      case 'hours': return 'Roue Heures';
+      case 'minutes': return 'Roue Minutes';
+      case 'seconds': return 'Roue Secondes';
       default: return partId;
     }
   }

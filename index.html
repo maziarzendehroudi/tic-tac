@@ -44,21 +44,21 @@
           </button>
           <button class="level-rect lvl-3 locked" data-level="3">
             <div class="lvl-content">
-              <span class="lvl-title">Niveau 3 ➔ 3. Engr. Heures & Océan</span>
+              <span class="lvl-title">Niveau 3 ➔ 3. Roue Heures & Océan</span>
               <span class="lvl-desc">Quarts d'heure</span>
             </div>
             <span class="lvl-check hidden">✅</span>
           </button>
           <button class="level-rect lvl-4 locked" data-level="4">
             <div class="lvl-content">
-              <span class="lvl-title">Niveau 4 ➔ 4. Engr. Minutes & Espace</span>
+              <span class="lvl-title">Niveau 4 ➔ 4. Roue Minutes & Espace</span>
               <span class="lvl-desc">Précision 5 minutes</span>
             </div>
             <span class="lvl-check hidden">✅</span>
           </button>
           <button class="level-rect lvl-5 locked" data-level="5">
             <div class="lvl-content">
-              <span class="lvl-title">Niveau 5 ➔ 5. Engr. Secondes & Or</span>
+              <span class="lvl-title">Niveau 5 ➔ 5. Roue Secondes & Or</span>
               <span class="lvl-desc">Les 24 heures</span>
             </div>
             <span class="lvl-check hidden">✅</span>
@@ -92,25 +92,22 @@
         <div id="atelier-top-bar">
           <button id="atelier-back-btn">🏠 Menu</button>
           <h2>Atelier Mécanique</h2>
-          <button id="toggle-dial-btn" type="button">👁️ Cadran : Visible</button>
+          <button id="toggle-dial-btn" type="button">👁️ Chiffres : Oui</button>
         </div>
 
         <div id="atelier-status">
-          🛠️ Clique sur les pièces en bas (1 ➔ 5) pour assembler les roues au centre !
+          🛠️ Touche les boutons en bas (de 1 à 5) pour construire ta montre !
         </div>
         
         <div id="watch-blueprint">
           <canvas id="atelierCanvas" width="500" height="500"></canvas>
-          <button id="crown-hitbox" class="hidden" title="Maintenir la molette à 9h pour remonter"></button>
+          <button id="crown-hitbox" class="hidden" title="Maintenir la molette à gauche pour remonter"></button>
         </div>
 
         <div id="watch-controls">
           <div class="power-header">
-            <span id="power-label">🔋 Réserve : 65%</span>
-            <div class="atelier-action-btns">
-              <button id="speed-watch-btn" type="button" title="Changer la vitesse d'observation">⏱️ Vitesse : 1x</button>
-              <button id="wind-watch-btn" type="button">🔄 Remonter</button>
-            </div>
+            <span id="power-label">🔋 Énergie du ressort : 75%</span>
+            <button id="wind-watch-btn" type="button">🔄 Maintenir pour remonter</button>
           </div>
           <div id="power-bar-container">
             <div id="power-bar"></div>
