@@ -2,8 +2,10 @@ import { Clock } from './Clock';
 import { Hands } from './Hands';
 import { QuestionManager } from './QuestionManager';
 import type { TimeTarget } from './QuestionManager';
-import { SaveManager } from './SaveManager';
-import type { GameSave } from './SaveManager';
+import { SaveManager, ALL_THEMES, ALL_HANDS } from './SaveManager';
+import type { GameSave, DialTheme, HandsStyle } from './SaveManager';
+import { SoundEngine } from './SoundEngine';
+import { TimeMath } from './TimeMath';
 import { WatchMechanism } from './WatchMechanism';
 
 export class GameEngine {
@@ -12,11 +14,12 @@ export class GameEngine {
   private clock: Clock;
   private hands: Hands;
   private questionManager: QuestionManager;
+  private soundEngine: SoundEngine;
   private watchMechanism!: WatchMechanism;
-  
+
   private currentHours: number = 12;
   private currentMinutes: number = 0;
-  
+
   private targetTime!: TimeTarget;
   private currentChoices: TimeTarget[] = [];
   private saveData: GameSave;
@@ -27,22 +30,15 @@ export class GameEngine {
 
   private isDragging: boolean = false;
   private isWinding: boolean = false;
+  private isTransitioning: boolean = false;
   private activeHand: 'hour' | 'minute' = 'minute';
   private animFrameId: number = 0;
   private lastTime: number = performance.now();
 
-  private levelPartsMap: { [key: number]: string } = {
-    1: 'crown',
-    2: 'spring',
-    3: 'hours',
-    4: 'minutes',
-    5: 'seconds'
-  };
-
   constructor(canvas: HTMLCanvasElement) {
     this.canvas = canvas;
     this.ctx = canvas.getContext('2d')!;
-    
+
     const width = canvas.width;
     const height = canvas.height;
     const centerX = width / 2;
@@ -52,18 +48,29 @@ export class GameEngine {
     this.ctx.translate(centerX, centerY);
 
     this.saveData = SaveManager.load();
-    this.clock = new Clock(this.ctx, radius, 'classic');
-    this.hands = new Hands(this.ctx, radius, 'classic-hands');
+    this.soundEngine = new SoundEngine(this.saveData.muted);
+    this.clock = new Clock(this.ctx, radius, this.saveData.selectedTheme);
+    this.hands = new Hands(this.ctx, radius, this.saveData.selectedHands);
     this.questionManager = new QuestionManager(1);
 
-    const atelierCanvas = document.getElementById('atelierCanvas') as HTMLCanvasElement;
+    const atelierCanvas = document.getElementById('atelierCanvas') as HTMLCanvasElement | null;
     if (atelierCanvas) {
       const atelierCtx = atelierCanvas.getContext('2d')!;
-      this.watchMechanism = new WatchMechanism(atelierCtx, atelierCanvas.width, atelierCanvas.height);
+      this.watchMechanism = new WatchMechanism(
+        atelierCtx,
+        atelierCanvas.width,
+        atelierCanvas.height,
+        (isTic) => this.soundEngine.playTick(isTic),
+        () => this.soundEngine.playWindingClick()
+      );
+      this.watchMechanism.setTheme(this.saveData.selectedTheme);
     }
 
     this.initEvents();
+    this.updateSoundButtonUI();
+    this.updateDevButtonUI();
     this.updateMenuUI();
+    this.renderThemeSelector();
     this.updateUI();
   }
 
@@ -71,6 +78,7 @@ export class GameEngine {
     this.currentLevel = level;
     this.currentPhase = 1;
     this.phaseSuccessCount = 0;
+    this.isTransitioning = false;
     this.questionManager.setLevel(level);
 
     this.stopAnimation();
@@ -89,10 +97,13 @@ export class GameEngine {
 
   private returnToMenu(): void {
     this.stopAnimation();
+    this.isTransitioning = false;
     document.getElementById('game-screen')?.classList.add('hidden');
     document.getElementById('atelier-view')?.classList.add('hidden');
     document.getElementById('main-menu')?.classList.remove('hidden');
+    this.updateDevButtonUI();
     this.updateMenuUI();
+    this.renderThemeSelector();
   }
 
   private openAtelier(): void {
@@ -107,16 +118,15 @@ export class GameEngine {
     const loop = (time: number) => {
       const deltaTime = time - this.lastTime;
       this.lastTime = time;
-      
+
       if (this.watchMechanism) {
-        // Le mécanisme reçoit l'état "isWinding" en temps réel
         this.watchMechanism.update(deltaTime, this.saveData.placedParts, this.isWinding);
         this.watchMechanism.draw(this.saveData.placedParts, this.saveData.unlockedParts, this.isWinding);
-        
+
         const powerBar = document.getElementById('power-bar');
         if (powerBar) powerBar.style.width = `${this.watchMechanism.power}%`;
       }
-      
+
       this.animFrameId = requestAnimationFrame(loop);
     };
     this.animFrameId = requestAnimationFrame(loop);
@@ -129,6 +139,7 @@ export class GameEngine {
   private initNewQuestion(): void {
     this.targetTime = this.questionManager.generateQuestion();
     this.errorsCount = 0;
+    this.isTransitioning = false;
     this.hideHelp();
 
     if (this.currentPhase === 1) {
@@ -147,21 +158,68 @@ export class GameEngine {
       rect.addEventListener('click', (e) => {
         const target = e.currentTarget as HTMLElement;
         const level = parseInt(target.getAttribute('data-level') || '1', 10);
-        if (level <= (this.saveData.maxUnlockedLevel || 1)) this.startLevel(level);
-        else alert("🔒 Ce niveau est verrouillé ! Termine le niveau précédent.");
+        if (level <= (this.saveData.maxUnlockedLevel || 1)) {
+          this.soundEngine.playSnap();
+          this.startLevel(level);
+        } else {
+          this.soundEngine.playError();
+        }
       });
     });
 
-    document.getElementById('open-atelier-btn')?.addEventListener('click', () => this.openAtelier());
-    document.getElementById('atelier-back-btn')?.addEventListener('click', () => this.returnToMenu());
-    document.getElementById('back-menu-btn')?.addEventListener('click', () => this.returnToMenu());
+    document.getElementById('open-atelier-btn')?.addEventListener('click', () => {
+      this.soundEngine.playSnap();
+      this.openAtelier();
+    });
+    document.getElementById('atelier-back-btn')?.addEventListener('click', () => {
+      this.soundEngine.playSnap();
+      this.returnToMenu();
+    });
+    document.getElementById('back-menu-btn')?.addEventListener('click', () => {
+      this.soundEngine.playSnap();
+      this.returnToMenu();
+    });
 
-    // --- HITBOXES ROBUSTES POUR L'ATELIER (Mobile First) ---
+    const soundToggleBtn = document.getElementById('sound-toggle-btn');
+    soundToggleBtn?.addEventListener('click', () => {
+      this.saveData.muted = !this.saveData.muted;
+      this.soundEngine.setMuted(this.saveData.muted);
+      SaveManager.save(this.saveData);
+      this.updateSoundButtonUI();
+      if (!this.saveData.muted) {
+        this.soundEngine.playSnap();
+      }
+    });
+
+    // Bouton provisoire de test (Débloquer tout <-> Réinitialiser)
+    const devUnlockBtn = document.getElementById('dev-unlock-btn');
+    devUnlockBtn?.addEventListener('click', () => {
+      const currentMuted = this.saveData.muted;
+      if (SaveManager.isFullyUnlocked(this.saveData)) {
+        this.saveData = SaveManager.reset();
+        this.saveData.muted = currentMuted;
+        SaveManager.save(this.saveData);
+        this.clock.setTheme(this.saveData.selectedTheme);
+        this.hands.setStyle(this.saveData.selectedHands);
+        this.watchMechanism?.setTheme(this.saveData.selectedTheme);
+        if (this.watchMechanism) this.watchMechanism.power = 0;
+        this.soundEngine.playSnap();
+      } else {
+        this.saveData = SaveManager.unlockAll(currentMuted);
+        this.soundEngine.playLevelComplete();
+      }
+      this.updateDevButtonUI();
+      this.updateMenuUI();
+      this.renderThemeSelector();
+      this.renderAtelier();
+      this.render();
+    });
+
     const crownHitbox = document.getElementById('crown-hitbox');
     if (crownHitbox) {
       const startWinding = (e: Event) => { e.preventDefault(); this.isWinding = true; };
       const stopWinding = () => { this.isWinding = false; };
-      
+
       crownHitbox.addEventListener('mousedown', startWinding);
       crownHitbox.addEventListener('touchstart', startWinding, { passive: false });
       window.addEventListener('mouseup', stopWinding);
@@ -175,11 +233,11 @@ export class GameEngine {
         e.preventDefault();
         if (this.watchMechanism) {
           this.watchMechanism.showDial = !this.watchMechanism.showDial;
+          this.soundEngine.playSnap();
         }
       });
     }
 
-    // Événements jeu (horloge apprentissage)
     const getPointerPos = (e: MouseEvent | TouchEvent) => {
       const rect = this.canvas.getBoundingClientRect();
       const clientX = 'touches' in e ? e.touches[0].clientX : (e as MouseEvent).clientX;
@@ -192,15 +250,15 @@ export class GameEngine {
     };
 
     const onStart = (e: MouseEvent | TouchEvent) => {
-      if (this.currentPhase === 1) return;
+      if (this.currentPhase === 1 || this.isTransitioning) return;
       e.preventDefault();
       const pos = getPointerPos(e);
       const angle = Math.atan2(pos.x, -pos.y);
       const minAngle = (this.currentMinutes * Math.PI) / 30;
       const hrAngle = ((this.currentHours % 12) * Math.PI) / 6 + (this.currentMinutes * Math.PI) / 360;
 
-      const diffMin = Math.abs(this.normalizeAngle(angle - minAngle));
-      const diffHr = Math.abs(this.normalizeAngle(angle - hrAngle));
+      const diffMin = Math.abs(TimeMath.normalizeAngle(angle - minAngle));
+      const diffHr = Math.abs(TimeMath.normalizeAngle(angle - hrAngle));
       const distFromCenter = Math.sqrt(pos.x * pos.x + pos.y * pos.y);
 
       if (diffMin < diffHr || distFromCenter > this.radius * 0.6) this.activeHand = 'minute';
@@ -211,7 +269,7 @@ export class GameEngine {
     };
 
     const onMove = (e: MouseEvent | TouchEvent) => {
-      if (!this.isDragging || this.currentPhase === 1) return;
+      if (!this.isDragging || this.currentPhase === 1 || this.isTransitioning) return;
       e.preventDefault();
       const pos = getPointerPos(e);
       this.updateFromPointer(pos.x, pos.y);
@@ -221,6 +279,7 @@ export class GameEngine {
       if (!this.isDragging) return;
       this.isDragging = false;
       this.snapToGrid();
+      this.soundEngine.playSnap();
     };
 
     this.canvas.addEventListener('mousedown', onStart);
@@ -230,28 +289,58 @@ export class GameEngine {
     window.addEventListener('touchmove', onMove, { passive: false });
     window.addEventListener('touchend', onEnd);
 
-    document.getElementById('check-btn')?.addEventListener('click', () => this.checkPlaceAnswer());
+    document.getElementById('check-btn')?.addEventListener('click', () => {
+      if (!this.isTransitioning && this.currentPhase === 2) {
+        this.checkPlaceAnswer();
+      }
+    });
 
-    const choiceBtns = document.querySelectorAll('.choice-btn');
+    const choiceBtns = document.querySelectorAll('#choices-container .choice-btn');
     choiceBtns.forEach((btn, index) => {
       btn.addEventListener('click', () => {
-        if (this.currentPhase === 1) this.checkReadAnswer(index);
+        if (!this.isTransitioning && this.currentPhase === 1) {
+          this.checkReadAnswer(index);
+        }
       });
     });
+  }
+
+  private updateSoundButtonUI(): void {
+    const btn = document.getElementById('sound-toggle-btn');
+    if (btn) {
+      btn.textContent = this.saveData.muted ? '🔇 Son coupé' : '🔊 Son actif';
+      btn.setAttribute('aria-pressed', String(!this.saveData.muted));
+    }
+  }
+
+  private updateDevButtonUI(): void {
+    const btn = document.getElementById('dev-unlock-btn');
+    if (!btn) return;
+    if (SaveManager.isFullyUnlocked(this.saveData)) {
+      btn.textContent = '🔄 Réinitialiser (Test)';
+      btn.classList.add('unlocked-mode');
+    } else {
+      btn.textContent = '🔓 Tout débloquer (Test)';
+      btn.classList.remove('unlocked-mode');
+    }
   }
 
   private updateMenuUI(): void {
     const levelRects = document.querySelectorAll('.level-rect');
     const maxUnlocked = this.saveData.maxUnlockedLevel || 1;
+    const isLevel6Master = this.saveData.unlockedHands.includes('neon-hands');
 
     levelRects.forEach(rect => {
       const level = parseInt(rect.getAttribute('data-level') || '1', 10);
       const checkMark = rect.querySelector('.lvl-check');
-      
+
       if (level <= maxUnlocked) {
         rect.classList.remove('locked');
-        if (level < maxUnlocked) checkMark?.classList.remove('hidden');
-        else checkMark?.classList.add('hidden');
+        if (level < maxUnlocked || (level === 6 && isLevel6Master)) {
+          checkMark?.classList.remove('hidden');
+        } else {
+          checkMark?.classList.add('hidden');
+        }
       } else {
         rect.classList.add('locked');
         checkMark?.classList.add('hidden');
@@ -259,58 +348,139 @@ export class GameEngine {
     });
   }
 
+  private renderThemeSelector(): void {
+    const dialsContainer = document.getElementById('dial-themes-list');
+    const handsContainer = document.getElementById('hands-styles-list');
+    if (!dialsContainer || !handsContainer) return;
+
+    const dialMeta: Record<DialTheme, { label: string; icon: string; unlockHint: string }> = {
+      classic: { label: 'Classique', icon: '⌚', unlockHint: 'Débloqué' },
+      wood: { label: 'Bois', icon: '🪵', unlockHint: 'Niv. 1' },
+      forest: { label: 'Forêt', icon: '🌲', unlockHint: 'Niv. 2' },
+      ocean: { label: 'Océan', icon: '🌊', unlockHint: 'Niv. 3' },
+      space: { label: 'Espace', icon: '🌌', unlockHint: 'Niv. 4' }
+    };
+
+    const handsMeta: Record<HandsStyle, { label: string; icon: string; unlockHint: string }> = {
+      'classic-hands': { label: 'Acier & Bleu', icon: '🔹', unlockHint: 'Débloqué' },
+      'gold-hands': { label: 'Or Horloger', icon: '✨', unlockHint: 'Niv. 5' },
+      'neon-hands': { label: 'Néon Maître', icon: '⚡', unlockHint: 'Niv. 6' }
+    };
+
+    dialsContainer.innerHTML = '';
+    ALL_THEMES.forEach(theme => {
+      const isUnlocked = this.saveData.unlockedThemes.includes(theme);
+      const isSelected = this.saveData.selectedTheme === theme;
+      const meta = dialMeta[theme];
+
+      const btn = document.createElement('button');
+      btn.className = `theme-pill${isSelected ? ' active' : ''}${!isUnlocked ? ' locked' : ''}`;
+      btn.innerHTML = isUnlocked
+        ? `${meta.icon} <span>${meta.label}</span>`
+        : `🔒 <span>${meta.label} (${meta.unlockHint})</span>`;
+
+      btn.addEventListener('click', () => {
+        if (!isUnlocked) {
+          this.soundEngine.playError();
+          return;
+        }
+        this.saveData.selectedTheme = theme;
+        this.clock.setTheme(theme);
+        this.watchMechanism?.setTheme(theme);
+        SaveManager.save(this.saveData);
+        this.soundEngine.playSnap();
+        this.renderThemeSelector();
+        this.render();
+      });
+
+      dialsContainer.appendChild(btn);
+    });
+
+    handsContainer.innerHTML = '';
+    ALL_HANDS.forEach(style => {
+      const isUnlocked = this.saveData.unlockedHands.includes(style);
+      const isSelected = this.saveData.selectedHands === style;
+      const meta = handsMeta[style];
+
+      const btn = document.createElement('button');
+      btn.className = `theme-pill${isSelected ? ' active' : ''}${!isUnlocked ? ' locked' : ''}`;
+      btn.innerHTML = isUnlocked
+        ? `${meta.icon} <span>${meta.label}</span>`
+        : `🔒 <span>${meta.label} (${meta.unlockHint})</span>`;
+
+      btn.addEventListener('click', () => {
+        if (!isUnlocked) {
+          this.soundEngine.playError();
+          return;
+        }
+        this.saveData.selectedHands = style;
+        this.hands.setStyle(style);
+        SaveManager.save(this.saveData);
+        this.soundEngine.playSnap();
+        this.renderThemeSelector();
+        this.render();
+      });
+
+      handsContainer.appendChild(btn);
+    });
+  }
+
   private renderAtelier(): void {
     const inventoryContainer = document.getElementById('inventory-items');
     const watchControls = document.getElementById('watch-controls');
-    const dialHint = document.getElementById('dial-hint');
     const crownHitbox = document.getElementById('crown-hitbox');
     const dialHitbox = document.getElementById('dial-hitbox');
 
     if (!inventoryContainer) return;
     inventoryContainer.innerHTML = '';
 
-    // Gestion du montage/démontage via l'inventaire
+    if (this.saveData.unlockedParts.length === 0) {
+      const emptyMsg = document.createElement('p');
+      emptyMsg.style.color = '#94a3b8';
+      emptyMsg.style.fontSize = '0.9rem';
+      emptyMsg.style.textAlign = 'center';
+      emptyMsg.textContent = 'Termine les niveaux pour forger tes premières pièces d’horlogerie !';
+      inventoryContainer.appendChild(emptyMsg);
+    }
+
     this.saveData.unlockedParts.forEach(partId => {
       const isPlaced = this.saveData.placedParts.includes(partId);
       const partEl = document.createElement('div');
       partEl.className = 'inventory-part' + (isPlaced ? ' placed' : '');
-      
+
       const statusText = isPlaced ? ' (Enlever)' : ' (Monter)';
       partEl.innerHTML = `${this.getPartIcon(partId)} <span>${this.getPartName(partId)}${statusText}</span>`;
-      
+
       partEl.addEventListener('click', () => {
         if (isPlaced) {
           this.saveData.placedParts = this.saveData.placedParts.filter(p => p !== partId);
         } else {
           this.saveData.placedParts.push(partId);
         }
+        this.soundEngine.playSnap();
         SaveManager.save(this.saveData);
         this.renderAtelier();
       });
       inventoryContainer.appendChild(partEl);
     });
 
-    // Activation de la couronne si placée
     if (this.saveData.placedParts.includes('crown')) {
       crownHitbox?.classList.remove('hidden');
     } else {
       crownHitbox?.classList.add('hidden');
     }
 
-    // Affichage interface si horloge complète
     if (this.saveData.placedParts.length >= 5) {
       watchControls?.classList.remove('hidden');
-      dialHint?.classList.remove('hidden');
       dialHitbox?.classList.remove('hidden');
     } else {
       watchControls?.classList.add('hidden');
-      dialHint?.classList.add('hidden');
       dialHitbox?.classList.add('hidden');
     }
   }
 
   private getPartIcon(partId: string): string {
-    switch(partId) {
+    switch (partId) {
       case 'crown': return '⚙️';
       case 'spring': return '🔋';
       case 'hours': return '🟡';
@@ -321,7 +491,7 @@ export class GameEngine {
   }
 
   private getPartName(partId: string): string {
-    switch(partId) {
+    switch (partId) {
       case 'crown': return 'Molette';
       case 'spring': return 'Ressort';
       case 'hours': return 'Engr. Heures';
@@ -332,20 +502,15 @@ export class GameEngine {
   }
 
   private handleSuccessfulAnswer(): void {
+    this.isTransitioning = true;
     this.phaseSuccessCount++;
     this.triggerSuccessEffect();
-
-    const partToUnlock = this.levelPartsMap[this.currentLevel];
-    if (partToUnlock && !this.saveData.unlockedParts.includes(partToUnlock)) {
-      this.saveData.unlockedParts.push(partToUnlock);
-    }
-    SaveManager.save(this.saveData);
-    this.updateMenuUI();
 
     const instructionEl = document.getElementById('instruction');
 
     if (this.phaseSuccessCount >= 3) {
       if (this.currentPhase === 1) {
+        this.soundEngine.playSuccess();
         this.currentPhase = 2;
         this.phaseSuccessCount = 0;
         if (instructionEl) instructionEl.innerHTML = `<span style="font-size: 2.5rem;">👍</span>`;
@@ -356,16 +521,25 @@ export class GameEngine {
         }, 1500);
         return;
       } else {
-        if (this.currentLevel === this.saveData.maxUnlockedLevel && this.currentLevel < 6) {
-          this.saveData.maxUnlockedLevel = this.currentLevel + 1;
-          SaveManager.save(this.saveData);
-        }
-        if (instructionEl) instructionEl.innerHTML = `🏆 <span style="font-size: 2.5rem;">👍</span> Pièce forgée !`;
-        setTimeout(() => { this.returnToMenu(); }, 2000);
+        this.soundEngine.playLevelComplete();
+        SaveManager.applyLevelRewards(this.saveData, this.currentLevel);
+        SaveManager.save(this.saveData);
+        this.updateDevButtonUI();
+        this.updateMenuUI();
+        this.renderThemeSelector();
+
+        const rewardText =
+          this.currentLevel === 6
+            ? `🏆 <span style="font-size: 2rem;">⚡</span> Coffret Maître Horloger débloqué !`
+            : `🏆 <span style="font-size: 2rem;">👍</span> Pièce & Habillage forgés !`;
+
+        if (instructionEl) instructionEl.innerHTML = rewardText;
+        setTimeout(() => { this.returnToMenu(); }, 2200);
         return;
       }
     }
 
+    this.soundEngine.playSuccess();
     if (instructionEl) instructionEl.innerHTML = `<span style="font-size: 2.5rem;">👍</span>`;
     setTimeout(() => {
       this.initNewQuestion();
@@ -376,13 +550,19 @@ export class GameEngine {
 
   private handleFailedAttempt(): void {
     this.errorsCount++;
+    this.soundEngine.playError();
     this.triggerShakeEffect();
     const instructionEl = document.getElementById('instruction');
 
-    if (this.errorsCount >= 3) this.showHelp();
-    else {
+    if (this.errorsCount >= 3) {
+      this.showHelp();
+    } else {
+      this.isTransitioning = true;
       if (instructionEl) instructionEl.innerHTML = `<span style="font-size: 2.5rem;">❌</span>`;
-      setTimeout(() => { this.updateUI(); }, 1000);
+      setTimeout(() => {
+        this.isTransitioning = false;
+        this.updateUI();
+      }, 1000);
     }
   }
 
@@ -391,36 +571,37 @@ export class GameEngine {
     const helpText = document.getElementById('help-text');
     if (helpBox && helpText) {
       helpBox.classList.remove('hidden');
-      if (this.currentPhase === 1) helpText.textContent = `La bonne réponse est ${this.targetTime.text}.`;
-      else helpText.textContent = `Pour ${this.targetTime.text}, place la petite aiguille sur ${this.targetTime.hours % 12 || 12} et la grande sur ${this.targetTime.minutes}.`;
+      if (this.currentPhase === 1) {
+        helpText.textContent = `La bonne réponse est ${this.targetTime.text}.`;
+      } else {
+        helpText.textContent = `Pour ${this.targetTime.text}, place la petite aiguille sur ${this.targetTime.hours % 12 || 12} et la grande sur ${this.targetTime.minutes}.`;
+      }
     }
   }
 
-  private hideHelp(): void { document.getElementById('help-box')?.classList.add('hidden'); }
-
-  private normalizeAngle(angle: number): number {
-    while (angle <= -Math.PI) angle += 2 * Math.PI;
-    while (angle > Math.PI) angle -= 2 * Math.PI;
-    return angle;
+  private hideHelp(): void {
+    document.getElementById('help-box')?.classList.add('hidden');
   }
 
   private updateFromPointer(x: number, y: number): void {
-    let angle = Math.atan2(x, -y);
-    if (angle < 0) angle += 2 * Math.PI;
-
     if (this.activeHand === 'minute') {
-      this.currentMinutes = Math.round((angle / (2 * Math.PI)) * 60) % 60;
+      const nextMinutes = TimeMath.pointerToMinutes(x, y);
+      if (nextMinutes !== this.currentMinutes) {
+        this.currentMinutes = nextMinutes;
+        this.soundEngine.playTick(nextMinutes % 2 === 0);
+      }
     } else {
-      const totalHours = Math.round((angle / (2 * Math.PI)) * 12) % 12;
-      this.currentHours = totalHours === 0 ? 12 : totalHours;
+      const nextHours = TimeMath.pointerToHours(x, y);
+      if (nextHours !== this.currentHours) {
+        this.currentHours = nextHours;
+        this.soundEngine.playTick(true);
+      }
     }
     this.render();
   }
 
   private snapToGrid(): void {
-    if (this.currentLevel === 6) { this.render(); return; }
-    this.currentMinutes = Math.round(this.currentMinutes / 5) * 5;
-    if (this.currentMinutes === 60) this.currentMinutes = 0;
+    this.currentMinutes = TimeMath.snapMinutes(this.currentMinutes, this.currentLevel);
     this.render();
   }
 
@@ -441,17 +622,22 @@ export class GameEngine {
   }
 
   private checkPlaceAnswer(): void {
-    const isHourCorrect = this.currentHours % 12 === this.targetTime.hours % 12;
-    const isMinuteCorrect = this.currentLevel === 6 
-      ? Math.abs(this.currentMinutes - this.targetTime.minutes) <= 2
-      : this.currentMinutes === this.targetTime.minutes;
+    const isCorrect = TimeMath.isPlacementCorrect(
+      this.currentHours,
+      this.currentMinutes,
+      this.targetTime.hours,
+      this.targetTime.minutes,
+      this.currentLevel
+    );
 
-    if (isHourCorrect && isMinuteCorrect) this.handleSuccessfulAnswer();
+    if (isCorrect) this.handleSuccessfulAnswer();
     else this.handleFailedAttempt();
   }
 
   private checkReadAnswer(choiceIndex: number): void {
     const selectedChoice = this.currentChoices[choiceIndex];
+    if (!selectedChoice) return;
+
     const isMinutesExact = selectedChoice.minutes === this.targetTime.minutes;
     const isHoursExact = selectedChoice.hours === this.targetTime.hours;
 
@@ -466,8 +652,8 @@ export class GameEngine {
     const choicesContainer = document.getElementById('choices-container');
 
     if (phaseBadge) {
-      phaseBadge.textContent = this.currentPhase === 1 
-        ? `Étape 1/2 : Lecture (${this.phaseSuccessCount}/3)` 
+      phaseBadge.textContent = this.currentPhase === 1
+        ? `Étape 1/2 : Lecture (${this.phaseSuccessCount}/3)`
         : `Étape 2/2 : Placement (${this.phaseSuccessCount}/3)`;
     }
 
@@ -476,7 +662,7 @@ export class GameEngine {
       if (choicesContainer) choicesContainer.classList.remove('hidden');
       if (instructionEl) instructionEl.textContent = `Quelle heure est-il sur l'horloge ?`;
 
-      const choiceBtns = document.querySelectorAll('.choice-btn');
+      const choiceBtns = document.querySelectorAll('#choices-container .choice-btn');
       choiceBtns.forEach((btn, idx) => {
         if (this.currentChoices[idx]) btn.textContent = this.currentChoices[idx].text;
       });
@@ -487,7 +673,9 @@ export class GameEngine {
     }
   }
 
-  private get radius(): number { return Math.min(this.canvas.width / 2, this.canvas.height / 2) - 10; }
+  private get radius(): number {
+    return Math.min(this.canvas.width / 2, this.canvas.height / 2) - 10;
+  }
 
   public render(): void {
     this.clock.draw(this.currentLevel);

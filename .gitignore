@@ -22,3 +22,11 @@ dist-ssr
 *.njsproj
 *.sln
 *.sw?
+
+# Méthode Z Mestis - Fichiers d'audit et de reprise locaux
+AUDIT_INITIAL_Z.md
+REPRISE_GEMINI.md
+audit_z.sh
+init_methode_z.sh
+export_reprise.sh
+deploy_test_z.sh

@@ -1,56 +1,61 @@
 import './style.css';
 import { GameEngine } from './game/GameEngine';
 
-const canvas = document.getElementById('clockCanvas') as HTMLCanvasElement;
+interface BeforeInstallPromptEvent extends Event {
+  readonly platforms: string[];
+  readonly userChoice: Promise<{
+    outcome: 'accepted' | 'dismissed';
+    platform: string;
+  }>;
+  prompt(): Promise<void>;
+}
+
+interface NavigatorStandalone extends Navigator {
+  standalone?: boolean;
+}
+
+const canvas = document.getElementById('clockCanvas') as HTMLCanvasElement | null;
 if (canvas) {
   new GameEngine(canvas);
 }
 
-// Enregistrement du Service Worker pour la PWA
-// Nettoyage radical des anciens Service Workers bloquants et enregistrement du nouveau
+// Enregistrement propre du Service Worker pour la PWA
 if ('serviceWorker' in navigator) {
   window.addEventListener('load', () => {
-    navigator.serviceWorker.getRegistrations().then(registrations => {
-      for (let registration of registrations) {
-        registration.unregister(); // Force le nettoyage du cache persistant
-      }
-    }).then(() => {
-      navigator.serviceWorker.register(`${import.meta.env.BASE_URL}sw.js`).catch(err => {
-        console.log('Erreur SW:', err);
-      });
+    navigator.serviceWorker.register(`${import.meta.env.BASE_URL}sw.js`).catch(() => {
+      // Silencieux en production (Zéro console.log)
     });
   });
 }
 
 // Logique du popup d'installation PWA
-let deferredPrompt: any = null;
+let deferredPrompt: BeforeInstallPromptEvent | null = null;
 const installModal = document.getElementById('pwa-install-modal');
 const installBtn = document.getElementById('pwa-install-btn');
 const closeInstallBtn = document.getElementById('pwa-close-btn');
 const installText = document.getElementById('install-text');
 
-const isIOS = /iphone|ipad|ipod/.test(navigator.userAgent.toLowerCase()) && !(window as any).MSStream;
-const isStandalone = window.matchMedia('(display-mode: standalone)').matches || (navigator as any).standalone;
+const isIOS = /iphone|ipad|ipod/.test(navigator.userAgent.toLowerCase());
+const isStandalone =
+  window.matchMedia('(display-mode: standalone)').matches ||
+  Boolean((navigator as NavigatorStandalone).standalone);
 const hasDismissed = localStorage.getItem('pwa_install_dismissed');
 
 if (!isStandalone && !hasDismissed) {
   if (isIOS) {
-    // Instructions spécifiques pour iOS (Safari)
     if (installText) {
       installText.innerHTML = `Pour installer Tic-Tac sur ton iPad ou iPhone, appuie sur le bouton <strong>Partager</strong> <span style="font-size:1.2rem;">⎋</span> puis choisis <strong>"Sur l'écran d'accueil"</strong> <span style="font-size:1.2rem;">➕</span>.`;
     }
     if (installBtn) {
-      installBtn.style.display = 'none'; // Pas de prompt natif sur iOS
+      installBtn.style.display = 'none';
     }
-    // Afficher après 2 secondes pour ne pas brusquer l'ouverture
     setTimeout(() => {
       installModal?.classList.remove('hidden');
     }, 2000);
   } else {
-    // Pour Android / Chrome / Edge (capture du beforeinstallprompt)
-    window.addEventListener('beforeinstallprompt', (e) => {
+    window.addEventListener('beforeinstallprompt', (e: Event) => {
       e.preventDefault();
-      deferredPrompt = e;
+      deferredPrompt = e as BeforeInstallPromptEvent;
       setTimeout(() => {
         installModal?.classList.remove('hidden');
       }, 2000);
@@ -60,11 +65,8 @@ if (!isStandalone && !hasDismissed) {
 
 installBtn?.addEventListener('click', async () => {
   if (deferredPrompt) {
-    deferredPrompt.prompt();
-    const { outcome } = await deferredPrompt.userChoice;
-    if (outcome === 'accepted') {
-      console.log('Application installée avec succès');
-    }
+    await deferredPrompt.prompt();
+    await deferredPrompt.userChoice;
     deferredPrompt = null;
     installModal?.classList.add('hidden');
   }

@@ -143,3 +143,141 @@ canvas { display: block; width: 100%; height: 100%; touch-action: none; }
 .install-actions button { flex: 1; border: none; padding: 12px; border-radius: 14px; font-weight: 700; cursor: pointer; }
 #pwa-install-btn { background: #4f46e5; color: white; }
 #pwa-close-btn { background: #e2e8f0; color: #334155; }
+/* Animations Feedback Pédagogique */
+@keyframes shake {
+  0%, 100% { transform: translateX(0); }
+  20%, 60% { transform: translateX(-8px); }
+  40%, 80% { transform: translateX(8px); }
+}
+
+@keyframes successBounce {
+  0%, 100% { transform: scale(1); }
+  40% { transform: scale(1.06); }
+  70% { transform: scale(0.97); }
+}
+
+.shake {
+  animation: shake 0.4s ease-in-out;
+}
+
+.success-bounce {
+  animation: successBounce 0.6s cubic-bezier(0.34, 1.56, 0.64, 1);
+}
+
+/* Barre Audio Globale & Coffret d'Habillage */
+#global-top-bar {
+  width: 100%;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 10px;
+}
+
+.brand-badge {
+  font-size: 0.78rem;
+  font-weight: 600;
+  color: #94a3b8;
+  background: #1e293b;
+  padding: 5px 10px;
+  border-radius: 10px;
+  border: 1px solid #334155;
+}
+
+#sound-toggle-btn {
+  background: #1e293b;
+  color: #f8fafc;
+  border: 1px solid #334155;
+  padding: 5px 12px;
+  border-radius: 10px;
+  font-size: 0.8rem;
+  font-weight: 700;
+  cursor: pointer;
+  transition: all 0.15s;
+}
+
+#sound-toggle-btn:hover {
+  border-color: #fbbf24;
+  color: #fbbf24;
+}
+
+#customization-box {
+  width: 100%;
+  margin-top: 14px;
+  background: #020617;
+  border: 1px solid #1e293b;
+  border-radius: 18px;
+  padding: 12px;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.custom-section {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.custom-label {
+  font-size: 0.8rem;
+  font-weight: 700;
+  color: #cbd5e1;
+}
+
+.theme-pills-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.theme-pill {
+  background: #1e293b;
+  color: #e2e8f0;
+  border: 1.5px solid #334155;
+  padding: 6px 10px;
+  border-radius: 12px;
+  font-size: 0.78rem;
+  font-weight: 600;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  transition: all 0.15s;
+}
+
+.theme-pill.active {
+  background: linear-gradient(135deg, #0284c7, #0369a1);
+  border-color: #38bdf8;
+  color: #ffffff;
+  box-shadow: 0 2px 8px rgba(56, 189, 248, 0.35);
+}
+
+.theme-pill.locked {
+  background: #0f172a;
+  color: #64748b;
+  border: 1.5px dashed #334155;
+  cursor: not-allowed;
+}
+
+/* Bouton provisoire Mode Test */
+#dev-unlock-btn {
+  background: rgba(245, 158, 11, 0.15);
+  color: #fbbf24;
+  border: 1.5px dashed #f59e0b;
+  padding: 5px 12px;
+  border-radius: 10px;
+  font-size: 0.78rem;
+  font-weight: 700;
+  cursor: pointer;
+  transition: all 0.15s;
+}
+
+#dev-unlock-btn:hover {
+  background: rgba(245, 158, 11, 0.28);
+}
+
+#dev-unlock-btn.unlocked-mode {
+  background: rgba(16, 185, 129, 0.15);
+  color: #34d399;
+  border-color: #10b981;
+}

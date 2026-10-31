@@ -15,6 +15,10 @@ export class QuestionManager {
     this.level = level;
   }
 
+  public getLevel(): number {
+    return this.level;
+  }
+
   public generateQuestion(): TimeTarget {
     let hours = Math.floor(Math.random() * 12) + 1;
     let minutes = 0;
@@ -29,11 +33,10 @@ export class QuestionManager {
     } else if (this.level === 4) {
       minutes = Math.floor(Math.random() * 12) * 5;
     } else if (this.level === 5) {
-      hours = Math.floor(Math.random() * 24) + 1;
+      hours = Math.floor(Math.random() * 24);
       minutes = Math.floor(Math.random() * 12) * 5;
     } else if (this.level === 6) {
-      // Niveau 6 : 24h et minutes complexes/arbitraires (ex: 13h43, 9h12...)
-      hours = Math.floor(Math.random() * 24) + 1;
+      hours = Math.floor(Math.random() * 24);
       minutes = Math.floor(Math.random() * 60);
     }
 
@@ -44,13 +47,8 @@ export class QuestionManager {
       text = `${h}h${m}`;
     } else {
       const displayHour = hours % 12 || 12;
-      if (minutes === 0) {
-        text = `${displayHour}h00`;
-      } else if (minutes < 10) {
-        text = `${displayHour}h0${minutes}`;
-      } else {
-        text = `${displayHour}h${minutes}`;
-      }
+      const m = minutes < 10 ? `0${minutes}` : `${minutes}`;
+      text = `${displayHour}h${m}`;
     }
 
     return { hours, minutes, text };
