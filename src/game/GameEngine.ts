@@ -2,8 +2,8 @@ import { Clock } from './Clock';
 import { Hands } from './Hands';
 import { QuestionManager } from './QuestionManager';
 import type { TimeTarget } from './QuestionManager';
-import { SaveManager, ALL_PARTS, ALL_THEMES, ALL_HANDS } from './SaveManager';
-import type { GameSave, DialTheme, HandsStyle } from './SaveManager';
+import { SaveManager, ALL_PARTS } from './SaveManager';
+import type { GameSave } from './SaveManager';
 import { SoundEngine } from './SoundEngine';
 import { TimeMath } from './TimeMath';
 import { WatchMechanism } from './WatchMechanism';
@@ -31,7 +31,7 @@ export class GameEngine {
   private isDragging: boolean = false;
   private isWinding: boolean = false;
   private isTransitioning: boolean = false;
-  private activeHand: 'hour' | 'minute' = 'minute';
+  private activeHand: 'hour' | 'minute' = 'hour';
   private animFrameId: number = 0;
   private lastTime: number = performance.now();
 
@@ -49,8 +49,8 @@ export class GameEngine {
 
     this.saveData = SaveManager.load();
     this.soundEngine = new SoundEngine(this.saveData.muted);
-    this.clock = new Clock(this.ctx, radius, this.saveData.selectedTheme);
-    this.hands = new Hands(this.ctx, radius, this.saveData.selectedHands);
+    this.clock = new Clock(this.ctx, radius);
+    this.hands = new Hands(this.ctx, radius);
     this.questionManager = new QuestionManager(1);
 
     const atelierCanvas = document.getElementById('atelierCanvas') as HTMLCanvasElement | null;
@@ -63,14 +63,12 @@ export class GameEngine {
         (isTic) => this.soundEngine.playTick(isTic),
         () => this.soundEngine.playWindingClick()
       );
-      this.watchMechanism.setTheme(this.saveData.selectedTheme);
     }
 
     this.initEvents();
     this.updateSoundButtonUI();
     this.updateDevButtonUI();
     this.updateMenuUI();
-    this.renderThemeSelector();
     this.updateUI();
   }
 
@@ -104,7 +102,6 @@ export class GameEngine {
     document.getElementById('main-menu')?.classList.remove('hidden');
     this.updateDevButtonUI();
     this.updateMenuUI();
-    this.renderThemeSelector();
   }
 
   private openAtelier(): void {
@@ -152,9 +149,10 @@ export class GameEngine {
     const hasHours = placed.includes('hours');
     const hasMinutes = placed.includes('minutes');
     const hasSeconds = placed.includes('seconds');
+    const hasEscapement = placed.includes('escapement');
 
     if (placed.length === 0) {
-      banner.textContent = '🛠️ Ajoute les pièces de 1 à 5 pour voir chaque aiguille s’animer l’une après l’autre !';
+      banner.textContent = '🛠️ Ajoute les pièces de 1 à 6 pour voir chaque aiguille s’animer l’une après l’autre !';
     } else if (!hasSpring) {
       banner.textContent = '🔋 Monte le Ressort (2) à gauche : c’est lui qui donne la force de faire tourner la montre !';
     } else if (this.isWinding) {
@@ -168,21 +166,15 @@ export class GameEngine {
           ? '⚡ Le Ressort est vide ! Maintiens la Molette (1) ou le bouton « Remonter ».'
           : '⚙️ Monte la Molette (1) à gauche pour pouvoir remonter le Ressort !';
     } else if (!hasHours) {
-      if (hasMinutes || hasSeconds) {
-        banner.textContent = '💡 Il manque la Grande Roue Jaune des Heures (3) pour transmettre la force du Ressort !';
-      } else {
-        banner.textContent = '🟡 Monte la Roue des Heures (3) : le Ressort va faire tourner la petite aiguille jaune !';
-      }
+      banner.textContent = '🟡 Monte la Roue des Heures (3) : le Ressort va faire tourner la petite aiguille dorée !';
     } else if (!hasMinutes) {
-      if (hasSeconds) {
-        banner.textContent = '💡 Il manque le Relais et la Roue Bleue des Minutes (4) pour entraîner les Secondes !';
-      } else {
-        banner.textContent = '🟡 La petite aiguille jaune tourne ! Ajoute les Minutes (4) pour voir le Relais Bleu en haut.';
-      }
+      banner.textContent = '🟡 La petite aiguille dorée tourne ! Ajoute les Minutes (4) pour voir le Relais Bleu en haut.';
     } else if (!hasSeconds) {
-      banner.textContent = '🔵 Le Relais Bleu en haut accélère la grande aiguille bleue ! Ajoute les Secondes (5) à droite.';
+      banner.textContent = '🔵 Le Relais Bleu accélère la grande aiguille bleue ! Ajoute les Secondes (5) à droite.';
+    } else if (!hasEscapement) {
+      banner.textContent = '🔴 Les 3 aiguilles tournent ! Ajoute le Balancier Tic-Tac (6) en bas pour activer le son Tic-Tac.';
     } else {
-      banner.textContent = '🏆 Ressort ➔ Jaune (Heures) ➔ Relais Bleu (Minutes) ➔ Relais Rouge (Secondes + Tic-Tac) !';
+      banner.textContent = '🏆 Horloge complète : Ressort ➔ Heures ➔ Relais Minutes ➔ Relais Secondes ➔ Balancier Tic-Tac !';
     }
   }
 
@@ -201,8 +193,12 @@ export class GameEngine {
       this.currentMinutes = this.targetTime.minutes;
       this.currentChoices = this.questionManager.generateChoices(this.targetTime);
     } else {
-      this.currentHours = 12;
+      // Phase 2 : Départ avec les aiguilles séparées (ex: 9h00 ou 6h00) et jamais déjà posées sur la réponse cible !
+      const targetH12 = this.targetTime.hours % 12 || 12;
+      this.currentHours = targetH12 === 9 ? 6 : 9;
       this.currentMinutes = 0;
+      this.activeHand = 'hour';
+      this.updateHandSelectorUI();
     }
   }
 
@@ -252,9 +248,6 @@ export class GameEngine {
         this.saveData = SaveManager.reset();
         this.saveData.muted = currentMuted;
         SaveManager.save(this.saveData);
-        this.clock.setTheme(this.saveData.selectedTheme);
-        this.hands.setStyle(this.saveData.selectedHands);
-        this.watchMechanism?.setTheme(this.saveData.selectedTheme);
         if (this.watchMechanism) this.watchMechanism.power = 0;
         this.soundEngine.playSnap();
       } else {
@@ -264,7 +257,6 @@ export class GameEngine {
       }
       this.updateDevButtonUI();
       this.updateMenuUI();
-      this.renderThemeSelector();
       this.renderAtelier();
       this.render();
     });
@@ -325,7 +317,32 @@ export class GameEngine {
       }
     });
 
-    // --- ÉVÉNEMENTS DE L'ÉCRAN D'APPRENTISSAGE ---
+    // --- OUTILS PÉDAGOGIQUES DE PLACEMENT (Sélection d'aiguille & Pas-à-pas) ---
+    document.getElementById('select-hour-btn')?.addEventListener('click', () => {
+      this.activeHand = 'hour';
+      this.soundEngine.playSnap();
+      this.updateHandSelectorUI();
+      this.render();
+    });
+
+    document.getElementById('select-minute-btn')?.addEventListener('click', () => {
+      this.activeHand = 'minute';
+      this.soundEngine.playSnap();
+      this.updateHandSelectorUI();
+      this.render();
+    });
+
+    document.getElementById('step-minus-btn')?.addEventListener('click', () => {
+      if (this.currentPhase !== 2 || this.isTransitioning) return;
+      this.nudgeActiveHand(-1);
+    });
+
+    document.getElementById('step-plus-btn')?.addEventListener('click', () => {
+      if (this.currentPhase !== 2 || this.isTransitioning) return;
+      this.nudgeActiveHand(1);
+    });
+
+    // --- ÉVÉNEMENTS TACTILES / SOURIS DU CADRAN D'APPRENTISSAGE ---
     const getPointerPos = (e: MouseEvent | TouchEvent) => {
       const rect = this.canvas.getBoundingClientRect();
       const clientX = 'touches' in e ? e.touches[0].clientX : (e as MouseEvent).clientX;
@@ -349,8 +366,13 @@ export class GameEngine {
       const diffHr = Math.abs(TimeMath.normalizeAngle(angle - hrAngle));
       const distFromCenter = Math.sqrt(pos.x * pos.x + pos.y * pos.y);
 
-      if (diffMin < diffHr || distFromCenter > this.radius * 0.6) this.activeHand = 'minute';
-      else this.activeHand = 'hour';
+      // Si l'enfant touche clairement l'une des deux aiguilles (à moins de 25°), on la sélectionne automatiquement
+      if (diffMin < 0.42 && diffMin < diffHr && distFromCenter > this.radius * 0.48) {
+        this.activeHand = 'minute';
+      } else if (diffHr < 0.42 && diffHr <= diffMin && distFromCenter <= this.radius * 0.62) {
+        this.activeHand = 'hour';
+      }
+      this.updateHandSelectorUI();
 
       this.isDragging = true;
       this.updateFromPointer(pos.x, pos.y);
@@ -393,6 +415,31 @@ export class GameEngine {
     });
   }
 
+  private nudgeActiveHand(direction: -1 | 1): void {
+    if (this.activeHand === 'hour') {
+      const nextH = ((this.currentHours - 1 + direction + 12) % 12) + 1;
+      this.currentHours = nextH;
+      this.soundEngine.playTick(true);
+    } else {
+      const step = this.currentLevel === 6 ? 1 : 5;
+      this.currentMinutes = (this.currentMinutes + direction * step + 60) % 60;
+      this.soundEngine.playTick(this.currentMinutes % 2 === 0);
+    }
+    this.render();
+  }
+
+  private updateHandSelectorUI(): void {
+    const hrBtn = document.getElementById('select-hour-btn');
+    const minBtn = document.getElementById('select-minute-btn');
+    if (this.activeHand === 'hour') {
+      hrBtn?.classList.add('active-hand-btn');
+      minBtn?.classList.remove('active-hand-btn');
+    } else {
+      minBtn?.classList.add('active-hand-btn');
+      hrBtn?.classList.remove('active-hand-btn');
+    }
+  }
+
   private updateSoundButtonUI(): void {
     const btn = document.getElementById('sound-toggle-btn');
     if (btn) {
@@ -416,7 +463,7 @@ export class GameEngine {
   private updateMenuUI(): void {
     const levelRects = document.querySelectorAll('.level-rect');
     const maxUnlocked = this.saveData.maxUnlockedLevel || 1;
-    const isLevel6Master = this.saveData.unlockedHands.includes('neon-hands');
+    const isLevel6Done = this.saveData.unlockedParts.includes('escapement');
 
     levelRects.forEach(rect => {
       const level = parseInt(rect.getAttribute('data-level') || '1', 10);
@@ -424,7 +471,7 @@ export class GameEngine {
 
       if (level <= maxUnlocked) {
         rect.classList.remove('locked');
-        if (level < maxUnlocked || (level === 6 && isLevel6Master)) {
+        if (level < maxUnlocked || (level === 6 && isLevel6Done)) {
           checkMark?.classList.remove('hidden');
         } else {
           checkMark?.classList.add('hidden');
@@ -433,91 +480,6 @@ export class GameEngine {
         rect.classList.add('locked');
         checkMark?.classList.add('hidden');
       }
-    });
-  }
-
-  private renderThemeSelector(): void {
-    const dialsContainer = document.getElementById('dial-themes-list');
-    const handsContainer = document.getElementById('hands-styles-list');
-    const customTitle = document.getElementById('custom-box-title');
-    if (!dialsContainer || !handsContainer) return;
-
-    const isMasterUnlocked = this.saveData.unlockedThemes.length > 1;
-    if (customTitle) {
-      customTitle.textContent = isMasterUnlocked
-        ? '🎨 Coffret du Maître Horloger (Personnalise ton horloge !)'
-        : '🔒 Coffret du Maître Horloger (Gagne le Niveau 6 pour tout débloquer)';
-    }
-
-    const dialMeta: Record<DialTheme, { label: string; icon: string }> = {
-      classic: { label: 'Classique', icon: '⌚' },
-      wood: { label: 'Bois', icon: '🪵' },
-      forest: { label: 'Forêt', icon: '🌲' },
-      ocean: { label: 'Océan', icon: '🌊' },
-      space: { label: 'Espace', icon: '🌌' }
-    };
-
-    const handsMeta: Record<HandsStyle, { label: string; icon: string }> = {
-      'classic-hands': { label: 'Acier & Bleu', icon: '🔹' },
-      'gold-hands': { label: 'Or Horloger', icon: '✨' },
-      'neon-hands': { label: 'Néon Maître', icon: '⚡' }
-    };
-
-    dialsContainer.innerHTML = '';
-    ALL_THEMES.forEach(theme => {
-      const isUnlocked = this.saveData.unlockedThemes.includes(theme);
-      const isSelected = this.saveData.selectedTheme === theme;
-      const meta = dialMeta[theme];
-
-      const btn = document.createElement('button');
-      btn.className = `theme-pill${isSelected ? ' active' : ''}${!isUnlocked ? ' locked' : ''}`;
-      btn.innerHTML = isUnlocked
-        ? `${meta.icon} <span>${meta.label}</span>`
-        : `🔒 <span>${meta.label} (Niv. 6)</span>`;
-
-      btn.addEventListener('click', () => {
-        if (!isUnlocked) {
-          this.soundEngine.playError();
-          return;
-        }
-        this.saveData.selectedTheme = theme;
-        this.clock.setTheme(theme);
-        this.watchMechanism?.setTheme(theme);
-        SaveManager.save(this.saveData);
-        this.soundEngine.playSnap();
-        this.renderThemeSelector();
-        this.render();
-      });
-
-      dialsContainer.appendChild(btn);
-    });
-
-    handsContainer.innerHTML = '';
-    ALL_HANDS.forEach(style => {
-      const isUnlocked = this.saveData.unlockedHands.includes(style);
-      const isSelected = this.saveData.selectedHands === style;
-      const meta = handsMeta[style];
-
-      const btn = document.createElement('button');
-      btn.className = `theme-pill${isSelected ? ' active' : ''}${!isUnlocked ? ' locked' : ''}`;
-      btn.innerHTML = isUnlocked
-        ? `${meta.icon} <span>${meta.label}</span>`
-        : `🔒 <span>${meta.label} (Niv. 6)</span>`;
-
-      btn.addEventListener('click', () => {
-        if (!isUnlocked) {
-          this.soundEngine.playError();
-          return;
-        }
-        this.saveData.selectedHands = style;
-        this.hands.setStyle(style);
-        SaveManager.save(this.saveData);
-        this.soundEngine.playSnap();
-        this.renderThemeSelector();
-        this.render();
-      });
-
-      handsContainer.appendChild(btn);
     });
   }
 
@@ -534,7 +496,7 @@ export class GameEngine {
       emptyMsg.style.color = '#94a3b8';
       emptyMsg.style.fontSize = '0.9rem';
       emptyMsg.style.textAlign = 'center';
-      emptyMsg.textContent = 'Gagne les niveaux 1 à 5 (ou clique sur « Tout débloquer ») pour obtenir tes pièces une par une !';
+      emptyMsg.textContent = 'Gagne les niveaux 1 à 6 (ou clique sur « Tout débloquer ») pour obtenir tes pièces une par une !';
       inventoryContainer.appendChild(emptyMsg);
     }
 
@@ -582,6 +544,7 @@ export class GameEngine {
       case 'hours': return '🟡';
       case 'minutes': return '🔵';
       case 'seconds': return '🔴';
+      case 'escapement': return '🔔';
       default: return '🔧';
     }
   }
@@ -593,6 +556,7 @@ export class GameEngine {
       case 'hours': return 'Heures';
       case 'minutes': return 'Minutes';
       case 'seconds': return 'Secondes';
+      case 'escapement': return 'Tic-Tac';
       default: return partId;
     }
   }
@@ -601,6 +565,7 @@ export class GameEngine {
     this.isTransitioning = true;
     this.phaseSuccessCount++;
     this.triggerSuccessEffect();
+    this.hideHelp();
 
     const instructionEl = document.getElementById('instruction');
 
@@ -609,12 +574,12 @@ export class GameEngine {
         this.soundEngine.playSuccess();
         this.currentPhase = 2;
         this.phaseSuccessCount = 0;
-        if (instructionEl) instructionEl.innerHTML = `<span style="font-size: 2.5rem;">👍</span>`;
+        if (instructionEl) instructionEl.innerHTML = `🎉 <strong>Bravo !</strong> Passons à l’étape 2 : à toi de placer les aiguilles !`;
         setTimeout(() => {
           this.initNewQuestion();
           this.updateUI();
           this.render();
-        }, 1500);
+        }, 1600);
         return;
       } else {
         this.soundEngine.playLevelComplete();
@@ -622,18 +587,17 @@ export class GameEngine {
         SaveManager.save(this.saveData);
         this.updateDevButtonUI();
         this.updateMenuUI();
-        this.renderThemeSelector();
 
         const levelRewardsLabels: Record<number, string> = {
-          1: '⚙️ Pièce 1 débloquée : La Molette !',
-          2: '🔋 Pièce 2 débloquée : Le Ressort !',
-          3: '🟡 Pièce 3 débloquée : Roue & Aiguille des Heures !',
-          4: '🔵 Pièce 4 débloquée : Relais & Aiguille des Minutes !',
-          5: '🔴 Pièce 5 débloquée : Relais & Aiguille des Secondes !',
-          6: '🎨 Pouvoir de Maître Horloger : Personnalisation débloquée !'
+          1: '⚙️ Pièce 1 gagnée : La Molette !',
+          2: '🔋 Pièce 2 gagnée : Le Ressort !',
+          3: '🟡 Pièce 3 gagnée : Roue & Aiguille des Heures !',
+          4: '🔵 Pièce 4 gagnée : Relais & Aiguille des Minutes !',
+          5: '🔴 Pièce 5 gagnée : Relais & Aiguille des Secondes !',
+          6: '🔔 Pièce 6 gagnée : Le Balancier Tic-Tac ! Tu es Maître Horloger !'
         };
 
-        const rewardText = `🏆 ${levelRewardsLabels[this.currentLevel] || 'Niveau terminé !'}`;
+        const rewardText = `🏆 <strong>${levelRewardsLabels[this.currentLevel] || 'Niveau terminé !'}</strong>`;
         if (instructionEl) instructionEl.innerHTML = rewardText;
         setTimeout(() => { this.returnToMenu(); }, 2200);
         return;
@@ -641,7 +605,7 @@ export class GameEngine {
     }
 
     this.soundEngine.playSuccess();
-    if (instructionEl) instructionEl.innerHTML = `<span style="font-size: 2.5rem;">👍</span>`;
+    if (instructionEl) instructionEl.innerHTML = `✅ <strong>Bravo ! C’est exactement ${this.targetTime.text} !</strong>`;
     setTimeout(() => {
       this.initNewQuestion();
       this.updateUI();
@@ -653,29 +617,58 @@ export class GameEngine {
     this.errorsCount++;
     this.soundEngine.playError();
     this.triggerShakeEffect();
-    const instructionEl = document.getElementById('instruction');
-
-    if (this.errorsCount >= 3) {
-      this.showHelp();
-    } else {
-      this.isTransitioning = true;
-      if (instructionEl) instructionEl.innerHTML = `<span style="font-size: 2.5rem;">❌</span>`;
-      setTimeout(() => {
-        this.isTransitioning = false;
-        this.updateUI();
-      }, 1000);
-    }
+    this.showDiagnosticHelp();
   }
 
-  private showHelp(): void {
+  /**
+   * Aide pédagogique progressive et diagnostique dès la 1re erreur
+   */
+  private showDiagnosticHelp(): void {
     const helpBox = document.getElementById('help-box');
     const helpText = document.getElementById('help-text');
-    if (helpBox && helpText) {
-      helpBox.classList.remove('hidden');
-      if (this.currentPhase === 1) {
-        helpText.textContent = `La bonne réponse est ${this.targetTime.text}.`;
+    if (!helpBox || !helpText) return;
+
+    helpBox.classList.remove('hidden');
+
+    const baseExplanation = TimeMath.buildPedagogicalHint(
+      this.targetTime.hours,
+      this.targetTime.minutes,
+      this.currentLevel
+    );
+
+    if (this.currentPhase === 1) {
+      if (this.errorsCount === 1) {
+        helpText.innerHTML = baseExplanation;
       } else {
-        helpText.textContent = `Pour ${this.targetTime.text}, place la petite aiguille sur ${this.targetTime.hours % 12 || 12} et la grande sur ${this.targetTime.minutes}.`;
+        helpText.innerHTML = `${baseExplanation} ➔ Il est donc <strong>${this.targetTime.text}</strong>.`;
+      }
+    } else {
+      // Phase 2 : Diagnostic précis de l'aiguille déjà juste vs l'aiguille à corriger
+      const isHourCorrect = (this.currentHours % 12) === (this.targetTime.hours % 12);
+      const isMinuteCorrect =
+        this.currentLevel === 6
+          ? TimeMath.circularMinuteDiff(this.currentMinutes, this.targetTime.minutes) <= 1
+          : this.currentMinutes === this.targetTime.minutes;
+
+      const targetDialHour = this.targetTime.hours % 12 || 12;
+      const targetDialMinNum = TimeMath.minuteToDialNumber(this.targetTime.minutes);
+
+      if (isHourCorrect && !isMinuteCorrect) {
+        this.activeHand = 'minute';
+        this.updateHandSelectorUI();
+        this.render();
+        if (this.currentLevel === 6) {
+          helpText.innerHTML = `👍 La <strong>petite aiguille dorée (heures)</strong> est bien placée ! Maintenant, place la <strong>grande aiguille bleue</strong> exactement sur <strong>${this.targetTime.minutes} minutes</strong> (aide-toi des boutons ➖ / ➕).`;
+        } else {
+          helpText.innerHTML = `👍 La <strong>petite aiguille dorée (heures)</strong> est bien placée ! Maintenant, déplace la <strong>grande aiguille bleue</strong> sur le <strong>${targetDialMinNum}</strong> pour faire <strong>${this.targetTime.minutes === 0 ? '00 minute' : this.targetTime.minutes + ' minutes'}</strong>.`;
+        }
+      } else if (!isHourCorrect && isMinuteCorrect) {
+        this.activeHand = 'hour';
+        this.updateHandSelectorUI();
+        this.render();
+        helpText.innerHTML = `👍 La <strong>grande aiguille bleue (minutes)</strong> est bien placée ! Maintenant, déplace la <strong>petite aiguille dorée</strong> sur le <strong>${targetDialHour}</strong>.`;
+      } else {
+        helpText.innerHTML = `Commence par placer la <strong>petite aiguille dorée</strong> sur le <strong>${targetDialHour}</strong>, puis la <strong>grande aiguille bleue</strong> sur le <strong>${targetDialMinNum}</strong> (${this.targetTime.minutes === 0 ? '00 minute' : this.targetTime.minutes + ' minutes'}).`;
       }
     }
   }
@@ -692,7 +685,7 @@ export class GameEngine {
         this.soundEngine.playTick(nextMinutes % 2 === 0);
       }
     } else {
-      const nextHours = TimeMath.pointerToHours(x, y);
+      const nextHours = TimeMath.pointerToHours(x, y, this.currentMinutes);
       if (nextHours !== this.currentHours) {
         this.currentHours = nextHours;
         this.soundEngine.playTick(true);
@@ -746,9 +739,16 @@ export class GameEngine {
     else this.handleFailedAttempt();
   }
 
+  private formatColoredTargetHTML(target: TimeTarget): string {
+    const [hPart, mPart] = target.text.split('h');
+    return `<span class="hr-badge">${hPart}h</span><span class="min-badge">${mPart}</span>`;
+  }
+
   private updateUI(): void {
     const instructionEl = document.getElementById('instruction');
     const phaseBadge = document.getElementById('phase-badge');
+    const periodBadge = document.getElementById('day-period-badge');
+    const placementTools = document.getElementById('placement-tools');
     const checkBtn = document.getElementById('check-btn');
     const choicesContainer = document.getElementById('choices-container');
 
@@ -758,19 +758,36 @@ export class GameEngine {
         : `Étape 2/2 : Placement (${this.phaseSuccessCount}/3)`;
     }
 
+    // Affichage du moment de la journée aux Niveaux 5 et 6 (24h)
+    if (periodBadge) {
+      if (this.targetTime?.periodLabel) {
+        periodBadge.textContent = this.targetTime.periodLabel;
+        periodBadge.classList.remove('hidden');
+      } else {
+        periodBadge.classList.add('hidden');
+      }
+    }
+
     if (this.currentPhase === 1) {
-      if (checkBtn) checkBtn.classList.add('hidden');
-      if (choicesContainer) choicesContainer.classList.remove('hidden');
-      if (instructionEl) instructionEl.textContent = `Quelle heure est-il sur l'horloge ?`;
+      checkBtn?.classList.add('hidden');
+      placementTools?.classList.add('hidden');
+      choicesContainer?.classList.remove('hidden');
+      if (instructionEl) {
+        instructionEl.innerHTML = `Quelle heure est-il ? <small style="display:block;font-size:0.8rem;color:#94a3b8;font-weight:500;">(🟡 Petite = Heures · 🔵 Grande = Minutes)</small>`;
+      }
 
       const choiceBtns = document.querySelectorAll('#choices-container .choice-btn');
       choiceBtns.forEach((btn, idx) => {
         if (this.currentChoices[idx]) btn.textContent = this.currentChoices[idx].text;
       });
     } else {
-      if (checkBtn) checkBtn.classList.remove('hidden');
-      if (choicesContainer) choicesContainer.classList.add('hidden');
-      if (instructionEl) instructionEl.innerHTML = `Place les aiguilles sur : <strong>${this.targetTime.text}</strong>`;
+      checkBtn?.classList.remove('hidden');
+      placementTools?.classList.remove('hidden');
+      choicesContainer?.classList.add('hidden');
+      this.updateHandSelectorUI();
+      if (instructionEl) {
+        instructionEl.innerHTML = `Place les aiguilles sur : ${this.formatColoredTargetHTML(this.targetTime)}`;
+      }
     }
   }
 
@@ -780,6 +797,10 @@ export class GameEngine {
 
   public render(): void {
     this.clock.draw(this.currentLevel);
-    this.hands.draw(this.currentHours, this.currentMinutes);
+    this.hands.draw(
+      this.currentHours,
+      this.currentMinutes,
+      this.currentPhase === 2 ? this.activeHand : undefined
+    );
   }
 }

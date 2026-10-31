@@ -1,20 +1,18 @@
-export type DialTheme = 'classic' | 'wood' | 'forest' | 'ocean' | 'space';
-export type HandsStyle = 'classic-hands' | 'gold-hands' | 'neon-hands';
-
 export interface GameSave {
   maxUnlockedLevel: number;
   unlockedParts: string[];
   placedParts: string[];
-  unlockedThemes: DialTheme[];
-  unlockedHands: HandsStyle[];
-  selectedTheme: DialTheme;
-  selectedHands: HandsStyle;
   muted: boolean;
 }
 
-export const ALL_PARTS = ['crown', 'spring', 'hours', 'minutes', 'seconds'] as const;
-export const ALL_THEMES: DialTheme[] = ['classic', 'wood', 'forest', 'ocean', 'space'];
-export const ALL_HANDS: HandsStyle[] = ['classic-hands', 'gold-hands', 'neon-hands'];
+export const ALL_PARTS = [
+  'crown',
+  'spring',
+  'hours',
+  'minutes',
+  'seconds',
+  'escapement'
+] as const;
 
 export class SaveManager {
   private static STORAGE_KEY = 'tic_tac_watch_save';
@@ -25,10 +23,6 @@ export class SaveManager {
         maxUnlockedLevel: 6,
         unlockedParts: [...ALL_PARTS],
         placedParts: [...ALL_PARTS],
-        unlockedThemes: [...ALL_THEMES],
-        unlockedHands: [...ALL_HANDS],
-        selectedTheme: 'classic',
-        selectedHands: 'classic-hands',
         muted: false
       };
     }
@@ -36,10 +30,6 @@ export class SaveManager {
       maxUnlockedLevel: 1,
       unlockedParts: [],
       placedParts: [],
-      unlockedThemes: ['classic'],
-      unlockedHands: ['classic-hands'],
-      selectedTheme: 'classic',
-      selectedHands: 'classic-hands',
       muted: false
     };
   }
@@ -54,16 +44,13 @@ export class SaveManager {
   public static isFullyUnlocked(save: GameSave): boolean {
     return (
       save.maxUnlockedLevel >= 6 &&
-      save.unlockedParts.length >= ALL_PARTS.length &&
-      save.unlockedThemes.length >= ALL_THEMES.length &&
-      save.unlockedHands.length >= ALL_HANDS.length
+      save.unlockedParts.length >= ALL_PARTS.length
     );
   }
 
   /**
-   * Progression 1 :
-   * - Niveaux 1 à 5 : chaque niveau gagné débloque (et monte) 1 nouvel élément mécanique dans l'ordre.
-   * - Niveau 6 (Maître Horloger) : débloque l'intégralité de la personnalisation (5 cadrans + 3 styles d'aiguilles).
+   * Chaque niveau gagné (1 à 6) débloque et monte 1 pièce mécanique dans l'Atelier :
+   * 1: Molette | 2: Ressort | 3: Heures | 4: Minutes | 5: Secondes | 6: Balancier Tic-Tac
    */
   public static applyLevelRewards(save: GameSave, completedLevel: number): GameSave {
     const levelPartsMap: Record<number, string> = {
@@ -71,7 +58,8 @@ export class SaveManager {
       2: 'spring',
       3: 'hours',
       4: 'minutes',
-      5: 'seconds'
+      5: 'seconds',
+      6: 'escapement'
     };
 
     const part = levelPartsMap[completedLevel];
@@ -82,16 +70,6 @@ export class SaveManager {
       if (!save.placedParts.includes(part)) {
         save.placedParts.push(part);
       }
-    }
-
-    // Niveau 6 : Récompense finale -> Pouvoir de personnaliser l'horloge (Cadrans & Aiguilles)
-    if (completedLevel >= 6) {
-      ALL_THEMES.forEach(t => {
-        if (!save.unlockedThemes.includes(t)) save.unlockedThemes.push(t);
-      });
-      ALL_HANDS.forEach(h => {
-        if (!save.unlockedHands.includes(h)) save.unlockedHands.push(h);
-      });
     }
 
     if (completedLevel === save.maxUnlockedLevel && completedLevel < 6) {
@@ -130,44 +108,12 @@ export class SaveManager {
         ? parsed.placedParts.filter((p): p is string => typeof p === 'string' && unlockedParts.includes(p))
         : [];
 
-      const unlockedThemes: DialTheme[] = ['classic'];
-      if (Array.isArray(parsed.unlockedThemes)) {
-        parsed.unlockedThemes.forEach(t => {
-          if (ALL_THEMES.includes(t) && !unlockedThemes.includes(t)) {
-            unlockedThemes.push(t);
-          }
-        });
-      }
-
-      const unlockedHands: HandsStyle[] = ['classic-hands'];
-      if (Array.isArray(parsed.unlockedHands)) {
-        parsed.unlockedHands.forEach(h => {
-          if (ALL_HANDS.includes(h) && !unlockedHands.includes(h)) {
-            unlockedHands.push(h);
-          }
-        });
-      }
-
-      const selectedTheme: DialTheme =
-        parsed.selectedTheme && unlockedThemes.includes(parsed.selectedTheme)
-          ? parsed.selectedTheme
-          : 'classic';
-
-      const selectedHands: HandsStyle =
-        parsed.selectedHands && unlockedHands.includes(parsed.selectedHands)
-          ? parsed.selectedHands
-          : 'classic-hands';
-
       const muted = Boolean(parsed.muted);
 
       return {
         maxUnlockedLevel,
         unlockedParts,
         placedParts,
-        unlockedThemes,
-        unlockedHands,
-        selectedTheme,
-        selectedHands,
         muted
       };
     } catch {
