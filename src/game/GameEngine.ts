@@ -110,6 +110,9 @@ export class GameEngine {
   private openAtelier(): void {
     document.getElementById('main-menu')?.classList.add('hidden');
     document.getElementById('atelier-view')?.classList.remove('hidden');
+    if (this.watchMechanism && this.saveData.placedParts.includes('spring') && this.watchMechanism.power < 15) {
+      this.watchMechanism.power = 65;
+    }
     this.renderAtelier();
     this.startAnimation();
   }
@@ -117,18 +120,19 @@ export class GameEngine {
   private startAnimation(): void {
     this.lastTime = performance.now();
     const loop = (time: number) => {
-      const deltaTime = time - this.lastTime;
+      const deltaTime = Math.min(time - this.lastTime, 100);
       this.lastTime = time;
 
       if (this.watchMechanism) {
         this.watchMechanism.update(deltaTime, this.saveData.placedParts, this.isWinding);
         this.watchMechanism.draw(this.saveData.placedParts, this.saveData.unlockedParts, this.isWinding);
 
-        const powerPct = Math.round(this.watchMechanism.power);
+        const hasSpring = this.saveData.placedParts.includes('spring');
+        const powerPct = hasSpring ? Math.round(this.watchMechanism.power) : 0;
         const powerBar = document.getElementById('power-bar');
         const powerLabel = document.getElementById('power-label');
         if (powerBar) powerBar.style.width = `${powerPct}%`;
-        if (powerLabel) powerLabel.textContent = `🔋 Énergie du ressort : ${powerPct}%`;
+        if (powerLabel) powerLabel.textContent = `🔋 Réserve : ${powerPct}%`;
 
         this.updateAtelierStatusBanner(powerPct);
       }
@@ -150,24 +154,24 @@ export class GameEngine {
     const hasSeconds = placed.includes('seconds');
 
     if (placed.length === 0) {
-      banner.textContent = '🛠️ Clique sur les pièces en bas (1 ➔ 5) pour les monter dans la montre !';
+      banner.textContent = '🛠️ Clique sur les pièces en bas (1 ➔ 5) pour assembler les roues au centre !';
     } else if (!hasCrown || !hasSpring) {
-      banner.textContent = '⚙️ Monte la Molette (1) et le Ressort (2) pour pouvoir remonter le mécanisme.';
+      banner.textContent = '⚙️ Monte la Molette à 9h (1) et le Barillet à Ressort (2) pour alimenter la montre.';
     } else if (this.isWinding) {
       banner.textContent =
         powerPct >= 100
-          ? '✅ Ressort tendu au maximum (100%) ! Relâche la molette.'
-          : '🔄 La vis sans fin tourne et tend le ressort du barillet...';
+          ? '✅ Ressort tendu à 100% ! Relâche la molette.'
+          : '🔄 Remontage : la tige à 9h enroule le ressort spiral du barillet...';
     } else if (powerPct === 0) {
-      banner.textContent = '⚡ Maintiens la Molette (1) ou le bouton « Remonter » pour donner de l’énergie !';
-    } else if (!hasHours) {
-      banner.textContent = '🟡 Ressort tendu ! Monte l’Engrenage des Heures (3) au centre pour lancer le mouvement.';
-    } else if (!hasMinutes) {
-      banner.textContent = '⏱️ Le ressort fait tourner la roue et la petite aiguille des Heures ! Ajoute les Minutes (4).';
-    } else if (!hasSeconds) {
-      banner.textContent = '⏱️ Heures ➔ Minutes en marche ! Ajoute les Secondes (5) pour activer l’échappement Tic-Tac.';
+      banner.textContent = '⚡ Ressort détendu ! Maintiens la Molette à gauche (9h) ou le bouton « Remonter ».';
+    } else if (!hasHours || !hasMinutes || !hasSeconds) {
+      banner.textContent = '⏱️ Monte les 3 roues coaxiales au centre : 3. Heures (Jaune), 4. Minutes (Bleue), 5. Secondes (Rouge).';
     } else {
-      banner.textContent = '🏆 Mouvement complet en marche : Ressort ➔ Heures (lent) ➔ Minutes ➔ Secondes (Tic-Tac) !';
+      const speed = this.watchMechanism?.speedMultiplier ?? 1;
+      banner.textContent =
+        speed === 1
+          ? '🏆 Calibre coaxial en marche (1x Temps réel) : passe en 12x ou 60x pour accélérer les Minutes et Heures !'
+          : `🚀 Calibre coaxial accéléré (${speed}x) : les Minutes tournent 12x plus vite que les Heures !`;
     }
   }
 
@@ -244,6 +248,8 @@ export class GameEngine {
         this.soundEngine.playSnap();
       } else {
         this.saveData = SaveManager.unlockAll(currentMuted);
+        // En mode test, si on débloque tout, on pré-équipe une réserve d'énergie de 75%
+        if (this.watchMechanism) this.watchMechanism.power = 75;
         this.soundEngine.playLevelComplete();
       }
       this.updateDevButtonUI();
@@ -253,7 +259,7 @@ export class GameEngine {
       this.render();
     });
 
-    // --- CONTRÔLES DE REMONTAGE & CADRAN DE L'ATELIER ---
+    // --- CONTRÔLES DE REMONTAGE, VITESSE & CADRAN DE L'ATELIER ---
     const startWinding = (e: Event) => {
       e.preventDefault();
       if (this.saveData.placedParts.includes('crown')) {
@@ -277,7 +283,14 @@ export class GameEngine {
     window.addEventListener('mouseup', stopWinding);
     window.addEventListener('touchend', stopWinding);
 
-    // Interaction directe sur le canvas de l'Atelier (clic sur la Molette ou sur le Cadran)
+    const speedBtn = document.getElementById('speed-watch-btn');
+    speedBtn?.addEventListener('click', () => {
+      if (!this.watchMechanism) return;
+      const mult = this.watchMechanism.cycleSpeedMultiplier();
+      speedBtn.textContent = mult === 1 ? '⏱️ Vitesse : 1x' : mult === 12 ? '⏩ Vitesse : 12x' : '🚀 Vitesse : 60x';
+      this.soundEngine.playSnap();
+    });
+
     const atelierCanvas = document.getElementById('atelierCanvas') as HTMLCanvasElement | null;
     if (atelierCanvas) {
       const handleAtelierPointerDown = (e: MouseEvent | TouchEvent) => {
@@ -515,7 +528,6 @@ export class GameEngine {
       inventoryContainer.appendChild(emptyMsg);
     }
 
-    // Affichage ordonné de 1 à 5
     ALL_PARTS.forEach((partId, idx) => {
       if (!this.saveData.unlockedParts.includes(partId)) return;
 
@@ -532,6 +544,9 @@ export class GameEngine {
           this.saveData.placedParts = this.saveData.placedParts.filter(p => p !== partId);
         } else {
           this.saveData.placedParts.push(partId);
+          if (partId === 'spring' && this.watchMechanism && this.watchMechanism.power < 25) {
+            this.watchMechanism.power = 65;
+          }
         }
         this.soundEngine.playSnap();
         SaveManager.save(this.saveData);

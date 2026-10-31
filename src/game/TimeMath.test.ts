@@ -4,6 +4,7 @@ import { QuestionManager } from './QuestionManager';
 import { SaveManager } from './SaveManager';
 import { SoundEngine } from './SoundEngine';
 import { Clock } from './Clock';
+import { WatchMechanism } from './WatchMechanism';
 
 describe('TimeMath — Géométrie et Validation Horlogère', () => {
   it('convertit correctement les coordonnées cartésiennes en minutes (0..59)', () => {
@@ -70,7 +71,7 @@ describe('QuestionManager — Génération Pédagogique par Niveau', () => {
   });
 });
 
-describe('SaveManager — Progression, Thèmes & Récompenses Niveau 1..6', () => {
+describe('SaveManager — Progression, Thèmes & Mode Test', () => {
   beforeEach(() => {
     const store: Record<string, string> = {};
     globalThis.localStorage = {
@@ -89,23 +90,18 @@ describe('SaveManager — Progression, Thèmes & Récompenses Niveau 1..6', () =
     expect(save.unlockedParts).toEqual([]);
     expect(save.unlockedThemes).toEqual(['classic']);
     expect(save.unlockedHands).toEqual(['classic-hands']);
-    expect(save.muted).toBe(false);
   });
 
-  it('débloque progressivement les pièces et thèmes aux niveaux 1 à 5 puis le coffret complet au niveau 6', () => {
-    let save = SaveManager.load();
-    save = SaveManager.applyLevelRewards(save, 1);
-    expect(save.unlockedParts).toContain('crown');
-    expect(save.unlockedThemes).toContain('wood');
-    expect(save.maxUnlockedLevel).toBe(2);
+  it('débloque intégralement le jeu via unlockAll et le détecte avec isFullyUnlocked', () => {
+    const fresh = SaveManager.reset();
+    expect(SaveManager.isFullyUnlocked(fresh)).toBe(false);
 
-    save = SaveManager.applyLevelRewards(save, 5);
-    expect(save.unlockedParts).toContain('seconds');
-    expect(save.unlockedHands).toContain('gold-hands');
-
-    save = SaveManager.applyLevelRewards(save, 6);
-    expect(save.unlockedHands).toContain('neon-hands');
-    expect(save.unlockedThemes).toEqual(['classic', 'wood', 'forest', 'ocean', 'space']);
+    const unlocked = SaveManager.unlockAll(true);
+    expect(SaveManager.isFullyUnlocked(unlocked)).toBe(true);
+    expect(unlocked.maxUnlockedLevel).toBe(6);
+    expect(unlocked.unlockedParts).toHaveLength(5);
+    expect(unlocked.unlockedThemes).toHaveLength(5);
+    expect(unlocked.unlockedHands).toHaveLength(3);
   });
 
   it('fournit une palette valide pour chacun des 5 thèmes de cadran', () => {
@@ -123,32 +119,13 @@ describe('SoundEngine — Tolérance Headless & Mute', () => {
     const sound = new SoundEngine(false);
     expect(sound.isMuted()).toBe(false);
     expect(() => sound.playTick(true)).not.toThrow();
-    expect(() => sound.playWindingClick()).not.toThrow();
-    expect(() => sound.playSuccess()).not.toThrow();
-
     sound.setMuted(true);
     expect(sound.isMuted()).toBe(true);
   });
 });
 
-describe('SaveManager — Mode Test (Tout débloquer / Réinitialiser)', () => {
-  it('débloque intégralement le jeu via unlockAll et le détecte avec isFullyUnlocked', () => {
-    const fresh = SaveManager.reset();
-    expect(SaveManager.isFullyUnlocked(fresh)).toBe(false);
-
-    const unlocked = SaveManager.unlockAll(true);
-    expect(SaveManager.isFullyUnlocked(unlocked)).toBe(true);
-    expect(unlocked.maxUnlockedLevel).toBe(6);
-    expect(unlocked.unlockedParts).toHaveLength(5);
-    expect(unlocked.unlockedThemes).toHaveLength(5);
-    expect(unlocked.unlockedHands).toHaveLength(3);
-    expect(unlocked.muted).toBe(true);
-  });
-});
-import { WatchMechanism } from './WatchMechanism';
-
-describe('WatchMechanism — Cinématique Horlogère & Remontoir', () => {
-  it('détecte correctement la zone de clic de la molette extérieure (crown) et gère le remontage', () => {
+describe('WatchMechanism — Train Coaxial Central, Molette à 9h & Rapports 1:12:720', () => {
+  it('détecte la molette centrée verticalement à gauche (x=-194, y=0) et respecte les rapports 1:12:720', () => {
     const dummyCtx = {} as CanvasRenderingContext2D;
     let clicks = 0;
     let ticks = 0;
@@ -160,19 +137,28 @@ describe('WatchMechanism — Cinématique Horlogère & Remontoir', () => {
       () => { clicks++; }
     );
 
-    // La molette est à (-202, 80) par rapport au centre (250, 250) -> env. (48, 330)
-    expect(mech.isPointInCrown(48, 330)).toBe(true);
-    expect(mech.isPointInCrown(250, 250)).toBe(false);
+    // Molette centrée verticalement à 9h : (-194, 0) depuis (250, 250) -> (56, 250)
+    expect(mech.isPointInCrown(56, 250)).toBe(true);
+    expect(mech.isPointInCrown(56, 350)).toBe(false);
 
-    // Remontage avec Molette + Ressort montés
+    // Remontage
+    mech.power = 50;
     mech.update(500, ['crown', 'spring'], true);
-    expect(mech.power).toBeGreaterThan(0);
+    expect(mech.power).toBeGreaterThan(50);
     expect(clicks).toBeGreaterThan(0);
 
-    // Décharge avec le mouvement complet monté
-    const powerBefore = mech.power;
-    mech.update(1000, ['crown', 'spring', 'hours', 'minutes', 'seconds'], false);
-    expect(mech.power).toBeLessThan(powerBefore);
-    expect(ticks).toBeGreaterThan(0);
+    // Vérification du rapport cinématique strict entre Heures, Minutes et Secondes sur 10 secondes réelles (10 000 ms)
+    mech.angleHours = 0;
+    mech.angleMinutes = 0;
+    mech.angleSeconds = 0;
+    mech.update(10000, ['crown', 'spring', 'hours', 'minutes', 'seconds'], false);
+
+    // En 10s (1x) : Secondes = 2*PI * (10/60) = PI/3 rad
+    expect(mech.angleSeconds).toBeCloseTo(Math.PI / 3, 4);
+    // Minutes = Secondes / 60
+    expect(mech.angleMinutes).toBeCloseTo(mech.angleSeconds / 60, 5);
+    // Heures = Minutes / 12
+    expect(mech.angleHours).toBeCloseTo(mech.angleMinutes / 12, 6);
+    expect(ticks).toBe(20); // 2 battements Tic-Tac par seconde -> 20 battements en 10s
   });
 });

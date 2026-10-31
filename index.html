@@ -96,18 +96,21 @@
         </div>
 
         <div id="atelier-status">
-          🛠️ Clique sur les pièces en bas (1 ➔ 5) pour les monter dans la montre !
+          🛠️ Clique sur les pièces en bas (1 ➔ 5) pour assembler les roues au centre !
         </div>
         
         <div id="watch-blueprint">
           <canvas id="atelierCanvas" width="500" height="500"></canvas>
-          <button id="crown-hitbox" class="hidden" title="Maintenir la molette pour remonter"></button>
+          <button id="crown-hitbox" class="hidden" title="Maintenir la molette à 9h pour remonter"></button>
         </div>
 
         <div id="watch-controls">
           <div class="power-header">
-            <span id="power-label">🔋 Énergie du ressort : 0%</span>
-            <button id="wind-watch-btn" type="button">🔄 Maintenir pour remonter</button>
+            <span id="power-label">🔋 Réserve : 65%</span>
+            <div class="atelier-action-btns">
+              <button id="speed-watch-btn" type="button" title="Changer la vitesse d'observation">⏱️ Vitesse : 1x</button>
+              <button id="wind-watch-btn" type="button">🔄 Remonter</button>
+            </div>
           </div>
           <div id="power-bar-container">
             <div id="power-bar"></div>
