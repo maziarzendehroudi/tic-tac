@@ -11,8 +11,8 @@
     <link href="https://fonts.googleapis.com/css2?family=Fredoka:wght@400;600;700&display=swap" rel="stylesheet">
     <link rel="manifest" href="./manifest.json">
     <meta name="theme-color" content="#0f172a">
-    <script type="module" crossorigin src="/tic-tac/assets/index-BlE7nLbs.js"></script>
-    <link rel="stylesheet" crossorigin href="/tic-tac/assets/index-B6-26QZl.css">
+    <script type="module" crossorigin src="/tic-tac/assets/index-DQEeQtKY.js"></script>
+    <link rel="stylesheet" crossorigin href="/tic-tac/assets/index-CJV4bpq2.css">
   </head>
   <body>
     <div id="app">
@@ -94,16 +94,23 @@
         <div id="atelier-top-bar">
           <button id="atelier-back-btn">🏠 Menu</button>
           <h2>Atelier Mécanique</h2>
-          <span></span>
+          <button id="toggle-dial-btn" type="button">👁️ Cadran : Visible</button>
+        </div>
+
+        <div id="atelier-status">
+          🛠️ Clique sur les pièces en bas (1 ➔ 5) pour les monter dans la montre !
         </div>
         
         <div id="watch-blueprint">
           <canvas id="atelierCanvas" width="500" height="500"></canvas>
-          <button id="crown-hitbox" class="hidden" title="Maintenir pour remonter"></button>
-          <button id="dial-hitbox" class="hidden" title="Cliquer pour afficher/masquer le cadran"></button>
+          <button id="crown-hitbox" class="hidden" title="Maintenir la molette pour remonter"></button>
         </div>
 
-        <div id="watch-controls" class="hidden">
+        <div id="watch-controls">
+          <div class="power-header">
+            <span id="power-label">🔋 Énergie du ressort : 0%</span>
+            <button id="wind-watch-btn" type="button">🔄 Maintenir pour remonter</button>
+          </div>
           <div id="power-bar-container">
             <div id="power-bar"></div>
           </div>

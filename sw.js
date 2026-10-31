@@ -1,4 +1,4 @@
-const CACHE_NAME = 'tic-tac-v4';
+const CACHE_NAME = 'tic-tac-v5';
 
 self.addEventListener('install', (event) => {
   self.skipWaiting(); // S'active immédiatement
