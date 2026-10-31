@@ -6,15 +6,17 @@ export class WatchMechanism {
   private width: number;
   private height: number;
 
-  public power: number = 75; // Énergie initiale pour voir le mouvement immédiatement
+  public power: number = 75;
   public showDial: boolean = true;
   private theme: DialTheme = 'classic';
 
-  // Angles de rotation (chaque disque central est solidaire de son aiguille de même couleur)
+  // Angles des roues principales (Sens horaire +) et des engrenages relais (Sens anti-horaire -)
   private wormOffset: number = 0;
   public angleBarrel: number = 0;
   public angleHours: number = (10 * Math.PI) / 6;
+  public angleRelayMinutes: number = 0;
   public angleMinutes: number = (10 * Math.PI) / 30;
+  public angleRelaySeconds: number = 0;
   public angleSeconds: number = 0;
 
   // Accumulateurs acoustiques
@@ -25,15 +27,26 @@ export class WatchMechanism {
   private onTickCallback?: (isTic: boolean) => void;
   private onWindingClickCallback?: () => void;
 
-  // Géométrie épurée : 5 boutons = 5 pièces alignées sur l'axe horizontal y = 0
-  // Le Barillet (x=-96, R=35) engrène directement avec la Grande Roue Jaune (x=0, R=61) -> 35 + 61 = 96 px
+  /**
+   * Géométrie exacte des contacts dent-contre-dent (Proposition Mécanique A) :
+   * - 9h : Barillet (-92, 0, R=36) -> touche Roue Heures Jaune (0, 0, R=56) en (-56, 0) [36 + 56 = 92]
+   * - 12h : Relais Bleu (0, -76) :
+   *     * Pignon d'entrée (R=20) -> touche Roue Heures Jaune (R=56) en (0, -56) [20 + 56 = 76]
+   *     * Roue de sortie (R=36)  -> touche Roue Minutes Bleue (0, 0, R=40) en (0, -40) [36 + 40 = 76]
+   * - 3h : Relais Rouge (68, 0) :
+   *     * Pignon d'entrée (R=28) -> touche Roue Minutes Bleue (R=40) en (40, 0) [28 + 40 = 68]
+   *     * Roue de sortie (R=44)  -> touche Roue Secondes Rouge (0, 0, R=24) en (24, 0) [44 + 24 = 68]
+   * - 6h : Cliquet Tic-Tac (0, 35) -> rebondit sur les dents de la Roue Secondes Rouge (R=24)
+   */
   private static readonly POS = {
     crown: { x: -194, y: 0 },
-    spring: { x: -96, y: 0, r: 35, teeth: 12 },
-    hours: { x: 0, y: 0, r: 61, teeth: 16 },
-    minutes: { x: 0, y: 0, r: 42, teeth: 12 },
+    spring: { x: -92, y: 0, r: 36, teeth: 12 },
+    hours: { x: 0, y: 0, r: 56, teeth: 16 },
+    relayMinutes: { x: 0, y: -76, rPinion: 20, teethPinion: 8, rWheel: 36, teethWheel: 12 },
+    minutes: { x: 0, y: 0, r: 40, teeth: 12 },
+    relaySeconds: { x: 68, y: 0, rPinion: 28, teethPinion: 10, rWheel: 44, teethWheel: 14 },
     seconds: { x: 0, y: 0, r: 24, teeth: 8 },
-    clicker: { x: 35, y: 0 }
+    clicker: { x: 0, y: 35 }
   };
 
   constructor(
@@ -55,9 +68,6 @@ export class WatchMechanism {
     this.theme = theme;
   }
 
-  /**
-   * Teste si un clic/toucher sur le canvas (500x500) cible la Molette centrée à 9h (y = 0)
-   */
   public isPointInCrown(canvasX: number, canvasY: number): boolean {
     const localX = canvasX - this.width / 2;
     const localY = canvasY - this.height / 2;
@@ -76,7 +86,7 @@ export class WatchMechanism {
     const hasMinutes = placedParts.includes('minutes');
     const hasSeconds = placedParts.includes('seconds');
 
-    // 1. REMONTAGE : La molette à 9h pousse la vis et resserre le ressort orange
+    // 1. REMONTAGE : La Molette (1) tourne et tend le Ressort (2)
     if (isWinding && hasCrown) {
       const deltaWorm = deltaTime * 0.08;
       this.wormOffset = (this.wormOffset + deltaWorm) % 10;
@@ -93,38 +103,42 @@ export class WatchMechanism {
       }
     }
 
-    // 2. DÉMULTIPLICATION VISUELLE POUR L'ENFANT (3 vitesses bien distinctes à l'œil nu)
-    // - Petite roue Rouge (Secondes) : Rapide (1 tour en 6 s -> PI/3 rad/s)
-    // - Roue moyenne Bleue (Minutes) : Moyenne (4x moins vite que la Rouge)
-    // - Grande roue Jaune (Heures)   : Lente (12x moins vite que la Rouge, 3x moins vite que la Bleue)
-    if (hasSpring && (hasHours || hasMinutes || hasSeconds) && this.power > 0 && !isWinding) {
+    // 2. TRANSMISSION SÉQUENTIELLE : Ressort (2) -> Heures (3) -> Minutes (4) -> Secondes (5)
+    if (hasSpring && hasHours && this.power > 0 && !isWinding) {
       this.power = Math.max(0, this.power - deltaTime * 0.0012);
 
+      // Vitesses pédagogiques bien visibles :
+      // - Heures (Jaune)   : Lente
+      // - Minutes (Bleue)  : 4x plus rapide que les Heures (entraînée par le Relais Bleu à 12h)
+      // - Secondes (Rouge) : 12x plus rapide que les Heures (entraînée par le Relais Rouge à 3h)
       const deltaSec = (deltaTime / 1000) * (Math.PI / 3);
       const deltaMin = deltaSec / 4;
       const deltaHr = deltaSec / 12;
 
-      // Le Barillet tourne en sens inverse (-) pour pousser la Grande Roue Jaune en sens horaire (+)
-      this.angleBarrel -= deltaHr * (WatchMechanism.POS.hours.r / WatchMechanism.POS.spring.r);
+      const { spring, hours, relayMinutes, minutes, relaySeconds, seconds } = WatchMechanism.POS;
 
-      if (hasHours) {
-        this.angleHours = (this.angleHours + deltaHr) % (Math.PI * 2);
-      }
+      // A. Le Ressort (-) pousse la Grande Roue Jaune des Heures (+)
+      this.angleBarrel -= deltaHr * (hours.r / spring.r);
+      this.angleHours = (this.angleHours + deltaHr) % (Math.PI * 2);
 
+      // B. Si les Minutes (4) sont montées : la Roue Jaune (+) fait tourner le Relais Bleu (-), qui pousse la Roue Bleue (+)
       if (hasMinutes) {
+        this.angleRelayMinutes = (this.angleRelayMinutes - deltaMin * (minutes.r / relayMinutes.rWheel)) % (Math.PI * 2);
         this.angleMinutes = (this.angleMinutes + deltaMin) % (Math.PI * 2);
-      }
 
-      if (hasSeconds) {
-        this.angleSeconds = (this.angleSeconds + deltaSec) % (Math.PI * 2);
+        // C. Si les Secondes (5) sont AUSSI montées : la Roue Bleue (+) fait tourner le Relais Rouge (-), qui pousse la Roue Rouge (+)
+        if (hasSeconds) {
+          this.angleRelaySeconds = (this.angleRelaySeconds - deltaSec * (seconds.r / relaySeconds.rWheel)) % (Math.PI * 2);
+          this.angleSeconds = (this.angleSeconds + deltaSec) % (Math.PI * 2);
 
-        // Chaque passage d'une des 8 grosses dents de la roue rouge déclenche le cliquet "Tic-Tac"
-        const toothPitch = (Math.PI * 2) / WatchMechanism.POS.seconds.teeth; // PI / 4
-        this.toothStepAccumulator += deltaSec;
-        if (this.toothStepAccumulator >= toothPitch) {
-          this.toothStepAccumulator %= toothPitch;
-          this.onTickCallback?.(this.isTicPhase);
-          this.isTicPhase = !this.isTicPhase;
+          // Cliquet Tic-Tac calé sur les 8 dents de la Roue Rouge
+          const toothPitch = (Math.PI * 2) / seconds.teeth;
+          this.toothStepAccumulator += deltaSec;
+          if (this.toothStepAccumulator >= toothPitch) {
+            this.toothStepAccumulator %= toothPitch;
+            this.onTickCallback?.(this.isTicPhase);
+            this.isTicPhase = !this.isTicPhase;
+          }
         }
       }
     }
@@ -135,23 +149,23 @@ export class WatchMechanism {
     this.ctx.save();
     this.ctx.translate(this.width / 2, this.height / 2);
 
-    const { crown, spring, hours, minutes, seconds, clicker } = WatchMechanism.POS;
+    const { crown, spring, hours, relayMinutes, minutes, relaySeconds, seconds, clicker } = WatchMechanism.POS;
 
-    // 1. Boîtier épuré
+    // 1. Boîtier horloger
     this.drawBasePlate();
 
-    // 2. Pièce 1 : Molette à gauche (centrée verticalement à 9h)
+    // 2. Pièce 1 : Molette à gauche (9h)
     this.drawPart('crown', '1. Molette', placedParts, unlockedParts, -162, -44, () => {
       this.drawCenteredCrownAndStem(crown.x, crown.y, this.wormOffset, isWinding);
     });
 
-    // 3. Pièce 2 : Le Ressort dans son Barillet (engrène directement avec la roue jaune)
+    // 3. Pièce 2 : Le Ressort dans son Barillet à 9h (touche la Grande Roue Jaune)
     this.drawPart('spring', '2. Ressort', placedParts, unlockedParts, spring.x, -56, () => {
       this.drawToyBarrel(spring.x, spring.y, spring.r, spring.teeth, this.angleBarrel, this.power);
     });
 
-    // 4. Pièce 3 : Grande Roue Jaune des Heures (en bas de la pile centrale - Lente)
-    this.drawPart('hours', '3. Heures', placedParts, unlockedParts, 0, 82, () => {
+    // 4. Pièce 3 : Grande Roue Jaune des Heures au centre (0, 0)
+    this.drawPart('hours', '3. Heures', placedParts, unlockedParts, -58, 66, () => {
       this.drawToyDiscGear(
         hours.x,
         hours.y,
@@ -165,8 +179,22 @@ export class WatchMechanism {
       );
     });
 
-    // 5. Pièce 4 : Roue Moyenne Bleue des Minutes (au milieu de la pile centrale - Moyenne)
-    this.drawPart('minutes', '4. Minutes', placedParts, unlockedParts, 0, -82, () => {
+    // 5. Pièce 4 : Engrenage Relais Bleu (à 12h) + Roue Bleue des Minutes (au centre)
+    this.drawPart('minutes', '4. Minutes', placedParts, unlockedParts, 0, -96, () => {
+      // Relais multiplicateur Bleu en haut (0, -76) : prend sur la Roue Jaune et pousse la Roue Bleue
+      this.drawSteppedRelayGear(
+        relayMinutes.x,
+        relayMinutes.y,
+        relayMinutes.rPinion,
+        relayMinutes.teethPinion,
+        relayMinutes.rWheel,
+        relayMinutes.teethWheel,
+        this.angleRelayMinutes,
+        '#fbbf24',
+        '#0284c7',
+        '#38bdf8'
+      );
+      // Roue centrale Bleue des Minutes (0, 0) dont les dents touchent le Relais Bleu en (0, -40)
       this.drawToyDiscGear(
         minutes.x,
         minutes.y,
@@ -180,8 +208,22 @@ export class WatchMechanism {
       );
     });
 
-    // 6. Pièce 5 : Petite Roue Rouge des Secondes (en haut de la pile centrale - Rapide) + Cliquet Tic-Tac
-    this.drawPart('seconds', '5. Secondes', placedParts, unlockedParts, 64, 0, () => {
+    // 6. Pièce 5 : Engrenage Relais Rouge (à 3h) + Petite Roue Rouge des Secondes (au centre) + Cliquet Tic-Tac (à 6h)
+    this.drawPart('seconds', '5. Secondes', placedParts, unlockedParts, 82, 56, () => {
+      // Relais multiplicateur Rouge à droite (68, 0) : prend sur la Roue Bleue et pousse la Roue Rouge
+      this.drawSteppedRelayGear(
+        relaySeconds.x,
+        relaySeconds.y,
+        relaySeconds.rPinion,
+        relaySeconds.teethPinion,
+        relaySeconds.rWheel,
+        relaySeconds.teethWheel,
+        this.angleRelaySeconds,
+        '#38bdf8',
+        '#be123c',
+        '#f43f5e'
+      );
+      // Petite Roue centrale Rouge des Secondes (0, 0) dont les dents touchent le Relais Rouge en (24, 0)
       this.drawToyDiscGear(
         seconds.x,
         seconds.y,
@@ -193,10 +235,11 @@ export class WatchMechanism {
         '#ffe4e6',
         4
       );
+      // Petit cliquet Tic-Tac en bas (0, 35) qui rebondit sur les dents de la Roue Rouge
       this.drawSimpleTicTacClicker(clicker.x, clicker.y, this.angleSeconds * seconds.teeth);
     });
 
-    // 7. Chiffres de 1 à 12 et les 3 aiguilles colorées au centre (0, 0)
+    // 7. Cadran (1 à 12) et les 3 aiguilles au centre (apparaissent une par une avec leurs roues !)
     this.drawChildFriendlyDialAndHands(placedParts);
 
     this.ctx.restore();
@@ -205,7 +248,7 @@ export class WatchMechanism {
   private drawBasePlate(): void {
     const palette = Clock.getPalette(this.theme);
 
-    // Attaches du bracelet en haut et en bas
+    // Attaches du bracelet
     this.ctx.fillStyle = '#334155';
     this.ctx.strokeStyle = palette.borderColor;
     this.ctx.lineWidth = 3;
@@ -225,7 +268,7 @@ export class WatchMechanism {
     this.ctx.strokeStyle = palette.borderColor;
     this.ctx.stroke();
 
-    // Fond intérieur contrasté pour faire ressortir les 3 disques colorés
+    // Fond intérieur de l'atelier
     this.ctx.beginPath();
     this.ctx.arc(0, 0, 126, 0, Math.PI * 2);
     this.ctx.fillStyle = '#090d16';
@@ -253,25 +296,25 @@ export class WatchMechanism {
       drawFunc();
       this.ctx.restore();
     } else {
-      // Silhouette en pointillés très claire quand la pièce n'est pas montée
+      // Silhouette fantôme de la pièce à son emplacement
       this.ctx.save();
-      this.ctx.globalAlpha = isUnlocked ? 0.22 : 0.1;
+      this.ctx.globalAlpha = isUnlocked ? 0.22 : 0.09;
       this.ctx.filter = 'grayscale(100%)';
       drawFunc();
       this.ctx.restore();
 
-      // Étiquette numérotée (1 à 5)
+      // Pastille numérotée
       this.ctx.save();
       this.ctx.beginPath();
-      this.ctx.roundRect(badgeX - 36, badgeY - 12, 72, 24, 8);
-      this.ctx.fillStyle = isUnlocked ? 'rgba(15, 23, 42, 0.94)' : 'rgba(15, 23, 42, 0.7)';
+      this.ctx.roundRect(badgeX - 36, badgeY - 11, 72, 22, 8);
+      this.ctx.fillStyle = isUnlocked ? 'rgba(15, 23, 42, 0.94)' : 'rgba(15, 23, 42, 0.72)';
       this.ctx.fill();
       this.ctx.strokeStyle = isUnlocked ? '#fbbf24' : '#475569';
-      this.ctx.lineWidth = 1.8;
+      this.ctx.lineWidth = 1.6;
       this.ctx.stroke();
 
       this.ctx.fillStyle = isUnlocked ? '#fbbf24' : '#64748b';
-      this.ctx.font = 'bold 11px "Fredoka", sans-serif';
+      this.ctx.font = 'bold 10.5px "Fredoka", sans-serif';
       this.ctx.textAlign = 'center';
       this.ctx.textBaseline = 'middle';
       this.ctx.fillText(label, badgeX, badgeY);
@@ -279,23 +322,19 @@ export class WatchMechanism {
     }
   }
 
-  /**
-   * 1. Molette à gauche (centrée verticalement à 9h) et sa tige qui touche le Ressort
-   */
   private drawCenteredCrownAndStem(x: number, y: number, offset: number, isWinding: boolean): void {
     this.ctx.save();
     this.ctx.translate(x, y);
 
-    // Tige crantée qui relie la molette au Barillet (-194 + 66 = -128)
+    // Tige crantée reliant la Molette au Ressort (-194 + 68 = -126)
     const stemStart = 12;
-    const stemLength = 54;
+    const stemLength = 56;
     this.ctx.fillStyle = '#94a3b8';
     this.ctx.fillRect(stemStart, -7, stemLength, 14);
     this.ctx.strokeStyle = '#334155';
     this.ctx.lineWidth = 2;
     this.ctx.strokeRect(stemStart, -7, stemLength, 14);
 
-    // Filets animés qui avancent quand l'enfant remonte la montre
     this.ctx.beginPath();
     for (let i = stemStart + 4; i < stemStart + stemLength - 4; i += 10) {
       const threadX = i + (offset % 10);
@@ -306,7 +345,6 @@ export class WatchMechanism {
     this.ctx.lineWidth = 2.5;
     this.ctx.stroke();
 
-    // Grosse molette dorée facile à repérer à gauche
     if (isWinding) {
       this.ctx.shadowColor = '#fbbf24';
       this.ctx.shadowBlur = 18;
@@ -321,7 +359,6 @@ export class WatchMechanism {
     this.ctx.lineWidth = 3;
     this.ctx.stroke();
 
-    // Rainures de la molette
     this.ctx.beginPath();
     for (let i = -18; i <= 18; i += 9) {
       this.ctx.moveTo(-18, i);
@@ -334,9 +371,6 @@ export class WatchMechanism {
     this.ctx.restore();
   }
 
-  /**
-   * 2. Le Ressort dans sa roue grise à grosses dents (touche la Molette à gauche et la Roue Jaune à droite)
-   */
   private drawToyBarrel(x: number, y: number, r: number, teeth: number, angle: number, power: number): void {
     this.drawToyDiscGear(x, y, r, teeth, angle, '#94a3b8', '#475569', '#cbd5e1', 0);
 
@@ -344,7 +378,6 @@ export class WatchMechanism {
     this.ctx.translate(x, y);
     this.ctx.rotate(angle);
 
-    // Intérieur sombre pour bien voir le ressort orange
     this.ctx.beginPath();
     this.ctx.arc(0, 0, r * 0.78, 0, Math.PI * 2);
     this.ctx.fillStyle = '#0f172a';
@@ -353,7 +386,6 @@ export class WatchMechanism {
     this.ctx.lineWidth = 2;
     this.ctx.stroke();
 
-    // Ressort spiral épais et très lisible (3.5 tours)
     this.ctx.beginPath();
     const turns = 3.5;
     const innerR = 5;
@@ -378,7 +410,6 @@ export class WatchMechanism {
     this.ctx.lineCap = 'round';
     this.ctx.stroke();
 
-    // Cœur central du ressort
     this.ctx.beginPath();
     this.ctx.arc(0, 0, 5, 0, Math.PI * 2);
     this.ctx.fillStyle = '#fbbf24';
@@ -388,9 +419,92 @@ export class WatchMechanism {
   }
 
   /**
-   * Dessine un disque d'engrenage plein façon "jouet en bois" avec de GROSSES dents arrondies
-   * et une couronne de pastilles claires pour que la vitesse de rotation saute aux yeux de l'enfant
+   * Dessine un Engrenage Relais Étagé (Proposition Mécanique A) :
+   * - Une couronne extérieure ajourée (couleur de la roue cible) qui pousse les dents de la roue centrale suivante.
+   * - Un pignon intérieur (couleur de la roue source) qui reçoit la force de la roue précédente.
    */
+  private drawSteppedRelayGear(
+    x: number,
+    y: number,
+    rPinion: number,
+    teethPinion: number,
+    rWheel: number,
+    teethWheel: number,
+    angle: number,
+    pinionColor: string,
+    wheelStroke: string,
+    wheelFill: string
+  ): void {
+    this.ctx.save();
+    this.ctx.translate(x, y);
+    this.ctx.rotate(angle);
+
+    // 1. Grande couronne extérieure ajourée (qui pousse la roue centrale cible)
+    this.ctx.beginPath();
+    const tW = (Math.PI * 2) / teethWheel;
+    const rIn = rWheel - 3.8;
+    const rOut = rWheel + 3.0;
+
+    for (let i = 0; i < teethWheel; i++) {
+      const a = i * tW;
+      this.ctx.lineTo(Math.cos(a - tW * 0.3) * rIn, Math.sin(a - tW * 0.3) * rIn);
+      this.ctx.lineTo(Math.cos(a - tW * 0.15) * rOut, Math.sin(a - tW * 0.15) * rOut);
+      this.ctx.lineTo(Math.cos(a + tW * 0.15) * rOut, Math.sin(a + tW * 0.15) * rOut);
+      this.ctx.lineTo(Math.cos(a + tW * 0.3) * rIn, Math.sin(a + tW * 0.3) * rIn);
+    }
+    this.ctx.closePath();
+
+    // Découpe intérieure pour voir le pignon d'entrée
+    const rimHole = rWheel * 0.68;
+    this.ctx.moveTo(rimHole, 0);
+    this.ctx.arc(0, 0, rimHole, 0, Math.PI * 2, true);
+    this.ctx.fillStyle = wheelFill;
+    this.ctx.fill('evenodd');
+    this.ctx.strokeStyle = wheelStroke;
+    this.ctx.lineWidth = 2;
+    this.ctx.stroke();
+
+    // 4 bras reliant le pignon d'entrée à la couronne de sortie
+    for (let i = 0; i < 4; i++) {
+      const a = (i * Math.PI) / 2;
+      this.ctx.save();
+      this.ctx.rotate(a);
+      this.ctx.fillStyle = wheelFill;
+      this.ctx.fillRect(-3, rPinion * 0.6, 6, rimHole - rPinion * 0.6);
+      this.ctx.restore();
+    }
+
+    // 2. Pignon central d'entrée (qui s'engrène avec la roue précédente)
+    this.ctx.beginPath();
+    const tpW = (Math.PI * 2) / teethPinion;
+    const rpIn = rPinion - 3.0;
+    const rpOut = rPinion + 2.5;
+    for (let i = 0; i < teethPinion; i++) {
+      const a = i * tpW;
+      this.ctx.lineTo(Math.cos(a - tpW * 0.3) * rpIn, Math.sin(a - tpW * 0.3) * rpIn);
+      this.ctx.lineTo(Math.cos(a - tpW * 0.15) * rpOut, Math.sin(a - tpW * 0.15) * rpOut);
+      this.ctx.lineTo(Math.cos(a + tpW * 0.15) * rpOut, Math.sin(a + tpW * 0.15) * rpOut);
+      this.ctx.lineTo(Math.cos(a + tpW * 0.3) * rpIn, Math.sin(a + tpW * 0.3) * rpIn);
+    }
+    this.ctx.closePath();
+    this.ctx.fillStyle = pinionColor;
+    this.ctx.fill();
+    this.ctx.strokeStyle = wheelStroke;
+    this.ctx.lineWidth = 1.8;
+    this.ctx.stroke();
+
+    // Axe rubis du relais
+    this.ctx.beginPath();
+    this.ctx.arc(0, 0, 4.5, 0, Math.PI * 2);
+    this.ctx.fillStyle = '#e11d48';
+    this.ctx.fill();
+    this.ctx.strokeStyle = '#ffffff';
+    this.ctx.lineWidth = 1.5;
+    this.ctx.stroke();
+
+    this.ctx.restore();
+  }
+
   private drawToyDiscGear(
     x: number,
     y: number,
@@ -406,15 +520,13 @@ export class WatchMechanism {
     this.ctx.translate(x, y);
     this.ctx.rotate(angle);
 
-    // Ombre portée douce pour bien séparer les 3 disques empilés au centre
     this.ctx.shadowColor = 'rgba(0, 0, 0, 0.45)';
     this.ctx.shadowBlur = 6;
 
-    // 1. Disque plein à grosses dents trapézoïdales larges
     this.ctx.beginPath();
     const tW = (Math.PI * 2) / teeth;
-    const rInner = r - 4.5;
-    const rOuter = r + 3.5;
+    const rInner = r - 4.2;
+    const rOuter = r + 3.2;
 
     for (let i = 0; i < teeth; i++) {
       const a = i * tW;
@@ -429,17 +541,16 @@ export class WatchMechanism {
     this.ctx.shadowBlur = 0;
 
     this.ctx.strokeStyle = strokeColor;
-    this.ctx.lineWidth = 2.5;
+    this.ctx.lineWidth = 2.4;
     this.ctx.stroke();
 
-    // 2. Petites pastilles repères qui tournent avec le disque (repère visuel immédiat pour l'enfant)
     if (dotsCount > 0) {
-      const dotOrbit = r - 11;
+      const dotOrbit = r - 10;
       this.ctx.fillStyle = dotColor;
       for (let i = 0; i < dotsCount; i++) {
         const a = (i / dotsCount) * Math.PI * 2;
         this.ctx.beginPath();
-        this.ctx.arc(Math.cos(a) * dotOrbit, Math.sin(a) * dotOrbit, 3.2, 0, Math.PI * 2);
+        this.ctx.arc(Math.cos(a) * dotOrbit, Math.sin(a) * dotOrbit, 3.0, 0, Math.PI * 2);
         this.ctx.fill();
       }
     }
@@ -448,7 +559,7 @@ export class WatchMechanism {
   }
 
   /**
-   * Petit marteau / cliquet "Tic-Tac" très simple à droite de la petite roue rouge
+   * Petit cliquet "Tic-Tac" en bas (0, 35) qui rebondit sur les dents de la Roue Rouge
    */
   private drawSimpleTicTacClicker(x: number, y: number, toothPhase: number): void {
     const bounce = Math.abs(Math.sin(toothPhase * 0.5)) * 0.35;
@@ -456,11 +567,10 @@ export class WatchMechanism {
     this.ctx.translate(x, y);
     this.ctx.rotate(bounce);
 
-    // Petit bec doré qui touche les dents de la roue rouge
     this.ctx.beginPath();
     this.ctx.moveTo(0, 0);
-    this.ctx.lineTo(-12, -5);
-    this.ctx.lineTo(-10, 5);
+    this.ctx.lineTo(-5, -12);
+    this.ctx.lineTo(5, -10);
     this.ctx.closePath();
     this.ctx.fillStyle = '#fbbf24';
     this.ctx.fill();
@@ -468,7 +578,6 @@ export class WatchMechanism {
     this.ctx.lineWidth = 1.8;
     this.ctx.stroke();
 
-    // Pivot rond du cliquet
     this.ctx.beginPath();
     this.ctx.arc(0, 0, 5, 0, Math.PI * 2);
     this.ctx.fillStyle = '#e11d48';
@@ -480,22 +589,17 @@ export class WatchMechanism {
     this.ctx.restore();
   }
 
-  /**
-   * Dessine le cadran avec de vrais chiffres d'enfant (1 à 12) et les 3 aiguilles au centre (0, 0)
-   */
   private drawChildFriendlyDialAndHands(placedParts: string[]): void {
     const palette = Clock.getPalette(this.theme);
     const dialRadius = 165;
 
     if (this.showDial) {
-      // Anneau extérieur des chiffres (laisse tout le centre grand ouvert)
       this.ctx.beginPath();
       this.ctx.arc(0, 0, dialRadius, 0, Math.PI * 2);
-      this.ctx.arc(0, 0, 124, 0, Math.PI * 2, true);
-      this.ctx.fillStyle = 'rgba(15, 23, 42, 0.82)';
+      this.ctx.arc(0, 0, 125, 0, Math.PI * 2, true);
+      this.ctx.fillStyle = 'rgba(15, 23, 42, 0.84)';
       this.ctx.fill('evenodd');
 
-      // 12 grands repères horaires
       for (let i = 1; i <= 12; i++) {
         const a = (i * Math.PI) / 6;
         this.ctx.beginPath();
@@ -506,7 +610,6 @@ export class WatchMechanism {
         this.ctx.lineCap = 'round';
         this.ctx.stroke();
 
-        // Chiffres arabes 1 à 12 bien lisibles
         this.ctx.fillStyle = '#f8fafc';
         this.ctx.font = 'bold 21px "Fredoka", sans-serif';
         this.ctx.textAlign = 'center';
@@ -515,7 +618,7 @@ export class WatchMechanism {
       }
     }
 
-    // 1. Petite Aiguille JAUNE (Heures) -> tourne exactement avec le Grand Disque Jaune (3)
+    // 1. Petite Aiguille JAUNE (Heures)
     if (placedParts.includes('hours')) {
       this.ctx.save();
       this.ctx.rotate(this.angleHours);
@@ -534,7 +637,7 @@ export class WatchMechanism {
       this.ctx.restore();
     }
 
-    // 2. Grande Aiguille BLEUE (Minutes) -> tourne exactement avec le Disque Moyen Bleu (4)
+    // 2. Grande Aiguille BLEUE (Minutes)
     if (placedParts.includes('minutes')) {
       this.ctx.save();
       this.ctx.rotate(this.angleMinutes);
@@ -550,7 +653,7 @@ export class WatchMechanism {
       this.ctx.restore();
     }
 
-    // 3. Fine Aiguille ROUGE (Secondes) -> tourne exactement avec le Petit Disque Rouge (5)
+    // 3. Fine Aiguille ROUGE (Secondes)
     if (placedParts.includes('seconds')) {
       this.ctx.save();
       this.ctx.rotate(this.angleSeconds);
@@ -566,7 +669,7 @@ export class WatchMechanism {
       this.ctx.restore();
     }
 
-    // 4. Bouton central rubis qui maintient les 3 disques et les 3 aiguilles
+    // 4. Rubis central
     this.ctx.beginPath();
     this.ctx.arc(0, 0, 7, 0, Math.PI * 2);
     this.ctx.fillStyle = '#e11d48';

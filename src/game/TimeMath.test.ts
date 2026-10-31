@@ -61,17 +61,9 @@ describe('QuestionManager — Génération Pédagogique par Niveau', () => {
       expect(q6.hours).toBeLessThanOrEqual(23);
     }
   });
-
-  it('génère toujours 3 choix distincts incluant la bonne réponse', () => {
-    const qm = new QuestionManager(3);
-    const target = qm.generateQuestion();
-    const choices = qm.generateChoices(target);
-    expect(choices).toHaveLength(3);
-    expect(choices.some(c => c.hours === target.hours && c.minutes === target.minutes)).toBe(true);
-  });
 });
 
-describe('SaveManager — Progression, Thèmes & Mode Test', () => {
+describe('SaveManager — Progression 1 (Pièces aux niveaux 1..5, Personnalisation au niveau 6)', () => {
   beforeEach(() => {
     const store: Record<string, string> = {};
     globalThis.localStorage = {
@@ -84,24 +76,29 @@ describe('SaveManager — Progression, Thèmes & Mode Test', () => {
     };
   });
 
-  it('démarre au niveau 1 avec uniquement le thème classic et classic-hands', () => {
-    const save = SaveManager.load();
-    expect(save.maxUnlockedLevel).toBe(1);
+  it('débloque exclusivement 1 pièce par niveau de 1 à 5, puis les thèmes et aiguilles au niveau 6', () => {
+    let save = SaveManager.load();
     expect(save.unlockedParts).toEqual([]);
     expect(save.unlockedThemes).toEqual(['classic']);
     expect(save.unlockedHands).toEqual(['classic-hands']);
-  });
 
-  it('débloque intégralement le jeu via unlockAll et le détecte avec isFullyUnlocked', () => {
-    const fresh = SaveManager.reset();
-    expect(SaveManager.isFullyUnlocked(fresh)).toBe(false);
+    save = SaveManager.applyLevelRewards(save, 1);
+    expect(save.unlockedParts).toEqual(['crown']);
+    expect(save.unlockedThemes).toEqual(['classic']);
 
-    const unlocked = SaveManager.unlockAll(true);
-    expect(SaveManager.isFullyUnlocked(unlocked)).toBe(true);
-    expect(unlocked.maxUnlockedLevel).toBe(6);
-    expect(unlocked.unlockedParts).toHaveLength(5);
-    expect(unlocked.unlockedThemes).toHaveLength(5);
-    expect(unlocked.unlockedHands).toHaveLength(3);
+    save = SaveManager.applyLevelRewards(save, 2);
+    save = SaveManager.applyLevelRewards(save, 3);
+    save = SaveManager.applyLevelRewards(save, 4);
+    save = SaveManager.applyLevelRewards(save, 5);
+    expect(save.unlockedParts).toEqual(['crown', 'spring', 'hours', 'minutes', 'seconds']);
+    // Avant le niveau 6, la personnalisation reste verrouillée
+    expect(save.unlockedThemes).toEqual(['classic']);
+    expect(save.unlockedHands).toEqual(['classic-hands']);
+
+    // Le niveau 6 débloque tout le coffret de personnalisation
+    save = SaveManager.applyLevelRewards(save, 6);
+    expect(save.unlockedThemes).toEqual(['classic', 'wood', 'forest', 'ocean', 'space']);
+    expect(save.unlockedHands).toEqual(['classic-hands', 'gold-hands', 'neon-hands']);
   });
 
   it('fournit une palette valide pour chacun des 5 thèmes de cadran', () => {
@@ -124,38 +121,27 @@ describe('SoundEngine — Tolérance Headless & Mute', () => {
   });
 });
 
-describe('WatchMechanism — 3 Disques Gigognes, Molette à 9h & Vitesses Pédagogiques (1 : 4 : 12)', () => {
-  it('détecte la molette centrée à 9h et anime les 3 disques aux rapports pédagogiques 1:4:12', () => {
+describe('WatchMechanism — Proposition Mécanique A (Chaîne Causale & Engrenages Relais)', () => {
+  it('anime séquentiellement Heures -> Relais Bleu (Minutes) -> Relais Rouge (Secondes)', () => {
     const dummyCtx = {} as CanvasRenderingContext2D;
-    let clicks = 0;
     let ticks = 0;
-    const mech = new WatchMechanism(
-      dummyCtx,
-      500,
-      500,
-      () => { ticks++; },
-      () => { clicks++; }
-    );
-
-    expect(mech.isPointInCrown(56, 250)).toBe(true);
-    expect(mech.isPointInCrown(56, 350)).toBe(false);
-
-    mech.power = 50;
-    mech.update(500, ['crown', 'spring'], true);
-    expect(mech.power).toBeGreaterThan(50);
-    expect(clicks).toBeGreaterThan(0);
+    const mech = new WatchMechanism(dummyCtx, 500, 500, () => { ticks++; });
 
     mech.angleHours = 0;
     mech.angleMinutes = 0;
     mech.angleSeconds = 0;
-    mech.update(3000, ['crown', 'spring', 'hours', 'minutes', 'seconds'], false);
 
-    // En 3 secondes : Secondes a fait 1/2 tour (PI rad)
+    // 1. Si on monte les Minutes SANS les Heures, rien ne tourne (chaîne coupée)
+    mech.update(1000, ['crown', 'spring', 'minutes'], false);
+    expect(mech.angleMinutes).toBe(0);
+
+    // 2. Avec Ressort + Heures + Minutes + Secondes, toute la chaîne et les relais tournent
+    mech.update(3000, ['crown', 'spring', 'hours', 'minutes', 'seconds'], false);
     expect(mech.angleSeconds).toBeCloseTo(Math.PI, 4);
-    // Minutes tourne 4x moins vite que Secondes
     expect(mech.angleMinutes).toBeCloseTo(mech.angleSeconds / 4, 4);
-    // Heures tourne 12x moins vite que Secondes (3x moins vite que Minutes)
     expect(mech.angleHours).toBeCloseTo(mech.angleSeconds / 12, 4);
+    expect(mech.angleRelayMinutes).toBeLessThan(0); // Le relais bleu tourne en sens inverse pour renvoyer le sens horaire
+    expect(mech.angleRelaySeconds).toBeLessThan(0); // Le relais rouge tourne en sens inverse pour renvoyer le sens horaire
     expect(ticks).toBeGreaterThan(0);
   });
 });

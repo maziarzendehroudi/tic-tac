@@ -24,7 +24,7 @@ export class SaveManager {
       return {
         maxUnlockedLevel: 6,
         unlockedParts: [...ALL_PARTS],
-        placedParts: [],
+        placedParts: [...ALL_PARTS],
         unlockedThemes: [...ALL_THEMES],
         unlockedHands: [...ALL_HANDS],
         selectedTheme: 'classic',
@@ -60,6 +60,11 @@ export class SaveManager {
     );
   }
 
+  /**
+   * Progression 1 :
+   * - Niveaux 1 à 5 : chaque niveau gagné débloque (et monte) 1 nouvel élément mécanique dans l'ordre.
+   * - Niveau 6 (Maître Horloger) : débloque l'intégralité de la personnalisation (5 cadrans + 3 styles d'aiguilles).
+   */
   public static applyLevelRewards(save: GameSave, completedLevel: number): GameSave {
     const levelPartsMap: Record<number, string> = {
       1: 'crown',
@@ -69,27 +74,17 @@ export class SaveManager {
       5: 'seconds'
     };
 
-    const levelThemesMap: Record<number, DialTheme> = {
-      1: 'wood',
-      2: 'forest',
-      3: 'ocean',
-      4: 'space'
-    };
-
     const part = levelPartsMap[completedLevel];
-    if (part && !save.unlockedParts.includes(part)) {
-      save.unlockedParts.push(part);
+    if (part) {
+      if (!save.unlockedParts.includes(part)) {
+        save.unlockedParts.push(part);
+      }
+      if (!save.placedParts.includes(part)) {
+        save.placedParts.push(part);
+      }
     }
 
-    const theme = levelThemesMap[completedLevel];
-    if (theme && !save.unlockedThemes.includes(theme)) {
-      save.unlockedThemes.push(theme);
-    }
-
-    if (completedLevel === 5 && !save.unlockedHands.includes('gold-hands')) {
-      save.unlockedHands.push('gold-hands');
-    }
-
+    // Niveau 6 : Récompense finale -> Pouvoir de personnaliser l'horloge (Cadrans & Aiguilles)
     if (completedLevel >= 6) {
       ALL_THEMES.forEach(t => {
         if (!save.unlockedThemes.includes(t)) save.unlockedThemes.push(t);

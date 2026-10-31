@@ -154,20 +154,35 @@ export class GameEngine {
     const hasSeconds = placed.includes('seconds');
 
     if (placed.length === 0) {
-      banner.textContent = '🛠️ Touche les boutons en bas (de 1 à 5) pour construire ta montre !';
-    } else if (!hasCrown || !hasSpring) {
-      banner.textContent = '⚙️ Monte la Molette (1) à gauche et le Ressort (2) pour donner de la force à la montre.';
+      banner.textContent = '🛠️ Ajoute les pièces de 1 à 5 pour voir chaque aiguille s’animer l’une après l’autre !';
+    } else if (!hasSpring) {
+      banner.textContent = '🔋 Monte le Ressort (2) à gauche : c’est lui qui donne la force de faire tourner la montre !';
     } else if (this.isWinding) {
       banner.textContent =
         powerPct >= 100
-          ? '✅ Le ressort est plein d’énergie (100%) ! Tu peux relâcher.'
-          : '🔄 Bravo ! La molette resserre le ressort orange pour faire le plein d’énergie...';
+          ? '✅ Ressort rechargé à 100% ! Tu peux relâcher la Molette.'
+          : '🔄 La Molette (1) resserre le Ressort orange (2)...';
     } else if (powerPct === 0) {
-      banner.textContent = '⚡ Le ressort est fatigué ! Maintiens la Molette à gauche ou le bouton « Remonter ».';
-    } else if (!hasHours || !hasMinutes || !hasSeconds) {
-      banner.textContent = '⏱️ Empile les 3 roues au milieu : Grande Jaune (Heures), Moyenne Bleue (Minutes), Petite Rouge (Secondes) !';
+      banner.textContent =
+        hasCrown
+          ? '⚡ Le Ressort est vide ! Maintiens la Molette (1) ou le bouton « Remonter ».'
+          : '⚙️ Monte la Molette (1) à gauche pour pouvoir remonter le Ressort !';
+    } else if (!hasHours) {
+      if (hasMinutes || hasSeconds) {
+        banner.textContent = '💡 Il manque la Grande Roue Jaune des Heures (3) pour transmettre la force du Ressort !';
+      } else {
+        banner.textContent = '🟡 Monte la Roue des Heures (3) : le Ressort va faire tourner la petite aiguille jaune !';
+      }
+    } else if (!hasMinutes) {
+      if (hasSeconds) {
+        banner.textContent = '💡 Il manque le Relais et la Roue Bleue des Minutes (4) pour entraîner les Secondes !';
+      } else {
+        banner.textContent = '🟡 La petite aiguille jaune tourne ! Ajoute les Minutes (4) pour voir le Relais Bleu en haut.';
+      }
+    } else if (!hasSeconds) {
+      banner.textContent = '🔵 Le Relais Bleu en haut accélère la grande aiguille bleue ! Ajoute les Secondes (5) à droite.';
     } else {
-      banner.textContent = '✨ Regarde : la petite roue rouge tourne vite, la bleue plus doucement, et la grande jaune lentement !';
+      banner.textContent = '🏆 Ressort ➔ Jaune (Heures) ➔ Relais Bleu (Minutes) ➔ Relais Rouge (Secondes + Tic-Tac) !';
     }
   }
 
@@ -244,7 +259,7 @@ export class GameEngine {
         this.soundEngine.playSnap();
       } else {
         this.saveData = SaveManager.unlockAll(currentMuted);
-        if (this.watchMechanism) this.watchMechanism.power = 80;
+        if (this.watchMechanism) this.watchMechanism.power = 85;
         this.soundEngine.playLevelComplete();
       }
       this.updateDevButtonUI();
@@ -424,20 +439,28 @@ export class GameEngine {
   private renderThemeSelector(): void {
     const dialsContainer = document.getElementById('dial-themes-list');
     const handsContainer = document.getElementById('hands-styles-list');
+    const customTitle = document.getElementById('custom-box-title');
     if (!dialsContainer || !handsContainer) return;
 
-    const dialMeta: Record<DialTheme, { label: string; icon: string; unlockHint: string }> = {
-      classic: { label: 'Classique', icon: '⌚', unlockHint: 'Débloqué' },
-      wood: { label: 'Bois', icon: '🪵', unlockHint: 'Niv. 1' },
-      forest: { label: 'Forêt', icon: '🌲', unlockHint: 'Niv. 2' },
-      ocean: { label: 'Océan', icon: '🌊', unlockHint: 'Niv. 3' },
-      space: { label: 'Espace', icon: '🌌', unlockHint: 'Niv. 4' }
+    const isMasterUnlocked = this.saveData.unlockedThemes.length > 1;
+    if (customTitle) {
+      customTitle.textContent = isMasterUnlocked
+        ? '🎨 Coffret du Maître Horloger (Personnalise ton horloge !)'
+        : '🔒 Coffret du Maître Horloger (Gagne le Niveau 6 pour tout débloquer)';
+    }
+
+    const dialMeta: Record<DialTheme, { label: string; icon: string }> = {
+      classic: { label: 'Classique', icon: '⌚' },
+      wood: { label: 'Bois', icon: '🪵' },
+      forest: { label: 'Forêt', icon: '🌲' },
+      ocean: { label: 'Océan', icon: '🌊' },
+      space: { label: 'Espace', icon: '🌌' }
     };
 
-    const handsMeta: Record<HandsStyle, { label: string; icon: string; unlockHint: string }> = {
-      'classic-hands': { label: 'Acier & Bleu', icon: '🔹', unlockHint: 'Débloqué' },
-      'gold-hands': { label: 'Or Horloger', icon: '✨', unlockHint: 'Niv. 5' },
-      'neon-hands': { label: 'Néon Maître', icon: '⚡', unlockHint: 'Niv. 6' }
+    const handsMeta: Record<HandsStyle, { label: string; icon: string }> = {
+      'classic-hands': { label: 'Acier & Bleu', icon: '🔹' },
+      'gold-hands': { label: 'Or Horloger', icon: '✨' },
+      'neon-hands': { label: 'Néon Maître', icon: '⚡' }
     };
 
     dialsContainer.innerHTML = '';
@@ -450,7 +473,7 @@ export class GameEngine {
       btn.className = `theme-pill${isSelected ? ' active' : ''}${!isUnlocked ? ' locked' : ''}`;
       btn.innerHTML = isUnlocked
         ? `${meta.icon} <span>${meta.label}</span>`
-        : `🔒 <span>${meta.label} (${meta.unlockHint})</span>`;
+        : `🔒 <span>${meta.label} (Niv. 6)</span>`;
 
       btn.addEventListener('click', () => {
         if (!isUnlocked) {
@@ -479,7 +502,7 @@ export class GameEngine {
       btn.className = `theme-pill${isSelected ? ' active' : ''}${!isUnlocked ? ' locked' : ''}`;
       btn.innerHTML = isUnlocked
         ? `${meta.icon} <span>${meta.label}</span>`
-        : `🔒 <span>${meta.label} (${meta.unlockHint})</span>`;
+        : `🔒 <span>${meta.label} (Niv. 6)</span>`;
 
       btn.addEventListener('click', () => {
         if (!isUnlocked) {
@@ -511,7 +534,7 @@ export class GameEngine {
       emptyMsg.style.color = '#94a3b8';
       emptyMsg.style.fontSize = '0.9rem';
       emptyMsg.style.textAlign = 'center';
-      emptyMsg.textContent = 'Termine les niveaux (ou clique sur « Tout débloquer ») pour forger tes pièces !';
+      emptyMsg.textContent = 'Gagne les niveaux 1 à 5 (ou clique sur « Tout débloquer ») pour obtenir tes pièces une par une !';
       inventoryContainer.appendChild(emptyMsg);
     }
 
@@ -567,9 +590,9 @@ export class GameEngine {
     switch (partId) {
       case 'crown': return 'Molette';
       case 'spring': return 'Ressort';
-      case 'hours': return 'Roue Heures';
-      case 'minutes': return 'Roue Minutes';
-      case 'seconds': return 'Roue Secondes';
+      case 'hours': return 'Heures';
+      case 'minutes': return 'Minutes';
+      case 'seconds': return 'Secondes';
       default: return partId;
     }
   }
@@ -601,11 +624,16 @@ export class GameEngine {
         this.updateMenuUI();
         this.renderThemeSelector();
 
-        const rewardText =
-          this.currentLevel === 6
-            ? `🏆 <span style="font-size: 2rem;">⚡</span> Coffret Maître Horloger débloqué !`
-            : `🏆 <span style="font-size: 2rem;">👍</span> Pièce & Habillage forgés !`;
+        const levelRewardsLabels: Record<number, string> = {
+          1: '⚙️ Pièce 1 débloquée : La Molette !',
+          2: '🔋 Pièce 2 débloquée : Le Ressort !',
+          3: '🟡 Pièce 3 débloquée : Roue & Aiguille des Heures !',
+          4: '🔵 Pièce 4 débloquée : Relais & Aiguille des Minutes !',
+          5: '🔴 Pièce 5 débloquée : Relais & Aiguille des Secondes !',
+          6: '🎨 Pouvoir de Maître Horloger : Personnalisation débloquée !'
+        };
 
+        const rewardText = `🏆 ${levelRewardsLabels[this.currentLevel] || 'Niveau terminé !'}`;
         if (instructionEl) instructionEl.innerHTML = rewardText;
         setTimeout(() => { this.returnToMenu(); }, 2200);
         return;
