@@ -2,7 +2,7 @@ import { Clock } from './Clock';
 import { Hands } from './Hands';
 import { QuestionManager } from './QuestionManager';
 import type { TimeTarget } from './QuestionManager';
-import { SaveManager, ALL_THEMES, ALL_HANDS } from './SaveManager';
+import { SaveManager, ALL_PARTS, ALL_THEMES, ALL_HANDS } from './SaveManager';
 import type { GameSave, DialTheme, HandsStyle } from './SaveManager';
 import { SoundEngine } from './SoundEngine';
 import { TimeMath } from './TimeMath';
@@ -98,6 +98,7 @@ export class GameEngine {
   private returnToMenu(): void {
     this.stopAnimation();
     this.isTransitioning = false;
+    this.isWinding = false;
     document.getElementById('game-screen')?.classList.add('hidden');
     document.getElementById('atelier-view')?.classList.add('hidden');
     document.getElementById('main-menu')?.classList.remove('hidden');
@@ -123,13 +124,51 @@ export class GameEngine {
         this.watchMechanism.update(deltaTime, this.saveData.placedParts, this.isWinding);
         this.watchMechanism.draw(this.saveData.placedParts, this.saveData.unlockedParts, this.isWinding);
 
+        const powerPct = Math.round(this.watchMechanism.power);
         const powerBar = document.getElementById('power-bar');
-        if (powerBar) powerBar.style.width = `${this.watchMechanism.power}%`;
+        const powerLabel = document.getElementById('power-label');
+        if (powerBar) powerBar.style.width = `${powerPct}%`;
+        if (powerLabel) powerLabel.textContent = `🔋 Énergie du ressort : ${powerPct}%`;
+
+        this.updateAtelierStatusBanner(powerPct);
       }
 
       this.animFrameId = requestAnimationFrame(loop);
     };
     this.animFrameId = requestAnimationFrame(loop);
+  }
+
+  private updateAtelierStatusBanner(powerPct: number): void {
+    const banner = document.getElementById('atelier-status');
+    if (!banner) return;
+
+    const placed = this.saveData.placedParts;
+    const hasCrown = placed.includes('crown');
+    const hasSpring = placed.includes('spring');
+    const hasHours = placed.includes('hours');
+    const hasMinutes = placed.includes('minutes');
+    const hasSeconds = placed.includes('seconds');
+
+    if (placed.length === 0) {
+      banner.textContent = '🛠️ Clique sur les pièces en bas (1 ➔ 5) pour les monter dans la montre !';
+    } else if (!hasCrown || !hasSpring) {
+      banner.textContent = '⚙️ Monte la Molette (1) et le Ressort (2) pour pouvoir remonter le mécanisme.';
+    } else if (this.isWinding) {
+      banner.textContent =
+        powerPct >= 100
+          ? '✅ Ressort tendu au maximum (100%) ! Relâche la molette.'
+          : '🔄 La vis sans fin tourne et tend le ressort du barillet...';
+    } else if (powerPct === 0) {
+      banner.textContent = '⚡ Maintiens la Molette (1) ou le bouton « Remonter » pour donner de l’énergie !';
+    } else if (!hasHours) {
+      banner.textContent = '🟡 Ressort tendu ! Monte l’Engrenage des Heures (3) au centre pour lancer le mouvement.';
+    } else if (!hasMinutes) {
+      banner.textContent = '⏱️ Le ressort fait tourner la roue et la petite aiguille des Heures ! Ajoute les Minutes (4).';
+    } else if (!hasSeconds) {
+      banner.textContent = '⏱️ Heures ➔ Minutes en marche ! Ajoute les Secondes (5) pour activer l’échappement Tic-Tac.';
+    } else {
+      banner.textContent = '🏆 Mouvement complet en marche : Ressort ➔ Heures (lent) ➔ Minutes ➔ Secondes (Tic-Tac) !';
+    }
   }
 
   private stopAnimation(): void {
@@ -191,7 +230,6 @@ export class GameEngine {
       }
     });
 
-    // Bouton provisoire de test (Débloquer tout <-> Réinitialiser)
     const devUnlockBtn = document.getElementById('dev-unlock-btn');
     devUnlockBtn?.addEventListener('click', () => {
       const currentMuted = this.saveData.muted;
@@ -215,29 +253,64 @@ export class GameEngine {
       this.render();
     });
 
+    // --- CONTRÔLES DE REMONTAGE & CADRAN DE L'ATELIER ---
+    const startWinding = (e: Event) => {
+      e.preventDefault();
+      if (this.saveData.placedParts.includes('crown')) {
+        this.isWinding = true;
+      } else {
+        this.soundEngine.playError();
+      }
+    };
+    const stopWinding = () => {
+      this.isWinding = false;
+    };
+
     const crownHitbox = document.getElementById('crown-hitbox');
-    if (crownHitbox) {
-      const startWinding = (e: Event) => { e.preventDefault(); this.isWinding = true; };
-      const stopWinding = () => { this.isWinding = false; };
+    const windBtn = document.getElementById('wind-watch-btn');
+    [crownHitbox, windBtn].forEach(el => {
+      if (!el) return;
+      el.addEventListener('mousedown', startWinding);
+      el.addEventListener('touchstart', startWinding, { passive: false });
+      el.addEventListener('mouseleave', stopWinding);
+    });
+    window.addEventListener('mouseup', stopWinding);
+    window.addEventListener('touchend', stopWinding);
 
-      crownHitbox.addEventListener('mousedown', startWinding);
-      crownHitbox.addEventListener('touchstart', startWinding, { passive: false });
-      window.addEventListener('mouseup', stopWinding);
-      window.addEventListener('touchend', stopWinding);
-      crownHitbox.addEventListener('mouseleave', stopWinding);
-    }
+    // Interaction directe sur le canvas de l'Atelier (clic sur la Molette ou sur le Cadran)
+    const atelierCanvas = document.getElementById('atelierCanvas') as HTMLCanvasElement | null;
+    if (atelierCanvas) {
+      const handleAtelierPointerDown = (e: MouseEvent | TouchEvent) => {
+        if (!this.watchMechanism) return;
+        const rect = atelierCanvas.getBoundingClientRect();
+        const clientX = 'touches' in e ? e.touches[0].clientX : (e as MouseEvent).clientX;
+        const clientY = 'touches' in e ? e.touches[0].clientY : (e as MouseEvent).clientY;
+        const canvasX = ((clientX - rect.left) / rect.width) * atelierCanvas.width;
+        const canvasY = ((clientY - rect.top) / rect.height) * atelierCanvas.height;
 
-    const dialHitbox = document.getElementById('dial-hitbox');
-    if (dialHitbox) {
-      dialHitbox.addEventListener('click', (e) => {
-        e.preventDefault();
-        if (this.watchMechanism) {
-          this.watchMechanism.showDial = !this.watchMechanism.showDial;
-          this.soundEngine.playSnap();
+        if (this.watchMechanism.isPointInCrown(canvasX, canvasY)) {
+          e.preventDefault();
+          if (this.saveData.placedParts.includes('crown')) {
+            this.isWinding = true;
+          } else {
+            this.soundEngine.playError();
+          }
         }
-      });
+      };
+      atelierCanvas.addEventListener('mousedown', handleAtelierPointerDown);
+      atelierCanvas.addEventListener('touchstart', handleAtelierPointerDown, { passive: false });
     }
 
+    const toggleDialBtn = document.getElementById('toggle-dial-btn');
+    toggleDialBtn?.addEventListener('click', () => {
+      if (this.watchMechanism) {
+        this.watchMechanism.showDial = !this.watchMechanism.showDial;
+        toggleDialBtn.textContent = this.watchMechanism.showDial ? '👁️ Cadran : Visible' : '👁️ Cadran : Squelette';
+        this.soundEngine.playSnap();
+      }
+    });
+
+    // --- ÉVÉNEMENTS DE L'ÉCRAN D'APPRENTISSAGE ---
     const getPointerPos = (e: MouseEvent | TouchEvent) => {
       const rect = this.canvas.getBoundingClientRect();
       const clientX = 'touches' in e ? e.touches[0].clientX : (e as MouseEvent).clientX;
@@ -427,9 +500,8 @@ export class GameEngine {
 
   private renderAtelier(): void {
     const inventoryContainer = document.getElementById('inventory-items');
-    const watchControls = document.getElementById('watch-controls');
     const crownHitbox = document.getElementById('crown-hitbox');
-    const dialHitbox = document.getElementById('dial-hitbox');
+    const windBtn = document.getElementById('wind-watch-btn') as HTMLButtonElement | null;
 
     if (!inventoryContainer) return;
     inventoryContainer.innerHTML = '';
@@ -439,17 +511,21 @@ export class GameEngine {
       emptyMsg.style.color = '#94a3b8';
       emptyMsg.style.fontSize = '0.9rem';
       emptyMsg.style.textAlign = 'center';
-      emptyMsg.textContent = 'Termine les niveaux pour forger tes premières pièces d’horlogerie !';
+      emptyMsg.textContent = 'Termine les niveaux (ou clique sur « Tout débloquer ») pour forger tes pièces !';
       inventoryContainer.appendChild(emptyMsg);
     }
 
-    this.saveData.unlockedParts.forEach(partId => {
+    // Affichage ordonné de 1 à 5
+    ALL_PARTS.forEach((partId, idx) => {
+      if (!this.saveData.unlockedParts.includes(partId)) return;
+
       const isPlaced = this.saveData.placedParts.includes(partId);
-      const partEl = document.createElement('div');
+      const partEl = document.createElement('button');
+      partEl.type = 'button';
       partEl.className = 'inventory-part' + (isPlaced ? ' placed' : '');
 
       const statusText = isPlaced ? ' (Enlever)' : ' (Monter)';
-      partEl.innerHTML = `${this.getPartIcon(partId)} <span>${this.getPartName(partId)}${statusText}</span>`;
+      partEl.innerHTML = `${this.getPartIcon(partId)} <span>${idx + 1}. ${this.getPartName(partId)}${statusText}</span>`;
 
       partEl.addEventListener('click', () => {
         if (isPlaced) {
@@ -464,18 +540,13 @@ export class GameEngine {
       inventoryContainer.appendChild(partEl);
     });
 
-    if (this.saveData.placedParts.includes('crown')) {
+    const canWind = this.saveData.placedParts.includes('crown');
+    if (canWind) {
       crownHitbox?.classList.remove('hidden');
+      if (windBtn) windBtn.disabled = false;
     } else {
       crownHitbox?.classList.add('hidden');
-    }
-
-    if (this.saveData.placedParts.length >= 5) {
-      watchControls?.classList.remove('hidden');
-      dialHitbox?.classList.remove('hidden');
-    } else {
-      watchControls?.classList.add('hidden');
-      dialHitbox?.classList.add('hidden');
+      if (windBtn) windBtn.disabled = true;
     }
   }
 

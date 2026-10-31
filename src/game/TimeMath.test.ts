@@ -145,3 +145,34 @@ describe('SaveManager — Mode Test (Tout débloquer / Réinitialiser)', () => {
     expect(unlocked.muted).toBe(true);
   });
 });
+import { WatchMechanism } from './WatchMechanism';
+
+describe('WatchMechanism — Cinématique Horlogère & Remontoir', () => {
+  it('détecte correctement la zone de clic de la molette extérieure (crown) et gère le remontage', () => {
+    const dummyCtx = {} as CanvasRenderingContext2D;
+    let clicks = 0;
+    let ticks = 0;
+    const mech = new WatchMechanism(
+      dummyCtx,
+      500,
+      500,
+      () => { ticks++; },
+      () => { clicks++; }
+    );
+
+    // La molette est à (-202, 80) par rapport au centre (250, 250) -> env. (48, 330)
+    expect(mech.isPointInCrown(48, 330)).toBe(true);
+    expect(mech.isPointInCrown(250, 250)).toBe(false);
+
+    // Remontage avec Molette + Ressort montés
+    mech.update(500, ['crown', 'spring'], true);
+    expect(mech.power).toBeGreaterThan(0);
+    expect(clicks).toBeGreaterThan(0);
+
+    // Décharge avec le mouvement complet monté
+    const powerBefore = mech.power;
+    mech.update(1000, ['crown', 'spring', 'hours', 'minutes', 'seconds'], false);
+    expect(mech.power).toBeLessThan(powerBefore);
+    expect(ticks).toBeGreaterThan(0);
+  });
+});
