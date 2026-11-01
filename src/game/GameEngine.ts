@@ -82,9 +82,6 @@ export class GameEngine {
     this.updateMenuUI();
   }
 
-  /**
-   * Bascule le fond du ciel entre le Jour (Ciel bleu & Soleil) et la Nuit (Ciel étoilé & Lune)
-   */
   private applySkyTheme(isDay: boolean): void {
     document.body.classList.toggle('theme-day', isDay);
     document.body.classList.toggle('theme-night', !isDay);
@@ -157,7 +154,6 @@ export class GameEngine {
       this.updateMenuUI();
     });
 
-    // --- OUTILS PÉDAGOGIQUES DE PLACEMENT (Sélection d'aiguille & Pas-à-pas) ---
     document.getElementById('select-hour-btn')?.addEventListener('click', () => {
       this.activeHand = 'hour';
       this.soundEngine.playSnap();
@@ -182,7 +178,6 @@ export class GameEngine {
       this.nudgeActiveHand(1);
     });
 
-    // --- ÉVÉNEMENTS TACTILES / SOURIS DU CADRAN ---
     const getPointerPos = (e: MouseEvent | TouchEvent) => {
       const rect = this.canvas.getBoundingClientRect();
       const clientX = 'touches' in e ? e.touches[0].clientX : (e as MouseEvent).clientX;
@@ -206,7 +201,6 @@ export class GameEngine {
       const diffHr = Math.abs(TimeMath.normalizeAngle(angle - hrAngle));
       const distFromCenter = Math.sqrt(pos.x * pos.x + pos.y * pos.y);
 
-      // Sélection intuitive de l'aiguille selon la zone touchée ou l'aiguille la plus proche
       if (distFromCenter > this.radius * 0.66 && diffHr > 0.25) {
         this.activeHand = 'minute';
       } else if (distFromCenter < this.radius * 0.48 && diffMin > 0.25) {
@@ -341,7 +335,7 @@ export class GameEngine {
         this.currentPhase = 2;
         this.phaseSuccessCount = 0;
         if (instructionEl) {
-          instructionEl.innerHTML = `🎉 <strong>Bravo !</strong> Étape 2 : à toi de placer les aiguilles !`;
+          instructionEl.innerHTML = `🎉 <strong>Bravo !</strong> À toi de placer les aiguilles !`;
         }
         setTimeout(() => {
           this.initNewQuestion();
@@ -357,17 +351,17 @@ export class GameEngine {
         this.updateMenuUI();
 
         const levelBadges: Record<number, string> = {
-          1: '🥉 Niveau 1 validé : Tu sais lire les heures piles !',
-          2: '🥈 Niveau 2 validé : Tu maîtrises les demi-heures !',
-          3: '🥇 Niveau 3 validé : Tu maîtrises les quarts d’heure !',
-          4: '🏅 Niveau 4 validé : Tu sais compter les minutes de 5 en 5 !',
-          5: '🌟 Niveau 5 validé : Tu maîtrises les 24 heures (Jour & Nuit) !',
-          6: '👑 Félicitations ! Tu es officiellement Maître du Temps !'
+          1: '🥉 Niveau 1 terminé !',
+          2: '🥈 Niveau 2 terminé !',
+          3: '🥇 Niveau 3 terminé !',
+          4: '🏅 Niveau 4 terminé !',
+          5: '🌟 Niveau 5 terminé !',
+          6: '👑 Bravo ! Tu es Maître du Temps !'
         };
 
         const rewardText = `🏆 <strong>${levelBadges[this.currentLevel] || 'Niveau terminé !'}</strong>`;
         if (instructionEl) instructionEl.innerHTML = rewardText;
-        setTimeout(() => { this.returnToMenu(); }, 2200);
+        setTimeout(() => { this.returnToMenu(); }, 2000);
         return;
       }
     }
@@ -407,7 +401,7 @@ export class GameEngine {
       if (this.errorsCount === 1) {
         helpText.innerHTML = baseExplanation;
       } else {
-        helpText.innerHTML = `${baseExplanation} ➔ La bonne réponse est <strong>${this.targetTime.text}</strong>.`;
+        helpText.innerHTML = `${baseExplanation} ➔ Il est <strong>${this.targetTime.text}</strong>.`;
       }
     } else {
       const isHourCorrect = (this.currentHours % 12) === (this.targetTime.hours % 12);
@@ -424,19 +418,19 @@ export class GameEngine {
         this.updateHandSelectorUI();
         this.render();
         if (this.currentLevel === 6) {
-          helpText.innerHTML = `👍 La <strong>petite aiguille dorée (heures)</strong> est bien placée ! Maintenant, place la <strong>grande aiguille bleue</strong> sur <strong>${this.targetTime.minutes} minutes</strong> (utilise ➖ / ➕ pour ajuster).`;
+          helpText.innerHTML = `👍 Les heures sont justes ! Place maintenant la grande aiguille bleue sur <strong>${this.targetTime.minutes} min</strong>.`;
         } else {
           const minStr = this.targetTime.minutes < 10 ? `0${this.targetTime.minutes}` : `${this.targetTime.minutes}`;
-          helpText.innerHTML = `👍 La <strong>petite aiguille dorée (heures)</strong> est bien placée ! Maintenant, amène la <strong>grande aiguille bleue</strong> sur <strong>${minStr}</strong> (en face du ${targetDialMinNum}).`;
+          helpText.innerHTML = `👍 Les heures sont justes ! Place la grande aiguille bleue sur <strong>${minStr}</strong> (en face du ${targetDialMinNum}).`;
         }
       } else if (!isHourCorrect && isMinuteCorrect) {
         this.activeHand = 'hour';
         this.updateHandSelectorUI();
         this.render();
-        helpText.innerHTML = `👍 La <strong>grande aiguille bleue (minutes)</strong> est bien placée ! Maintenant, amène la <strong>petite aiguille dorée</strong> sur le <strong>${targetDialHour}</strong>.`;
+        helpText.innerHTML = `👍 Les minutes sont justes ! Place la petite aiguille orange sur le <strong>${targetDialHour}</strong>.`;
       } else {
         const minStr = this.targetTime.minutes < 10 ? `0${this.targetTime.minutes}` : `${this.targetTime.minutes}`;
-        helpText.innerHTML = `Place d’abord la <strong>petite aiguille dorée</strong> sur le <strong>${targetDialHour}</strong>, puis la <strong>grande aiguille bleue</strong> sur <strong>${minStr}</strong>.`;
+        helpText.innerHTML = `Place la petite aiguille orange sur le <strong>${targetDialHour}</strong> et la grande aiguille bleue sur <strong>${minStr}</strong>.`;
       }
     }
   }
@@ -518,7 +512,6 @@ export class GameEngine {
   private updateUI(): void {
     const instructionEl = document.getElementById('instruction');
     const phaseBadge = document.getElementById('phase-badge');
-    const periodBadge = document.getElementById('day-period-badge');
     const placementTools = document.getElementById('placement-tools');
     const checkBtn = document.getElementById('check-btn');
     const choicesContainer = document.getElementById('choices-container');
@@ -529,19 +522,12 @@ export class GameEngine {
         : `Étape 2/2 : Placement (${this.phaseSuccessCount}/3)`;
     }
 
-    if (periodBadge && this.targetTime) {
-      periodBadge.textContent = this.targetTime.periodLabel;
-      periodBadge.classList.remove('hidden');
-      periodBadge.classList.toggle('period-day', this.targetTime.isDay);
-      periodBadge.classList.toggle('period-night', !this.targetTime.isDay);
-    }
-
     if (this.currentPhase === 1) {
       checkBtn?.classList.add('hidden');
       placementTools?.classList.add('hidden');
       choicesContainer?.classList.remove('hidden');
       if (instructionEl) {
-        instructionEl.innerHTML = `Quelle heure est-il ? <small class="legend-inline">🟡 Petite = Heures · 🔵 Grande = Minutes</small>`;
+        instructionEl.textContent = `Quelle heure est-il ?`;
       }
 
       const choiceBtns = document.querySelectorAll('#choices-container .choice-btn');
@@ -554,7 +540,7 @@ export class GameEngine {
       choicesContainer?.classList.add('hidden');
       this.updateHandSelectorUI();
       if (instructionEl) {
-        instructionEl.innerHTML = `Place les aiguilles sur : ${this.formatColoredTargetHTML(this.targetTime)}`;
+        instructionEl.innerHTML = `Place les aiguilles sur ${this.formatColoredTargetHTML(this.targetTime)}`;
       }
     }
   }

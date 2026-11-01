@@ -10,14 +10,15 @@
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Fredoka:wght@400;600;700&display=swap" rel="stylesheet">
     <link rel="manifest" href="./manifest.json">
-    <meta name="theme-color" content="#0f172a">
+    <meta name="theme-color" content="#38bdf8">
   </head>
   <body class="theme-day">
-    <!-- DÉCOR CÉLESTE DYNAMIQUE (JOUR : SOLEIL & NUAGES / NUIT : LUNE & ÉTOILES) -->
+    <!-- FOND DE CIEL PLEIN ÉCRAN (JOUR : CIEL BLEU CLAIR & NUAGES / NUIT : CIEL ÉTOILÉ) -->
     <div id="sky-backdrop" aria-hidden="true">
       <div class="sun-orb"></div>
       <div class="cloud cloud-1"></div>
       <div class="cloud cloud-2"></div>
+      <div class="cloud cloud-3"></div>
       <div class="moon-orb"></div>
       <div class="stars-layer"></div>
     </div>
@@ -33,7 +34,7 @@
       <div id="main-menu" class="view">
         <div id="main-title-box">
           <h1>⏱️ Tic-Tac</h1>
-          <p>Apprends à lire l'heure pas à pas, le jour ☀️ comme la nuit 🌙 !</p>
+          <p>Apprends à lire l'heure pas à pas !</p>
         </div>
 
         <div id="levels-grid">
@@ -82,7 +83,7 @@
         </div>
       </div>
 
-      <!-- VUE 2 : ÉCRAN DE JEU PÉDAGOGIQUE -->
+      <!-- VUE 2 : ÉCRAN DE JEU ÉPURÉ -->
       <div id="game-screen" class="view hidden">
         <div id="game-top-bar">
           <button id="back-menu-btn" title="Retour au menu">
@@ -90,28 +91,25 @@
           </button>
           <div id="phase-badge">Étape 1/2 : Lecture (0/3)</div>
         </div>
-        
-        <div id="day-period-badge" class="period-day">☀️ Heure du Jour</div>
 
         <div id="game-container">
           <canvas id="clockCanvas" width="500" height="500"></canvas>
         </div>
 
         <div id="ui-container">
-          <div id="instruction">Quelle heure est-il sur l'horloge ?</div>
+          <div id="instruction">Quelle heure est-il ?</div>
 
           <div id="help-box" class="hidden">
             💡 <span id="help-text">Regarde bien les aiguilles !</span>
           </div>
 
-          <!-- Outils tactiles d'aide au placement (Étape 2/2) -->
           <div id="placement-tools" class="hidden">
             <div class="hand-selector-group">
               <button id="select-hour-btn" type="button" class="hand-select-btn active-hand-btn">
-                🟡 Petite (Heures)
+                🟡 Heures
               </button>
               <button id="select-minute-btn" type="button" class="hand-select-btn">
-                🔵 Grande (Minutes)
+                🔵 Minutes
               </button>
             </div>
             <div class="step-nudge-group">
