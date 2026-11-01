@@ -475,7 +475,20 @@ body.theme-night #instruction {
   box-shadow: 0 4px 12px rgba(15, 23, 42, 0.2);
   transition: all 0.15s;
 }
-.choice-btn:hover {
+.choice-btn:focus {
+  outline: none;
+}
+
+@media (hover: hover) and (pointer: fine) {
+  .choice-btn:hover {
+    border-color: #fbbf24;
+    background: #0f172a;
+    color: #fbbf24;
+  }
+}
+
+.choice-btn:active {
+  transform: scale(0.96);
   border-color: #fbbf24;
   background: #0f172a;
   color: #fbbf24;

@@ -243,10 +243,12 @@ export class GameEngine {
       }
     });
 
-    const choiceBtns = document.querySelectorAll('#choices-container .choice-btn');
+    if (document.activeElement instanceof HTMLElement) { document.activeElement.blur(); }
+      const choiceBtns = document.querySelectorAll('#choices-container .choice-btn');
     choiceBtns.forEach((btn, index) => {
       btn.addEventListener('click', () => {
         if (!this.isTransitioning && this.currentPhase === 1) {
+          (btn as HTMLElement).blur();
           this.checkReadAnswer(index);
         }
       });
