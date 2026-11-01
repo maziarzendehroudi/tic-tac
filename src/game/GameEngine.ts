@@ -584,11 +584,10 @@ export class GameEngine {
   private updatePhaseStarsUI(): void {
     const phaseBadge = document.getElementById('phase-badge');
     if (!phaseBadge) return;
-    const stepName = this.currentPhase === 1 ? '1/2 Lecture' : '2/2 Placement';
     const stars = [0, 1, 2]
       .map(i => (i < this.phaseSuccessCount ? '<span class="star-on">★</span>' : '<span class="star-off">☆</span>'))
       .join('');
-    phaseBadge.innerHTML = `${stepName} <span class="stars-group">${stars}</span>`;
+    phaseBadge.innerHTML = stars;
   }
 
   private updateUI(): void {

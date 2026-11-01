@@ -13,7 +13,7 @@
     <meta name="theme-color" content="#38bdf8">
   </head>
   <body class="theme-day">
-    <!-- FOND DE CIEL PLEIN ÉCRAN (POSITIONNÉ SANS COLLISION AVEC LES BOUTONS) -->
+    <!-- FOND DE CIEL PLEIN ÉCRAN -->
     <div id="sky-backdrop" aria-hidden="true">
       <div class="sun-orb"></div>
       <div class="cloud cloud-1"></div>
@@ -23,14 +23,14 @@
     </div>
 
     <div id="app">
-      <!-- BARRE SUPÉRIEURE COMPACTE -->
-      <div id="global-top-bar">
-        <button id="dev-unlock-btn" type="button" title="Bouton provisoire de test">🔓 Mode Test</button>
-        <button id="sound-toggle-btn" type="button" aria-pressed="true">🔊 Son</button>
-      </div>
-
-      <!-- VUE 1 : MENU PRINCIPAL ERGONOMIQUE -->
+      <!-- VUE 1 : MENU PRINCIPAL -->
       <div id="main-menu" class="view">
+        <!-- BARRE SUPÉRIEURE UNIQUEMENT SUR LA PAGE D'ACCUEIL -->
+        <div id="global-top-bar">
+          <button id="dev-unlock-btn" type="button" title="Bouton provisoire de test">🔓 Mode Test</button>
+          <button id="sound-toggle-btn" type="button" aria-pressed="true">🔊 Son</button>
+        </div>
+
         <div id="main-title-box">
           <h1>⏱️ Tic-Tac</h1>
           <p>Apprends à lire l'heure pas à pas !</p>
@@ -41,7 +41,6 @@
             <span class="lvl-badge">1</span>
             <div class="lvl-content">
               <span class="lvl-title">Les Heures Piles</span>
-              <span class="lvl-desc">Lire l'heure juste (ex : 3h00, 8h00)</span>
             </div>
             <span class="lvl-status play">▶</span>
           </button>
@@ -50,7 +49,6 @@
             <span class="lvl-badge">2</span>
             <div class="lvl-content">
               <span class="lvl-title">Les Demi-Heures</span>
-              <span class="lvl-desc">Repères :00 (en haut) et :30 « et demie »</span>
             </div>
             <span class="lvl-status locked-icon">🔒</span>
           </button>
@@ -59,7 +57,6 @@
             <span class="lvl-badge">3</span>
             <div class="lvl-content">
               <span class="lvl-title">Les Quarts d'Heure</span>
-              <span class="lvl-desc">Repères :15 « et quart » et :45 « moins le quart »</span>
             </div>
             <span class="lvl-status locked-icon">🔒</span>
           </button>
@@ -68,7 +65,6 @@
             <span class="lvl-badge">4</span>
             <div class="lvl-content">
               <span class="lvl-title">Les Minutes de 5 en 5</span>
-              <span class="lvl-desc">La couronne bleue (05, 10, 20, 25...)</span>
             </div>
             <span class="lvl-status locked-icon">🔒</span>
           </button>
@@ -76,8 +72,7 @@
           <button class="level-rect lvl-5 locked" data-level="5">
             <span class="lvl-badge">5</span>
             <div class="lvl-content">
-              <span class="lvl-title">Les 24 Heures (Jour & Nuit)</span>
-              <span class="lvl-desc">Matin (08h), Après-midi (15h), Soir (20h), Minuit</span>
+              <span class="lvl-title">Les 24 Heures</span>
             </div>
             <span class="lvl-status locked-icon">🔒</span>
           </button>
@@ -86,20 +81,20 @@
             <span class="lvl-badge">6</span>
             <div class="lvl-content">
               <span class="lvl-title">Maître du Temps</span>
-              <span class="lvl-desc">Lire et placer les aiguilles à la minute près !</span>
             </div>
             <span class="lvl-status locked-icon">🔒</span>
           </button>
         </div>
       </div>
 
-      <!-- VUE 2 : ÉCRAN DE JEU (STRUCTURE VERROUILLÉE) -->
+      <!-- VUE 2 : ÉCRAN DE JEU -->
       <div id="game-screen" class="view hidden">
+        <!-- BOUTON LARGE REGROUPANT LE RETOUR AU MENU ET LES ÉTOILES DE PROGRESSION -->
         <div id="game-top-bar">
           <button id="back-menu-btn" type="button" title="Retour au menu">
-            ← <span id="level-title-display">Niveau 1</span>
+            <span class="back-label">← Menu · <span id="level-title-display">Niveau 1</span></span>
+            <span id="phase-badge" class="stars-group"><span class="star-off">☆</span><span class="star-off">☆</span><span class="star-off">☆</span></span>
           </button>
-          <div id="phase-badge">1/2 Lecture <span class="stars-group"><span class="star-off">☆</span><span class="star-off">☆</span><span class="star-off">☆</span></span></div>
         </div>
 
         <div id="game-container">
