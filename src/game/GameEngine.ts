@@ -92,6 +92,7 @@ export class GameEngine {
     this.errorsCount = 0;
     this.isTransitioning = false;
     this.hideHelp();
+    this.resetButtonsState();
     this.applySkyTheme(this.targetTime.isDay);
 
     if (this.currentPhase === 1) {
@@ -479,7 +480,32 @@ export class GameEngine {
     }
   }
 
+  private animateButtonFeedback(btn: HTMLElement | null, isCorrect: boolean): void {
+    if (!btn) return;
+    btn.classList.remove("btn-correct", "btn-wrong");
+    // Force le reflow pour permettre de rejouer le frétillement en cas de clics successifs
+    void btn.offsetWidth;
+
+    if (isCorrect) {
+      btn.classList.add("btn-correct");
+    } else {
+      btn.classList.add("btn-wrong");
+      setTimeout(() => {
+        btn.classList.remove("btn-wrong");
+      }, 460);
+    }
+  }
+
+  private resetButtonsState(): void {
+    if (document.activeElement instanceof HTMLElement) {
+      document.activeElement.blur();
+    }
+    const allBtns = document.querySelectorAll("#choices-container .choice-btn, #check-btn");
+    allBtns.forEach(btn => btn.classList.remove("btn-correct", "btn-wrong"));
+  }
+
   private checkPlaceAnswer(): void {
+    const checkBtn = document.getElementById("check-btn");
     const isCorrect = TimeMath.isPlacementCorrect(
       this.currentHours,
       this.currentMinutes,
@@ -488,6 +514,7 @@ export class GameEngine {
       this.currentLevel
     );
 
+    this.animateButtonFeedback(checkBtn, isCorrect);
     if (isCorrect) this.handleSuccessfulAnswer();
     else this.handleFailedAttempt();
   }
@@ -496,13 +523,19 @@ export class GameEngine {
     const selectedChoice = this.currentChoices[choiceIndex];
     if (!selectedChoice) return;
 
+    const choiceBtns = document.querySelectorAll("#choices-container .choice-btn");
+    const clickedBtn = (choiceBtns[choiceIndex] as HTMLElement) || null;
+
     const isMinutesExact = selectedChoice.minutes === this.targetTime.minutes;
     const isHoursExact =
       this.currentLevel >= 5
         ? selectedChoice.hours === this.targetTime.hours
         : (selectedChoice.hours % 12) === (this.targetTime.hours % 12);
 
-    if (isHoursExact && isMinutesExact) this.handleSuccessfulAnswer();
+    const isCorrect = isHoursExact && isMinutesExact;
+    this.animateButtonFeedback(clickedBtn, isCorrect);
+
+    if (isCorrect) this.handleSuccessfulAnswer();
     else this.handleFailedAttempt();
   }
 
