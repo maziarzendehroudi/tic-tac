@@ -1,7 +1,20 @@
-const CACHE_NAME = 'tic-tac-v16';
+const CACHE_NAME = 'tic-tac-v17';
+const PRECACHE_ASSETS = [
+  './',
+  './index.html',
+  './manifest.json',
+  './favicon.svg',
+  './icon-maskable.svg',
+  './icon-192.png',
+  './icon-512.png',
+  './apple-touch-icon.png'
+];
 
 self.addEventListener('install', (event) => {
-  self.skipWaiting(); // S'active immédiatement
+  event.waitUntil(
+    caches.open(CACHE_NAME).then(cache => cache.addAll(PRECACHE_ASSETS)).catch(() => {})
+  );
+  self.skipWaiting();
 });
 
 self.addEventListener('activate', (event) => {
@@ -9,14 +22,13 @@ self.addEventListener('activate', (event) => {
     caches.keys().then(keys => {
       return Promise.all(
         keys.map(key => {
-          if (key !== CACHE_NAME) return caches.delete(key); // Détruit les anciens caches
+          if (key !== CACHE_NAME) return caches.delete(key);
         })
       );
     }).then(() => self.clients.claim())
   );
 });
 
-// Network First absolu
 self.addEventListener('fetch', (event) => {
   event.respondWith(
     fetch(event.request)
