@@ -11,10 +11,19 @@
     <link href="https://fonts.googleapis.com/css2?family=Fredoka:wght@400;600;700&display=swap" rel="stylesheet">
     <link rel="manifest" href="./manifest.json">
     <meta name="theme-color" content="#0f172a">
-    <script type="module" crossorigin src="/tic-tac/assets/index-Bnz6jOm9.js"></script>
-    <link rel="stylesheet" crossorigin href="/tic-tac/assets/index-_11QCvkM.css">
+    <script type="module" crossorigin src="/tic-tac/assets/index-DrVBsxqK.js"></script>
+    <link rel="stylesheet" crossorigin href="/tic-tac/assets/index-CYd-uQ5h.css">
   </head>
-  <body>
+  <body class="theme-day">
+    <!-- DÉCOR CÉLESTE DYNAMIQUE (JOUR : SOLEIL & NUAGES / NUIT : LUNE & ÉTOILES) -->
+    <div id="sky-backdrop" aria-hidden="true">
+      <div class="sun-orb"></div>
+      <div class="cloud cloud-1"></div>
+      <div class="cloud cloud-2"></div>
+      <div class="moon-orb"></div>
+      <div class="stars-layer"></div>
+    </div>
+
     <div id="app">
       <!-- BARRE AUDIO & TEST PROVISOIRE -->
       <div id="global-top-bar">
@@ -26,99 +35,65 @@
       <div id="main-menu" class="view">
         <div id="main-title-box">
           <h1>⏱️ Tic-Tac</h1>
-          <p>Apprends à lire l'heure et construis ta montre !</p>
+          <p>Apprends à lire l'heure pas à pas, le jour ☀️ comme la nuit 🌙 !</p>
         </div>
 
         <div id="levels-grid">
           <button class="level-rect lvl-1" data-level="1">
             <div class="lvl-content">
-              <span class="lvl-title">Niveau 1 ➔ ⚙️ 1. La Molette</span>
-              <span class="lvl-desc">Les heures piles (ex : 3h00, 8h00)</span>
+              <span class="lvl-title">🥉 Niveau 1 ➔ Les Heures Piles</span>
+              <span class="lvl-desc">Lire l'heure juste (ex : 3h00, 8h00)</span>
             </div>
             <span class="lvl-check hidden">✅</span>
           </button>
           <button class="level-rect lvl-2 locked" data-level="2">
             <div class="lvl-content">
-              <span class="lvl-title">Niveau 2 ➔ 🔋 2. Le Ressort</span>
-              <span class="lvl-desc">Les demi-heures (:00 et :30 « et demie »)</span>
+              <span class="lvl-title">🥈 Niveau 2 ➔ Les Demi-Heures</span>
+              <span class="lvl-desc">Repères :00 (en haut) et :30 « et demie » (en bas)</span>
             </div>
             <span class="lvl-check hidden">✅</span>
           </button>
           <button class="level-rect lvl-3 locked" data-level="3">
             <div class="lvl-content">
-              <span class="lvl-title">Niveau 3 ➔ 🟡 3. Aiguille des Heures</span>
-              <span class="lvl-desc">Les quarts d'heure (:15 et :45)</span>
+              <span class="lvl-title">🥇 Niveau 3 ➔ Les Quarts d'Heure</span>
+              <span class="lvl-desc">Repères :15 « et quart » et :45 « moins le quart »</span>
             </div>
             <span class="lvl-check hidden">✅</span>
           </button>
           <button class="level-rect lvl-4 locked" data-level="4">
             <div class="lvl-content">
-              <span class="lvl-title">Niveau 4 ➔ 🔵 4. Aiguille des Minutes</span>
-              <span class="lvl-desc">Compter de 5 en 5 (05, 10, 20, 25...)</span>
+              <span class="lvl-title">🏅 Niveau 4 ➔ Les Minutes de 5 en 5</span>
+              <span class="lvl-desc">La couronne bleue des minutes (05, 10, 20, 25...)</span>
             </div>
             <span class="lvl-check hidden">✅</span>
           </button>
           <button class="level-rect lvl-5 locked" data-level="5">
             <div class="lvl-content">
-              <span class="lvl-title">Niveau 5 ➔ 🔴 5. Aiguille des Secondes</span>
-              <span class="lvl-desc">Les heures de l'après-midi (13h à 00h)</span>
+              <span class="lvl-title">🌟 Niveau 5 ➔ Les 24 Heures (Jour & Nuit)</span>
+              <span class="lvl-desc">Matin (08h), Après-midi (15h), Soir (20h) et Minuit (00h)</span>
             </div>
             <span class="lvl-check hidden">✅</span>
           </button>
           <button class="level-rect lvl-6 locked" data-level="6">
             <div class="lvl-content">
-              <span class="lvl-title">Niveau 6 ➔ 🔔 6. Le Balancier Tic-Tac</span>
-              <span class="lvl-desc">Défi Maître Horloger (à la minute près !)</span>
+              <span class="lvl-title">👑 Niveau 6 ➔ Maître du Temps</span>
+              <span class="lvl-desc">Lire et placer les aiguilles à la minute près !</span>
             </div>
             <span class="lvl-check hidden">✅</span>
           </button>
         </div>
-
-        <button id="open-atelier-btn">🛠️ Entrer dans l'Atelier Mécanique</button>
       </div>
 
-      <!-- VUE 2 : L'ATELIER -->
-      <div id="atelier-view" class="view hidden">
-        <div id="atelier-top-bar">
-          <button id="atelier-back-btn">🏠 Menu</button>
-          <h2>Atelier Mécanique</h2>
-          <button id="toggle-dial-btn" type="button">👁️ Chiffres : Oui</button>
-        </div>
-
-        <div id="atelier-status">
-          🛠️ Ajoute les pièces de 1 à 6 pour voir chaque aiguille s’animer l’une après l’autre !
-        </div>
-        
-        <div id="watch-blueprint">
-          <canvas id="atelierCanvas" width="500" height="500"></canvas>
-          <button id="crown-hitbox" class="hidden" title="Maintenir la molette à gauche pour remonter"></button>
-        </div>
-
-        <div id="watch-controls">
-          <div class="power-header">
-            <span id="power-label">🔋 Énergie du ressort : 75%</span>
-            <button id="wind-watch-btn" type="button">🔄 Maintenir pour remonter</button>
-          </div>
-          <div id="power-bar-container">
-            <div id="power-bar"></div>
-          </div>
-        </div>
-
-        <div id="parts-inventory">
-          <div id="inventory-items"></div>
-        </div>
-      </div>
-
-      <!-- VUE 3 : ÉCRAN DE JEU -->
+      <!-- VUE 2 : ÉCRAN DE JEU PÉDAGOGIQUE -->
       <div id="game-screen" class="view hidden">
         <div id="game-top-bar">
           <button id="back-menu-btn" title="Retour au menu">
-            <span id="level-title-display">Niveau 1</span> 🏠
+            🏠 <span id="level-title-display">Niveau 1</span>
           </button>
           <div id="phase-badge">Étape 1/2 : Lecture (0/3)</div>
         </div>
         
-        <div id="day-period-badge" class="hidden">🌤️ Après-midi (12h - 17h)</div>
+        <div id="day-period-badge" class="period-day">☀️ Heure du Jour</div>
 
         <div id="game-container">
           <canvas id="clockCanvas" width="500" height="500"></canvas>
