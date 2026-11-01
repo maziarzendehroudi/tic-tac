@@ -13,8 +13,8 @@
     <link href="https://fonts.googleapis.com/css2?family=Fredoka:wght@400;600;700&display=swap" rel="stylesheet">
     <link rel="manifest" href="./manifest.json">
     <meta name="theme-color" content="#38bdf8">
-    <script type="module" crossorigin src="/tic-tac/assets/index-WJQSyoVX.js"></script>
-    <link rel="stylesheet" crossorigin href="/tic-tac/assets/index-DDFX18Ht.css">
+    <script type="module" crossorigin src="/tic-tac/assets/index-DUEV8b-d.js"></script>
+    <link rel="stylesheet" crossorigin href="/tic-tac/assets/index-D0RV-Opo.css">
   </head>
   <body class="theme-day">
     <!-- FOND DE CIEL PLEIN ÉCRAN -->
@@ -118,6 +118,7 @@
             </div>
 
             <div id="placement-tools" class="hidden">
+              <button id="step-minus-btn" type="button" class="nudge-btn" aria-label="Reculer l'aiguille">−</button>
               <div class="hand-selector-group">
                 <button id="select-hour-btn" type="button" class="hand-select-btn hour-mode active-hand-btn">
                   <span class="dot-indicator dot-hour"></span> Heures
@@ -126,10 +127,7 @@
                   <span class="dot-indicator dot-minute"></span> Minutes
                 </button>
               </div>
-              <div class="step-nudge-group">
-                <button id="step-minus-btn" type="button" class="nudge-btn" aria-label="Reculer l'aiguille">−</button>
-                <button id="step-plus-btn" type="button" class="nudge-btn" aria-label="Avancer l'aiguille">+</button>
-              </div>
+              <button id="step-plus-btn" type="button" class="nudge-btn" aria-label="Avancer l'aiguille">+</button>
             </div>
 
             <button id="check-btn" class="hidden">✓ Vérifier</button>
