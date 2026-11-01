@@ -38,7 +38,7 @@ export class GameEngine {
     const height = canvas.height;
     const centerX = width / 2;
     const centerY = height / 2;
-    const radius = Math.min(centerX, centerY) - 10;
+    const radius = Math.min(centerX, centerY) - 14;
 
     this.ctx.translate(centerX, centerY);
 
@@ -82,9 +82,19 @@ export class GameEngine {
     this.updateMenuUI();
   }
 
+  /**
+   * Synchronise le thème Jour/Nuit sur html, body et la barre système mobile (meta theme-color)
+   */
   private applySkyTheme(isDay: boolean): void {
+    document.documentElement.classList.toggle('theme-day', isDay);
+    document.documentElement.classList.toggle('theme-night', !isDay);
     document.body.classList.toggle('theme-day', isDay);
     document.body.classList.toggle('theme-night', !isDay);
+
+    const metaTheme = document.querySelector('meta[name="theme-color"]');
+    if (metaTheme) {
+      metaTheme.setAttribute('content', isDay ? '#38bdf8' : '#060b19');
+    }
   }
 
   private initNewQuestion(): void {
@@ -93,7 +103,11 @@ export class GameEngine {
     this.isTransitioning = false;
     this.hideHelp();
     this.resetButtonsState();
-    this.applySkyTheme(this.targetTime.isDay);
+
+    // Aux niveaux 1 à 4 (apprentissage 12h), le ciel reste en mode Jour apaisant ;
+    // Aux niveaux 5 et 6 (24h), le ciel bascule entre Jour (06h-17h) et Nuit (18h-05h).
+    const showDaySky = this.currentLevel < 5 ? true : this.targetTime.isDay;
+    this.applySkyTheme(showDaySky);
 
     if (this.currentPhase === 1) {
       this.currentHours = this.targetTime.hours;
@@ -169,6 +183,23 @@ export class GameEngine {
       this.render();
     });
 
+    // Permet aussi de toucher directement le badge [16h] ou [25] dans la consigne pour choisir l'aiguille
+    document.getElementById('instruction')?.addEventListener('click', (e) => {
+      if (this.currentPhase !== 2) return;
+      const target = e.target as HTMLElement;
+      if (target.classList.contains('hr-badge')) {
+        this.activeHand = 'hour';
+        this.soundEngine.playSnap();
+        this.updateHandSelectorUI();
+        this.render();
+      } else if (target.classList.contains('min-badge')) {
+        this.activeHand = 'minute';
+        this.soundEngine.playSnap();
+        this.updateHandSelectorUI();
+        this.render();
+      }
+    });
+
     document.getElementById('step-minus-btn')?.addEventListener('click', () => {
       if (this.currentPhase !== 2 || this.isTransitioning) return;
       this.nudgeActiveHand(-1);
@@ -202,13 +233,14 @@ export class GameEngine {
       const diffHr = Math.abs(TimeMath.normalizeAngle(angle - hrAngle));
       const distFromCenter = Math.sqrt(pos.x * pos.x + pos.y * pos.y);
 
-      if (distFromCenter > this.radius * 0.66 && diffHr > 0.25) {
+      // Détection ergonomique : toucher une aiguille la sélectionne directement
+      if (diffMin < 0.35 && diffHr >= 0.35) {
         this.activeHand = 'minute';
-      } else if (distFromCenter < this.radius * 0.48 && diffMin > 0.25) {
+      } else if (diffHr < 0.35 && diffMin > 0.35) {
         this.activeHand = 'hour';
-      } else if (diffMin < 0.38 && diffMin < diffHr) {
+      } else if (distFromCenter > this.radius * 0.68) {
         this.activeHand = 'minute';
-      } else if (diffHr < 0.38 && diffHr <= diffMin) {
+      } else if (distFromCenter < this.radius * 0.5) {
         this.activeHand = 'hour';
       }
       this.updateHandSelectorUI();
@@ -244,8 +276,7 @@ export class GameEngine {
       }
     });
 
-    if (document.activeElement instanceof HTMLElement) { document.activeElement.blur(); }
-      const choiceBtns = document.querySelectorAll('#choices-container .choice-btn');
+    const choiceBtns = document.querySelectorAll('#choices-container .choice-btn');
     choiceBtns.forEach((btn, index) => {
       btn.addEventListener('click', () => {
         if (!this.isTransitioning && this.currentPhase === 1) {
@@ -284,7 +315,7 @@ export class GameEngine {
   private updateSoundButtonUI(): void {
     const btn = document.getElementById('sound-toggle-btn');
     if (btn) {
-      btn.textContent = this.saveData.muted ? '🔇 Son coupé' : '🔊 Son actif';
+      btn.textContent = this.saveData.muted ? '🔇 Muet' : '🔊 Son';
       btn.setAttribute('aria-pressed', String(!this.saveData.muted));
     }
   }
@@ -293,10 +324,10 @@ export class GameEngine {
     const btn = document.getElementById('dev-unlock-btn');
     if (!btn) return;
     if (SaveManager.isFullyUnlocked(this.saveData)) {
-      btn.textContent = '🔄 Réinitialiser (Test)';
+      btn.textContent = '🔄 Réinitialiser';
       btn.classList.add('unlocked-mode');
     } else {
-      btn.textContent = '🔓 Tout débloquer (Test)';
+      btn.textContent = '🔓 Mode Test';
       btn.classList.remove('unlocked-mode');
     }
   }
@@ -307,43 +338,51 @@ export class GameEngine {
 
     levelRects.forEach(rect => {
       const level = parseInt(rect.getAttribute('data-level') || '1', 10);
-      const checkMark = rect.querySelector('.lvl-check');
+      const statusEl = rect.querySelector('.lvl-status');
       const isCompleted = this.saveData.completedLevels.includes(level);
 
       if (level <= maxUnlocked) {
         rect.classList.remove('locked');
-        if (isCompleted || level < maxUnlocked) {
-          checkMark?.classList.remove('hidden');
-        } else {
-          checkMark?.classList.add('hidden');
+        if (statusEl) {
+          if (isCompleted || level < maxUnlocked) {
+            statusEl.textContent = '✓';
+            statusEl.className = 'lvl-status done';
+          } else {
+            statusEl.textContent = '▶';
+            statusEl.className = 'lvl-status play';
+          }
         }
       } else {
         rect.classList.add('locked');
-        checkMark?.classList.add('hidden');
+        if (statusEl) {
+          statusEl.textContent = '🔒';
+          statusEl.className = 'lvl-status locked-icon';
+        }
       }
     });
   }
 
-  private showFeedback(html: string, type: "success" | "error"): void {
-    const helpBox = document.getElementById("help-box");
-    const helpText = document.getElementById("help-text");
+  private showFeedback(html: string, type: 'success' | 'error'): void {
+    const helpBox = document.getElementById('help-box');
+    const helpText = document.getElementById('help-text');
     if (!helpBox || !helpText) return;
 
     helpText.innerHTML = html;
-    helpBox.classList.remove("invisible-feedback", "hidden", "feedback-success", "feedback-error");
-    helpBox.classList.add(type === "success" ? "feedback-success" : "feedback-error");
+    helpBox.classList.remove('invisible-feedback', 'hidden', 'feedback-success', 'feedback-error');
+    helpBox.classList.add(type === 'success' ? 'feedback-success' : 'feedback-error');
   }
 
   private hideHelp(): void {
-    const helpBox = document.getElementById("help-box");
+    const helpBox = document.getElementById('help-box');
     if (!helpBox) return;
-    helpBox.classList.add("invisible-feedback");
-    helpBox.classList.remove("feedback-success", "feedback-error");
+    helpBox.classList.add('invisible-feedback');
+    helpBox.classList.remove('feedback-success', 'feedback-error');
   }
 
   private handleSuccessfulAnswer(): void {
     this.isTransitioning = true;
     this.phaseSuccessCount++;
+    this.updatePhaseStarsUI();
     this.triggerSuccessEffect();
 
     if (this.phaseSuccessCount >= 3) {
@@ -351,7 +390,7 @@ export class GameEngine {
         this.soundEngine.playSuccess();
         this.currentPhase = 2;
         this.phaseSuccessCount = 0;
-        this.showFeedback("🎉 <strong>Bravo !</strong> Étape 2 : à toi de placer les aiguilles !", "success");
+        this.showFeedback('🎉 <strong>Bravo !</strong> Étape 2 : à toi de placer les aiguilles !', 'success');
         setTimeout(() => {
           this.initNewQuestion();
           this.updateUI();
@@ -366,22 +405,22 @@ export class GameEngine {
         this.updateMenuUI();
 
         const levelBadges: Record<number, string> = {
-          1: "🥉 Niveau 1 terminé !",
-          2: "🥈 Niveau 2 terminé !",
-          3: "🥇 Niveau 3 terminé !",
-          4: "🏅 Niveau 4 terminé !",
-          5: "🌟 Niveau 5 terminé !",
-          6: "👑 Bravo ! Tu es Maître du Temps !"
+          1: '🥉 Niveau 1 validé !',
+          2: '🥈 Niveau 2 validé !',
+          3: '🥇 Niveau 3 validé !',
+          4: '🏅 Niveau 4 validé !',
+          5: '🌟 Niveau 5 validé !',
+          6: '👑 Bravo ! Tu es Maître du Temps !'
         };
 
-        this.showFeedback(`🏆 <strong>${levelBadges[this.currentLevel] || "Niveau terminé !"}</strong>`, "success");
+        this.showFeedback(`🏆 <strong>${levelBadges[this.currentLevel] || 'Niveau terminé !'}</strong>`, 'success');
         setTimeout(() => { this.returnToMenu(); }, 2000);
         return;
       }
     }
 
     this.soundEngine.playSuccess();
-    this.showFeedback(`✅ <strong>Bravo ! Il est bien ${this.targetTime.text} !</strong>`, "success");
+    this.showFeedback(`✨ <strong>Bravo ! Il est bien ${this.targetTime.text} !</strong>`, 'success');
     setTimeout(() => {
       this.initNewQuestion();
       this.updateUI();
@@ -405,9 +444,9 @@ export class GameEngine {
 
     if (this.currentPhase === 1) {
       if (this.errorsCount === 1) {
-        this.showFeedback(`💡 ${baseExplanation}`, "error");
+        this.showFeedback(`💡 ${baseExplanation}`, 'error');
       } else {
-        this.showFeedback(`💡 ${baseExplanation} ➔ Il est <strong>${this.targetTime.text}</strong>.`, "error");
+        this.showFeedback(`💡 ${baseExplanation} ➔ Il est <strong>${this.targetTime.text}</strong>.`, 'error');
       }
     } else {
       const isHourCorrect = (this.currentHours % 12) === (this.targetTime.hours % 12);
@@ -420,23 +459,23 @@ export class GameEngine {
       const targetDialMinNum = TimeMath.minuteToDialNumber(this.targetTime.minutes);
 
       if (isHourCorrect && !isMinuteCorrect) {
-        this.activeHand = "minute";
+        this.activeHand = 'minute';
         this.updateHandSelectorUI();
         this.render();
         if (this.currentLevel === 6) {
-          this.showFeedback(`💡 👍 Les heures sont justes ! Place maintenant la grande aiguille bleue sur <strong>${this.targetTime.minutes} min</strong>.`, "error");
+          this.showFeedback(`💡 Les heures sont justes ! Place la grande aiguille bleue sur <strong>${this.targetTime.minutes} min</strong> (avec − / +).`, 'error');
         } else {
           const minStr = this.targetTime.minutes < 10 ? `0${this.targetTime.minutes}` : `${this.targetTime.minutes}`;
-          this.showFeedback(`💡 👍 Les heures sont justes ! Place la grande aiguille bleue sur <strong>${minStr}</strong> (en face du ${targetDialMinNum}).`, "error");
+          this.showFeedback(`💡 Les heures sont justes ! Place la grande aiguille bleue sur <strong>${minStr}</strong> (en face du ${targetDialMinNum}).`, 'error');
         }
       } else if (!isHourCorrect && isMinuteCorrect) {
-        this.activeHand = "hour";
+        this.activeHand = 'hour';
         this.updateHandSelectorUI();
         this.render();
-        this.showFeedback(`💡 👍 Les minutes sont justes ! Place la petite aiguille orange sur le <strong>${targetDialHour}</strong>.`, "error");
+        this.showFeedback(`💡 Les minutes sont justes ! Place la petite aiguille orange sur le <strong>${targetDialHour}</strong>.`, 'error');
       } else {
         const minStr = this.targetTime.minutes < 10 ? `0${this.targetTime.minutes}` : `${this.targetTime.minutes}`;
-        this.showFeedback(`💡 Place la petite aiguille orange sur le <strong>${targetDialHour}</strong> et la grande aiguille bleue sur <strong>${minStr}</strong>.`, "error");
+        this.showFeedback(`💡 Place la petite aiguille orange sur le <strong>${targetDialHour}</strong> et la grande aiguille bleue sur <strong>${minStr}</strong>.`, 'error');
       }
     }
   }
@@ -481,16 +520,15 @@ export class GameEngine {
 
   private animateButtonFeedback(btn: HTMLElement | null, isCorrect: boolean): void {
     if (!btn) return;
-    btn.classList.remove("btn-correct", "btn-wrong");
-    // Force le reflow pour permettre de rejouer le frétillement en cas de clics successifs
+    btn.classList.remove('btn-correct', 'btn-wrong');
     void btn.offsetWidth;
 
     if (isCorrect) {
-      btn.classList.add("btn-correct");
+      btn.classList.add('btn-correct');
     } else {
-      btn.classList.add("btn-wrong");
+      btn.classList.add('btn-wrong');
       setTimeout(() => {
-        btn.classList.remove("btn-wrong");
+        btn.classList.remove('btn-wrong');
       }, 460);
     }
   }
@@ -499,12 +537,12 @@ export class GameEngine {
     if (document.activeElement instanceof HTMLElement) {
       document.activeElement.blur();
     }
-    const allBtns = document.querySelectorAll("#choices-container .choice-btn, #check-btn");
-    allBtns.forEach(btn => btn.classList.remove("btn-correct", "btn-wrong"));
+    const allBtns = document.querySelectorAll('#choices-container .choice-btn, #check-btn');
+    allBtns.forEach(btn => btn.classList.remove('btn-correct', 'btn-wrong'));
   }
 
   private checkPlaceAnswer(): void {
-    const checkBtn = document.getElementById("check-btn");
+    const checkBtn = document.getElementById('check-btn');
     const isCorrect = TimeMath.isPlacementCorrect(
       this.currentHours,
       this.currentMinutes,
@@ -522,7 +560,7 @@ export class GameEngine {
     const selectedChoice = this.currentChoices[choiceIndex];
     if (!selectedChoice) return;
 
-    const choiceBtns = document.querySelectorAll("#choices-container .choice-btn");
+    const choiceBtns = document.querySelectorAll('#choices-container .choice-btn');
     const clickedBtn = (choiceBtns[choiceIndex] as HTMLElement) || null;
 
     const isMinutesExact = selectedChoice.minutes === this.targetTime.minutes;
@@ -540,21 +578,26 @@ export class GameEngine {
 
   private formatColoredTargetHTML(target: TimeTarget): string {
     const [hPart, mPart] = target.text.split('h');
-    return `<span class="hr-badge">${hPart}h</span><span class="min-badge">${mPart}</span>`;
+    return `<span class="hr-badge" title="Toucher pour régler les heures">${hPart}h</span><span class="min-badge" title="Toucher pour régler les minutes">${mPart}</span>`;
+  }
+
+  private updatePhaseStarsUI(): void {
+    const phaseBadge = document.getElementById('phase-badge');
+    if (!phaseBadge) return;
+    const stepName = this.currentPhase === 1 ? '1/2 Lecture' : '2/2 Placement';
+    const stars = [0, 1, 2]
+      .map(i => (i < this.phaseSuccessCount ? '<span class="star-on">★</span>' : '<span class="star-off">☆</span>'))
+      .join('');
+    phaseBadge.innerHTML = `${stepName} <span class="stars-group">${stars}</span>`;
   }
 
   private updateUI(): void {
     const instructionEl = document.getElementById('instruction');
-    const phaseBadge = document.getElementById('phase-badge');
     const placementTools = document.getElementById('placement-tools');
     const checkBtn = document.getElementById('check-btn');
     const choicesContainer = document.getElementById('choices-container');
 
-    if (phaseBadge) {
-      phaseBadge.textContent = this.currentPhase === 1
-        ? `Étape 1/2 : Lecture (${this.phaseSuccessCount}/3)`
-        : `Étape 2/2 : Placement (${this.phaseSuccessCount}/3)`;
-    }
+    this.updatePhaseStarsUI();
 
     if (this.currentPhase === 1) {
       checkBtn?.classList.add('hidden');
@@ -580,11 +623,11 @@ export class GameEngine {
   }
 
   private get radius(): number {
-    return Math.min(this.canvas.width / 2, this.canvas.height / 2) - 10;
+    return Math.min(this.canvas.width / 2, this.canvas.height / 2) - 14;
   }
 
   public render(): void {
-    const isDay = this.targetTime ? this.targetTime.isDay : true;
+    const isDay = this.currentLevel < 5 ? true : (this.targetTime ? this.targetTime.isDay : true);
     this.clock.draw(this.currentLevel, isDay);
     this.hands.draw(
       this.currentHours,
