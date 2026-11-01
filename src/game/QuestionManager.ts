@@ -35,18 +35,14 @@ export class QuestionManager {
   }
 
   public static getPeriodLabel(hours24: number, level: number): string {
+    if (level < 5) return "";
     const h = ((hours24 % 24) + 24) % 24;
-    if (level < 5) {
-      return TimeMath.isDayTime(h)
-        ? '☀️ Heure du Jour'
-        : '🌙 Heure du Soir / de la Nuit';
-    }
-    if (h === 0) return '🌙 Nuit — Minuit (00h)';
-    if (h >= 1 && h < 6) return '🌙 Nuit (01h - 05h)';
-    if (h >= 6 && h < 12) return '☀️ Jour — Matin (06h - 11h)';
-    if (h === 12) return '☀️ Jour — Midi (12h)';
-    if (h >= 13 && h < 18) return '☀️ Jour — Après-midi (13h - 17h)';
-    return '🌙 Nuit — Soir (18h - 23h)';
+    if (h === 0) return "🌙 Minuit";
+    if (h >= 1 && h < 6) return "🌙 Nuit";
+    if (h >= 6 && h < 12) return "☀️ Matin";
+    if (h === 12) return "☀️ Midi";
+    if (h >= 13 && h < 18) return "🌤️ Après-midi";
+    return "🌆 Soir";
   }
 
   public generateQuestion(): TimeTarget {

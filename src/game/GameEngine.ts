@@ -82,9 +82,6 @@ export class GameEngine {
     this.updateMenuUI();
   }
 
-  /**
-   * Synchronise le thème Jour/Nuit sur html, body et la barre système mobile (meta theme-color)
-   */
   private applySkyTheme(isDay: boolean): void {
     document.documentElement.classList.toggle('theme-day', isDay);
     document.documentElement.classList.toggle('theme-night', !isDay);
@@ -104,8 +101,6 @@ export class GameEngine {
     this.hideHelp();
     this.resetButtonsState();
 
-    // Aux niveaux 1 à 4 (apprentissage 12h), le ciel reste en mode Jour apaisant ;
-    // Aux niveaux 5 et 6 (24h), le ciel bascule entre Jour (06h-17h) et Nuit (18h-05h).
     const showDaySky = this.currentLevel < 5 ? true : this.targetTime.isDay;
     this.applySkyTheme(showDaySky);
 
@@ -183,7 +178,6 @@ export class GameEngine {
       this.render();
     });
 
-    // Permet aussi de toucher directement le badge [16h] ou [25] dans la consigne pour choisir l'aiguille
     document.getElementById('instruction')?.addEventListener('click', (e) => {
       if (this.currentPhase !== 2) return;
       const target = e.target as HTMLElement;
@@ -225,24 +219,16 @@ export class GameEngine {
       if (this.currentPhase === 1 || this.isTransitioning) return;
       e.preventDefault();
       const pos = getPointerPos(e);
-      const angle = Math.atan2(pos.x, -pos.y);
-      const minAngle = (this.currentMinutes * Math.PI) / 30;
-      const hrAngle = ((this.currentHours % 12) * Math.PI) / 6 + (this.currentMinutes * Math.PI) / 360;
 
-      const diffMin = Math.abs(TimeMath.normalizeAngle(angle - minAngle));
-      const diffHr = Math.abs(TimeMath.normalizeAngle(angle - hrAngle));
-      const distFromCenter = Math.sqrt(pos.x * pos.x + pos.y * pos.y);
-
-      // Détection ergonomique : toucher une aiguille la sélectionne directement
-      if (diffMin < 0.35 && diffHr >= 0.35) {
-        this.activeHand = 'minute';
-      } else if (diffHr < 0.35 && diffMin > 0.35) {
-        this.activeHand = 'hour';
-      } else if (distFromCenter > this.radius * 0.68) {
-        this.activeHand = 'minute';
-      } else if (distFromCenter < this.radius * 0.5) {
-        this.activeHand = 'hour';
-      }
+      this.activeHand = TimeMath.pickHandFromPointer(
+        pos.x,
+        pos.y,
+        this.currentHours,
+        this.currentMinutes,
+        this.radius,
+        this.currentLevel,
+        this.activeHand
+      );
       this.updateHandSelectorUI();
 
       this.isDragging = true;
@@ -303,6 +289,12 @@ export class GameEngine {
   private updateHandSelectorUI(): void {
     const hrBtn = document.getElementById('select-hour-btn');
     const minBtn = document.getElementById('select-minute-btn');
+
+    // Au Niveau 1 (Heures piles), on masque le bouton "Minutes" superflu pour simplifier l'interface
+    if (minBtn) {
+      minBtn.style.display = this.currentLevel === 1 ? 'none' : '';
+    }
+
     if (this.activeHand === 'hour') {
       hrBtn?.classList.add('active-hand-btn');
       minBtn?.classList.remove('active-hand-btn');
@@ -390,7 +382,7 @@ export class GameEngine {
         this.soundEngine.playSuccess();
         this.currentPhase = 2;
         this.phaseSuccessCount = 0;
-        this.showFeedback('🎉 <strong>Bravo !</strong> Étape 2 : à toi de placer les aiguilles !', 'success');
+        this.showFeedback('🎉 <strong>Bravo !</strong> Maintenant, à toi de placer les aiguilles !', 'success');
         setTimeout(() => {
           this.initNewQuestion();
           this.updateUI();
@@ -581,11 +573,16 @@ export class GameEngine {
     return `<span class="hr-badge" title="Toucher pour régler les heures">${hPart}h</span><span class="min-badge" title="Toucher pour régler les minutes">${mPart}</span>`;
   }
 
+  /**
+   * Affiche les 6 étoiles de progression du niveau (3 en Lecture + 3 en Placement)
+   * sans remise à zéro frustrante au milieu du niveau !
+   */
   private updatePhaseStarsUI(): void {
     const phaseBadge = document.getElementById('phase-badge');
     if (!phaseBadge) return;
-    const stars = [0, 1, 2]
-      .map(i => (i < this.phaseSuccessCount ? '<span class="star-on">★</span>' : '<span class="star-off">☆</span>'))
+    const totalEarned = (this.currentPhase === 1 ? 0 : 3) + this.phaseSuccessCount;
+    const stars = [0, 1, 2, 3, 4, 5]
+      .map(i => (i < totalEarned ? '<span class="star-on">★</span>' : '<span class="star-off">☆</span>'))
       .join('');
     phaseBadge.innerHTML = stars;
   }
@@ -598,12 +595,17 @@ export class GameEngine {
 
     this.updatePhaseStarsUI();
 
+    const periodChip =
+      this.currentLevel >= 5 && this.targetTime?.periodLabel
+        ? `<span class="period-chip">${this.targetTime.periodLabel}</span>`
+        : '';
+
     if (this.currentPhase === 1) {
       checkBtn?.classList.add('hidden');
       placementTools?.classList.add('hidden');
       choicesContainer?.classList.remove('hidden');
       if (instructionEl) {
-        instructionEl.textContent = `Quelle heure est-il ?`;
+        instructionEl.innerHTML = `${periodChip}<span>Quelle heure est-il ?</span>`;
       }
 
       const choiceBtns = document.querySelectorAll('#choices-container .choice-btn');
@@ -616,7 +618,7 @@ export class GameEngine {
       choicesContainer?.classList.add('hidden');
       this.updateHandSelectorUI();
       if (instructionEl) {
-        instructionEl.innerHTML = `Place les aiguilles sur ${this.formatColoredTargetHTML(this.targetTime)}`;
+        instructionEl.innerHTML = `${periodChip}<span>Place sur</span> ${this.formatColoredTargetHTML(this.targetTime)}`;
       }
     }
   }
@@ -627,10 +629,12 @@ export class GameEngine {
 
   public render(): void {
     const isDay = this.currentLevel < 5 ? true : (this.targetTime ? this.targetTime.isDay : true);
-    this.clock.draw(this.currentLevel, isDay);
+    const is24HourTarget = this.targetTime ? TimeMath.is24HourRingTarget(this.targetTime.hours) : false;
+    this.clock.draw(this.currentLevel, isDay, is24HourTarget);
     this.hands.draw(
       this.currentHours,
       this.currentMinutes,
+      this.currentLevel,
       this.currentPhase === 2 ? this.activeHand : undefined
     );
   }

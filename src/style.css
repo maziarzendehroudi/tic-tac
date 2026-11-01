@@ -790,3 +790,91 @@ body.theme-night #instruction {
   border-radius: 20px;
   box-shadow: 0 8px 20px rgba(15, 23, 42, 0.25);
 }
+
+/* ============================================================================
+   5. CORRECTIFS PLEIN ÉCRAN, ÉQUILIBRE VERTICAL & BARRE ERGONOMIQUE
+   ============================================================================ */
+/* Dégradé directement sur #sky-backdrop (fixed) pour supprimer les barres haut/bas sur mobile */
+body.theme-day #sky-backdrop {
+  background: linear-gradient(180deg, #38bdf8 0%, #7dd3fc 58%, #bae6fd 100%);
+}
+body.theme-night #sky-backdrop {
+  background: linear-gradient(180deg, #060b19 0%, #0f172a 58%, #1e1b4b 100%);
+}
+
+/* Repositionnement doux du Soleil, de la Lune et des Nuages hors des cartes et de l'horloge */
+.sun-orb {
+  top: auto !important;
+  bottom: 24px !important;
+  right: 20px !important;
+  width: 58px !important;
+  height: 58px !important;
+  opacity: 0.85;
+}
+body.theme-night .sun-orb {
+  opacity: 0 !important;
+}
+
+.moon-orb {
+  top: auto !important;
+  bottom: 26px !important;
+  right: 22px !important;
+  width: 48px !important;
+  height: 48px !important;
+}
+
+.cloud-1 {
+  top: auto !important;
+  bottom: 32px !important;
+  left: 18px !important;
+  opacity: 0.65;
+}
+.cloud-2 {
+  display: none !important;
+}
+
+/* Centrage vertical équilibré sur mobile pour éviter le vide en bas */
+#app {
+  justify-content: center;
+  padding: 14px 16px 20px !important;
+}
+
+#main-menu,
+#game-screen {
+  flex: 1;
+  justify-content: space-between;
+  max-height: 760px;
+  padding: 4px 0;
+}
+
+/* Étoiles de progression sur 6 (3 Lecture + 3 Placement) */
+#back-menu-btn #phase-badge {
+  font-size: 1.15rem !important;
+  letter-spacing: 1px;
+}
+
+/* Pastille Matin / Après-midi / Soir / Nuit intégrée à la question (Niveaux 5 & 6) */
+.period-chip {
+  font-size: 0.86rem;
+  font-weight: 700;
+  padding: 3px 10px;
+  border-radius: 12px;
+  background: rgba(15, 23, 42, 0.82);
+  color: #fde68a;
+  border: 1.5px solid rgba(251, 191, 36, 0.5);
+  text-shadow: none;
+  margin-right: 4px;
+}
+
+/* Alignement pleine largeur du bouton Vérifier avec la barre [ − ] [ Heures | Minutes ] [ + ] */
+#check-btn {
+  max-width: 100% !important;
+  width: 100% !important;
+  padding: 14px 24px !important;
+}
+
+.nudge-btn {
+  width: 48px !important;
+  height: 44px !important;
+  font-size: 1.55rem !important;
+}
