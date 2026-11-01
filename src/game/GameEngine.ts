@@ -324,22 +324,34 @@ export class GameEngine {
     });
   }
 
+  private showFeedback(html: string, type: "success" | "error"): void {
+    const helpBox = document.getElementById("help-box");
+    const helpText = document.getElementById("help-text");
+    if (!helpBox || !helpText) return;
+
+    helpText.innerHTML = html;
+    helpBox.classList.remove("invisible-feedback", "hidden", "feedback-success", "feedback-error");
+    helpBox.classList.add(type === "success" ? "feedback-success" : "feedback-error");
+  }
+
+  private hideHelp(): void {
+    const helpBox = document.getElementById("help-box");
+    if (!helpBox) return;
+    helpBox.classList.add("invisible-feedback");
+    helpBox.classList.remove("feedback-success", "feedback-error");
+  }
+
   private handleSuccessfulAnswer(): void {
     this.isTransitioning = true;
     this.phaseSuccessCount++;
     this.triggerSuccessEffect();
-    this.hideHelp();
-
-    const instructionEl = document.getElementById('instruction');
 
     if (this.phaseSuccessCount >= 3) {
       if (this.currentPhase === 1) {
         this.soundEngine.playSuccess();
         this.currentPhase = 2;
         this.phaseSuccessCount = 0;
-        if (instructionEl) {
-          instructionEl.innerHTML = `🎉 <strong>Bravo !</strong> À toi de placer les aiguilles !`;
-        }
+        this.showFeedback("🎉 <strong>Bravo !</strong> Étape 2 : à toi de placer les aiguilles !", "success");
         setTimeout(() => {
           this.initNewQuestion();
           this.updateUI();
@@ -354,25 +366,22 @@ export class GameEngine {
         this.updateMenuUI();
 
         const levelBadges: Record<number, string> = {
-          1: '🥉 Niveau 1 terminé !',
-          2: '🥈 Niveau 2 terminé !',
-          3: '🥇 Niveau 3 terminé !',
-          4: '🏅 Niveau 4 terminé !',
-          5: '🌟 Niveau 5 terminé !',
-          6: '👑 Bravo ! Tu es Maître du Temps !'
+          1: "🥉 Niveau 1 terminé !",
+          2: "🥈 Niveau 2 terminé !",
+          3: "🥇 Niveau 3 terminé !",
+          4: "🏅 Niveau 4 terminé !",
+          5: "🌟 Niveau 5 terminé !",
+          6: "👑 Bravo ! Tu es Maître du Temps !"
         };
 
-        const rewardText = `🏆 <strong>${levelBadges[this.currentLevel] || 'Niveau terminé !'}</strong>`;
-        if (instructionEl) instructionEl.innerHTML = rewardText;
+        this.showFeedback(`🏆 <strong>${levelBadges[this.currentLevel] || "Niveau terminé !"}</strong>`, "success");
         setTimeout(() => { this.returnToMenu(); }, 2000);
         return;
       }
     }
 
     this.soundEngine.playSuccess();
-    if (instructionEl) {
-      instructionEl.innerHTML = `✅ <strong>Bravo ! Il est bien ${this.targetTime.text} !</strong>`;
-    }
+    this.showFeedback(`✅ <strong>Bravo ! Il est bien ${this.targetTime.text} !</strong>`, "success");
     setTimeout(() => {
       this.initNewQuestion();
       this.updateUI();
@@ -388,12 +397,6 @@ export class GameEngine {
   }
 
   private showDiagnosticHelp(): void {
-    const helpBox = document.getElementById('help-box');
-    const helpText = document.getElementById('help-text');
-    if (!helpBox || !helpText) return;
-
-    helpBox.classList.remove('hidden');
-
     const baseExplanation = TimeMath.buildPedagogicalHint(
       this.targetTime.hours,
       this.targetTime.minutes,
@@ -402,9 +405,9 @@ export class GameEngine {
 
     if (this.currentPhase === 1) {
       if (this.errorsCount === 1) {
-        helpText.innerHTML = baseExplanation;
+        this.showFeedback(`💡 ${baseExplanation}`, "error");
       } else {
-        helpText.innerHTML = `${baseExplanation} ➔ Il est <strong>${this.targetTime.text}</strong>.`;
+        this.showFeedback(`💡 ${baseExplanation} ➔ Il est <strong>${this.targetTime.text}</strong>.`, "error");
       }
     } else {
       const isHourCorrect = (this.currentHours % 12) === (this.targetTime.hours % 12);
@@ -417,29 +420,25 @@ export class GameEngine {
       const targetDialMinNum = TimeMath.minuteToDialNumber(this.targetTime.minutes);
 
       if (isHourCorrect && !isMinuteCorrect) {
-        this.activeHand = 'minute';
+        this.activeHand = "minute";
         this.updateHandSelectorUI();
         this.render();
         if (this.currentLevel === 6) {
-          helpText.innerHTML = `👍 Les heures sont justes ! Place maintenant la grande aiguille bleue sur <strong>${this.targetTime.minutes} min</strong>.`;
+          this.showFeedback(`💡 👍 Les heures sont justes ! Place maintenant la grande aiguille bleue sur <strong>${this.targetTime.minutes} min</strong>.`, "error");
         } else {
           const minStr = this.targetTime.minutes < 10 ? `0${this.targetTime.minutes}` : `${this.targetTime.minutes}`;
-          helpText.innerHTML = `👍 Les heures sont justes ! Place la grande aiguille bleue sur <strong>${minStr}</strong> (en face du ${targetDialMinNum}).`;
+          this.showFeedback(`💡 👍 Les heures sont justes ! Place la grande aiguille bleue sur <strong>${minStr}</strong> (en face du ${targetDialMinNum}).`, "error");
         }
       } else if (!isHourCorrect && isMinuteCorrect) {
-        this.activeHand = 'hour';
+        this.activeHand = "hour";
         this.updateHandSelectorUI();
         this.render();
-        helpText.innerHTML = `👍 Les minutes sont justes ! Place la petite aiguille orange sur le <strong>${targetDialHour}</strong>.`;
+        this.showFeedback(`💡 👍 Les minutes sont justes ! Place la petite aiguille orange sur le <strong>${targetDialHour}</strong>.`, "error");
       } else {
         const minStr = this.targetTime.minutes < 10 ? `0${this.targetTime.minutes}` : `${this.targetTime.minutes}`;
-        helpText.innerHTML = `Place la petite aiguille orange sur le <strong>${targetDialHour}</strong> et la grande aiguille bleue sur <strong>${minStr}</strong>.`;
+        this.showFeedback(`💡 Place la petite aiguille orange sur le <strong>${targetDialHour}</strong> et la grande aiguille bleue sur <strong>${minStr}</strong>.`, "error");
       }
     }
-  }
-
-  private hideHelp(): void {
-    document.getElementById('help-box')?.classList.add('hidden');
   }
 
   private updateFromPointer(x: number, y: number): void {
