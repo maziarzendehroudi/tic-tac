@@ -1,16 +1,43 @@
 {
   "short_name": "Tic-Tac",
-  "name": "Tic-Tac - L'Atelier de l'Horloger",
+  "name": "Tic-Tac - Apprendre à lire l'heure",
+  "description": "Jeu éducatif pour apprendre à lire l'heure sur 12h et 24h, le jour comme la nuit.",
   "icons": [
     {
       "src": "favicon.svg",
       "type": "image/svg+xml",
       "sizes": "any",
-      "purpose": "any maskable"
+      "purpose": "any"
+    },
+    {
+      "src": "icon-maskable.svg",
+      "type": "image/svg+xml",
+      "sizes": "any",
+      "purpose": "maskable"
+    },
+    {
+      "src": "icon-192.png",
+      "type": "image/png",
+      "sizes": "192x192",
+      "purpose": "any"
+    },
+    {
+      "src": "icon-512.png",
+      "type": "image/png",
+      "sizes": "512x512",
+      "purpose": "any"
+    },
+    {
+      "src": "icon-maskable-512.png",
+      "type": "image/png",
+      "sizes": "512x512",
+      "purpose": "maskable"
     }
   ],
   "start_url": "/tic-tac/",
-  "background_color": "#0f172a",
-  "theme_color": "#0f172a",
-  "display": "standalone"
+  "scope": "/tic-tac/",
+  "background_color": "#38bdf8",
+  "theme_color": "#38bdf8",
+  "display": "standalone",
+  "orientation": "portrait"
 }

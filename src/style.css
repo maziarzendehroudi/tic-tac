@@ -762,3 +762,31 @@ body.theme-night #instruction {
   font-size: 1.25rem;
   gap: 4px;
 }
+
+/* Intégration de la nouvelle icône d'application sur l'accueil et la popup PWA */
+#main-title-box h1 {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+}
+
+.brand-app-icon {
+  width: 48px;
+  height: 48px;
+  border-radius: 12px;
+  filter: drop-shadow(0 4px 8px rgba(15, 23, 42, 0.25));
+}
+
+.install-icon {
+  background: transparent !important;
+  width: 84px !important;
+  height: 84px !important;
+}
+
+.install-app-icon {
+  width: 84px;
+  height: 84px;
+  border-radius: 20px;
+  box-shadow: 0 8px 20px rgba(15, 23, 42, 0.25);
+}

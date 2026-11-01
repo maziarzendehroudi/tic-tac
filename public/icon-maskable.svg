@@ -1,0 +1,169 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" width="512" height="512">
+  <defs>
+    <linearGradient id="daySky" x1="0%" y1="0%" x2="70%" y2="70%">
+      <stop offset="0%" stop-color="#38bdf8" />
+      <stop offset="55%" stop-color="#7dd3fc" />
+      <stop offset="100%" stop-color="#e0f2fe" />
+    </linearGradient>
+    <linearGradient id="nightSky" x1="30%" y1="30%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#0f2952" />
+      <stop offset="55%" stop-color="#0c1938" />
+      <stop offset="100%" stop-color="#060b19" />
+    </linearGradient>
+    <radialGradient id="sunGrad" cx="50%" cy="50%" r="50%">
+      <stop offset="0%" stop-color="#fef08a" />
+      <stop offset="65%" stop-color="#fbbf24" />
+      <stop offset="100%" stop-color="#f59e0b" />
+    </radialGradient>
+    <linearGradient id="bezelGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#0284c7" />
+      <stop offset="100%" stop-color="#0369a1" />
+    </linearGradient>
+    <filter id="dropShadow" x="-15%" y="-15%" width="130%" height="130%">
+      <feDropShadow dx="0" dy="8" stdDeviation="10" flood-color="#020617" flood-opacity="0.38" />
+    </filter>
+    <filter id="handShadow" x="-20%" y="-20%" width="140%" height="140%">
+      <feDropShadow dx="0" dy="3" stdDeviation="3" flood-color="#0f172a" flood-opacity="0.32" />
+    </filter>
+  </defs>
+  <g>
+    <rect x="0" y="0" width="512" height="512" fill="url(#daySky)" />
+    <polygon points="512,56 512,512 56,512" fill="url(#nightSky)" />
+    <circle cx="92" cy="104" r="58" fill="#fde047" opacity="0.28" />
+    <polygon points="135.4,97.0 150.0,104.0 135.4,111.0" fill="#f59e0b" opacity="0.85" />
+    <polygon points="133.1,119.6 142.2,133.0 126.1,131.8" fill="#f59e0b" opacity="0.85" />
+    <polygon points="119.8,138.1 121.0,154.2 107.6,145.1" fill="#f59e0b" opacity="0.85" />
+    <polygon points="99.0,147.4 92.0,162.0 85.0,147.4" fill="#f59e0b" opacity="0.85" />
+    <polygon points="76.4,145.1 63.0,154.2 64.2,138.1" fill="#f59e0b" opacity="0.85" />
+    <polygon points="57.9,131.8 41.8,133.0 50.9,119.6" fill="#f59e0b" opacity="0.85" />
+    <polygon points="48.6,111.0 34.0,104.0 48.6,97.0" fill="#f59e0b" opacity="0.85" />
+    <polygon points="50.9,88.4 41.8,75.0 57.9,76.2" fill="#f59e0b" opacity="0.85" />
+    <polygon points="64.2,69.9 63.0,53.8 76.4,62.9" fill="#f59e0b" opacity="0.85" />
+    <polygon points="85.0,60.6 92.0,46.0 99.0,60.6" fill="#f59e0b" opacity="0.85" />
+    <polygon points="107.6,62.9 121.0,53.8 119.8,69.9" fill="#f59e0b" opacity="0.85" />
+    <polygon points="126.1,76.2 142.2,75.0 133.1,88.4" fill="#f59e0b" opacity="0.85" />
+    <circle cx="92" cy="104" r="42" fill="url(#sunGrad)" />
+    <g fill="#ffffff" opacity="0.92">
+      <rect x="330" y="42" width="110" height="34" rx="17" />
+      <circle cx="362" cy="40" r="24" />
+      <circle cx="398" cy="44" r="20" />
+      <rect x="16" y="366" width="96" height="32" rx="16" />
+      <circle cx="46" cy="362" r="22" />
+      <circle cx="76" cy="368" r="18" />
+    </g>
+    <path d="M 432 362 A 44 44 0 1 1 372 426 A 35 35 0 1 0 432 362 Z" fill="#fef08a" />
+    <path d="M 454 119 Q 454 128 463 128 Q 454 128 454 137 Q 454 128 445 128 Q 454 128 454 119 Z" fill="#fef08a" />
+    <path d="M 472 318 Q 472 326 480 326 Q 472 326 472 334 Q 472 326 464 326 Q 472 326 472 318 Z" fill="#fef08a" />
+    <path d="M 152 454 Q 152 462 160 462 Q 152 462 152 470 Q 152 462 144 462 Q 152 462 152 454 Z" fill="#fef08a" />
+    <circle cx="478" cy="198" r="3" fill="#fef08a" opacity="0.85" />
+    <circle cx="364" cy="468" r="2.5" fill="#fef08a" opacity="0.85" />
+    <circle cx="98" cy="456" r="2.5" fill="#fef08a" opacity="0.85" />
+    <circle cx="256" cy="256" r="176" fill="#ffffff" stroke="url(#bezelGrad)" stroke-width="11.0" filter="url(#dropShadow)" />
+    <circle cx="256" cy="256" r="170.5" fill="none" stroke="#e0f2fe" stroke-width="23.8" />
+    <line x1="256.00" y1="96.50" x2="256.00" y2="86.42" stroke="#0284c7" stroke-width="2.93" stroke-linecap="round" />
+    <line x1="273.25" y1="91.90" x2="273.73" y2="87.35" stroke="#64748b" stroke-width="1.38" stroke-linecap="round" />
+    <line x1="290.31" y1="94.61" x2="291.26" y2="90.12" stroke="#64748b" stroke-width="1.38" stroke-linecap="round" />
+    <line x1="306.99" y1="99.08" x2="308.40" y2="94.72" stroke="#64748b" stroke-width="1.38" stroke-linecap="round" />
+    <line x1="323.11" y1="105.26" x2="324.98" y2="101.08" stroke="#64748b" stroke-width="1.38" stroke-linecap="round" />
+    <line x1="335.75" y1="117.87" x2="340.79" y2="109.14" stroke="#0284c7" stroke-width="2.93" stroke-linecap="round" />
+    <line x1="352.98" y1="122.51" x2="355.68" y2="118.80" stroke="#64748b" stroke-width="1.38" stroke-linecap="round" />
+    <line x1="366.41" y1="133.38" x2="369.47" y2="129.98" stroke="#64748b" stroke-width="1.38" stroke-linecap="round" />
+    <line x1="378.62" y1="145.59" x2="382.02" y2="142.53" stroke="#64748b" stroke-width="1.38" stroke-linecap="round" />
+    <line x1="389.49" y1="159.02" x2="393.20" y2="156.32" stroke="#64748b" stroke-width="1.38" stroke-linecap="round" />
+    <line x1="394.13" y1="176.25" x2="402.86" y2="171.21" stroke="#0284c7" stroke-width="2.93" stroke-linecap="round" />
+    <line x1="406.74" y1="188.89" x2="410.92" y2="187.02" stroke="#64748b" stroke-width="1.38" stroke-linecap="round" />
+    <line x1="412.92" y1="205.01" x2="417.28" y2="203.60" stroke="#64748b" stroke-width="1.38" stroke-linecap="round" />
+    <line x1="417.39" y1="221.69" x2="421.88" y2="220.74" stroke="#64748b" stroke-width="1.38" stroke-linecap="round" />
+    <line x1="420.10" y1="238.75" x2="424.65" y2="238.27" stroke="#64748b" stroke-width="1.38" stroke-linecap="round" />
+    <line x1="415.50" y1="256.00" x2="425.58" y2="256.00" stroke="#0284c7" stroke-width="2.93" stroke-linecap="round" />
+    <line x1="420.10" y1="273.25" x2="424.65" y2="273.73" stroke="#64748b" stroke-width="1.38" stroke-linecap="round" />
+    <line x1="417.39" y1="290.31" x2="421.88" y2="291.26" stroke="#64748b" stroke-width="1.38" stroke-linecap="round" />
+    <line x1="412.92" y1="306.99" x2="417.28" y2="308.40" stroke="#64748b" stroke-width="1.38" stroke-linecap="round" />
+    <line x1="406.74" y1="323.11" x2="410.92" y2="324.98" stroke="#64748b" stroke-width="1.38" stroke-linecap="round" />
+    <line x1="394.13" y1="335.75" x2="402.86" y2="340.79" stroke="#0284c7" stroke-width="2.93" stroke-linecap="round" />
+    <line x1="389.49" y1="352.98" x2="393.20" y2="355.68" stroke="#64748b" stroke-width="1.38" stroke-linecap="round" />
+    <line x1="378.62" y1="366.41" x2="382.02" y2="369.47" stroke="#64748b" stroke-width="1.38" stroke-linecap="round" />
+    <line x1="366.41" y1="378.62" x2="369.47" y2="382.02" stroke="#64748b" stroke-width="1.38" stroke-linecap="round" />
+    <line x1="352.98" y1="389.49" x2="355.68" y2="393.20" stroke="#64748b" stroke-width="1.38" stroke-linecap="round" />
+    <line x1="335.75" y1="394.13" x2="340.79" y2="402.86" stroke="#0284c7" stroke-width="2.93" stroke-linecap="round" />
+    <line x1="323.11" y1="406.74" x2="324.98" y2="410.92" stroke="#64748b" stroke-width="1.38" stroke-linecap="round" />
+    <line x1="306.99" y1="412.92" x2="308.40" y2="417.28" stroke="#64748b" stroke-width="1.38" stroke-linecap="round" />
+    <line x1="290.31" y1="417.39" x2="291.26" y2="421.88" stroke="#64748b" stroke-width="1.38" stroke-linecap="round" />
+    <line x1="273.25" y1="420.10" x2="273.73" y2="424.65" stroke="#64748b" stroke-width="1.38" stroke-linecap="round" />
+    <line x1="256.00" y1="415.50" x2="256.00" y2="425.58" stroke="#0284c7" stroke-width="2.93" stroke-linecap="round" />
+    <line x1="238.75" y1="420.10" x2="238.27" y2="424.65" stroke="#64748b" stroke-width="1.38" stroke-linecap="round" />
+    <line x1="221.69" y1="417.39" x2="220.74" y2="421.88" stroke="#64748b" stroke-width="1.38" stroke-linecap="round" />
+    <line x1="205.01" y1="412.92" x2="203.60" y2="417.28" stroke="#64748b" stroke-width="1.38" stroke-linecap="round" />
+    <line x1="188.89" y1="406.74" x2="187.02" y2="410.92" stroke="#64748b" stroke-width="1.38" stroke-linecap="round" />
+    <line x1="176.25" y1="394.13" x2="171.21" y2="402.86" stroke="#0284c7" stroke-width="2.93" stroke-linecap="round" />
+    <line x1="159.02" y1="389.49" x2="156.32" y2="393.20" stroke="#64748b" stroke-width="1.38" stroke-linecap="round" />
+    <line x1="145.59" y1="378.62" x2="142.53" y2="382.02" stroke="#64748b" stroke-width="1.38" stroke-linecap="round" />
+    <line x1="133.38" y1="366.41" x2="129.98" y2="369.47" stroke="#64748b" stroke-width="1.38" stroke-linecap="round" />
+    <line x1="122.51" y1="352.98" x2="118.80" y2="355.68" stroke="#64748b" stroke-width="1.38" stroke-linecap="round" />
+    <line x1="117.87" y1="335.75" x2="109.14" y2="340.79" stroke="#0284c7" stroke-width="2.93" stroke-linecap="round" />
+    <line x1="105.26" y1="323.11" x2="101.08" y2="324.98" stroke="#64748b" stroke-width="1.38" stroke-linecap="round" />
+    <line x1="99.08" y1="306.99" x2="94.72" y2="308.40" stroke="#64748b" stroke-width="1.38" stroke-linecap="round" />
+    <line x1="94.61" y1="290.31" x2="90.12" y2="291.26" stroke="#64748b" stroke-width="1.38" stroke-linecap="round" />
+    <line x1="91.90" y1="273.25" x2="87.35" y2="273.73" stroke="#64748b" stroke-width="1.38" stroke-linecap="round" />
+    <line x1="96.50" y1="256.00" x2="86.42" y2="256.00" stroke="#0284c7" stroke-width="2.93" stroke-linecap="round" />
+    <line x1="91.90" y1="238.75" x2="87.35" y2="238.27" stroke="#64748b" stroke-width="1.38" stroke-linecap="round" />
+    <line x1="94.61" y1="221.69" x2="90.12" y2="220.74" stroke="#64748b" stroke-width="1.38" stroke-linecap="round" />
+    <line x1="99.08" y1="205.01" x2="94.72" y2="203.60" stroke="#64748b" stroke-width="1.38" stroke-linecap="round" />
+    <line x1="105.26" y1="188.89" x2="101.08" y2="187.02" stroke="#64748b" stroke-width="1.38" stroke-linecap="round" />
+    <line x1="117.87" y1="176.25" x2="109.14" y2="171.21" stroke="#0284c7" stroke-width="2.93" stroke-linecap="round" />
+    <line x1="122.51" y1="159.02" x2="118.80" y2="156.32" stroke="#64748b" stroke-width="1.38" stroke-linecap="round" />
+    <line x1="133.38" y1="145.59" x2="129.98" y2="142.53" stroke="#64748b" stroke-width="1.38" stroke-linecap="round" />
+    <line x1="145.59" y1="133.38" x2="142.53" y2="129.98" stroke="#64748b" stroke-width="1.38" stroke-linecap="round" />
+    <line x1="159.02" y1="122.51" x2="156.32" y2="118.80" stroke="#64748b" stroke-width="1.38" stroke-linecap="round" />
+    <line x1="176.25" y1="117.87" x2="171.21" y2="109.14" stroke="#0284c7" stroke-width="2.93" stroke-linecap="round" />
+    <line x1="188.89" y1="105.26" x2="187.02" y2="101.08" stroke="#64748b" stroke-width="1.38" stroke-linecap="round" />
+    <line x1="205.01" y1="99.08" x2="203.60" y2="94.72" stroke="#64748b" stroke-width="1.38" stroke-linecap="round" />
+    <line x1="221.69" y1="94.61" x2="220.74" y2="90.12" stroke="#64748b" stroke-width="1.38" stroke-linecap="round" />
+    <line x1="238.75" y1="91.90" x2="238.27" y2="87.35" stroke="#64748b" stroke-width="1.38" stroke-linecap="round" />
+    <text x="256.00" y="112.08" font-family="Fredoka, Arial, sans-serif" font-weight="700" font-size="12.8" fill="#0284c7" text-anchor="middle">00</text>
+    <text x="330.25" y="131.98" font-family="Fredoka, Arial, sans-serif" font-weight="700" font-size="12.8" fill="#0284c7" text-anchor="middle">05</text>
+    <text x="384.60" y="186.33" font-family="Fredoka, Arial, sans-serif" font-weight="700" font-size="12.8" fill="#0284c7" text-anchor="middle">10</text>
+    <text x="404.50" y="260.58" font-family="Fredoka, Arial, sans-serif" font-weight="700" font-size="12.8" fill="#0284c7" text-anchor="middle">15</text>
+    <text x="384.60" y="334.83" font-family="Fredoka, Arial, sans-serif" font-weight="700" font-size="12.8" fill="#0284c7" text-anchor="middle">20</text>
+    <text x="330.25" y="389.19" font-family="Fredoka, Arial, sans-serif" font-weight="700" font-size="12.8" fill="#0284c7" text-anchor="middle">25</text>
+    <text x="256.00" y="409.08" font-family="Fredoka, Arial, sans-serif" font-weight="700" font-size="12.8" fill="#0284c7" text-anchor="middle">30</text>
+    <text x="181.75" y="389.19" font-family="Fredoka, Arial, sans-serif" font-weight="700" font-size="12.8" fill="#0284c7" text-anchor="middle">35</text>
+    <text x="127.40" y="334.83" font-family="Fredoka, Arial, sans-serif" font-weight="700" font-size="12.8" fill="#0284c7" text-anchor="middle">40</text>
+    <text x="107.50" y="260.58" font-family="Fredoka, Arial, sans-serif" font-weight="700" font-size="12.8" fill="#0284c7" text-anchor="middle">45</text>
+    <text x="127.40" y="186.33" font-family="Fredoka, Arial, sans-serif" font-weight="700" font-size="12.8" fill="#0284c7" text-anchor="middle">50</text>
+    <text x="181.75" y="131.98" font-family="Fredoka, Arial, sans-serif" font-weight="700" font-size="12.8" fill="#0284c7" text-anchor="middle">55</text>
+    <text x="315.58" y="161.97" font-family="Fredoka, Arial, sans-serif" font-weight="700" font-size="25.7" fill="#0f172a" text-anchor="middle">1</text>
+    <text x="300.92" y="183.24" font-family="Fredoka, Arial, sans-serif" font-weight="700" font-size="13.8" fill="#ea580c" text-anchor="middle">13</text>
+    <text x="359.20" y="205.58" font-family="Fredoka, Arial, sans-serif" font-weight="700" font-size="25.7" fill="#0f172a" text-anchor="middle">2</text>
+    <text x="333.80" y="216.12" font-family="Fredoka, Arial, sans-serif" font-weight="700" font-size="13.8" fill="#ea580c" text-anchor="middle">14</text>
+    <text x="375.17" y="265.17" font-family="Fredoka, Arial, sans-serif" font-weight="700" font-size="25.7" fill="#0f172a" text-anchor="middle">3</text>
+    <text x="345.83" y="261.04" font-family="Fredoka, Arial, sans-serif" font-weight="700" font-size="13.8" fill="#ea580c" text-anchor="middle">15</text>
+    <text x="359.20" y="324.75" font-family="Fredoka, Arial, sans-serif" font-weight="700" font-size="25.7" fill="#0f172a" text-anchor="middle">4</text>
+    <text x="333.80" y="305.96" font-family="Fredoka, Arial, sans-serif" font-weight="700" font-size="13.8" fill="#ea580c" text-anchor="middle">16</text>
+    <text x="315.58" y="368.37" font-family="Fredoka, Arial, sans-serif" font-weight="700" font-size="25.7" fill="#0f172a" text-anchor="middle">5</text>
+    <text x="300.92" y="338.84" font-family="Fredoka, Arial, sans-serif" font-weight="700" font-size="13.8" fill="#ea580c" text-anchor="middle">17</text>
+    <text x="256.00" y="384.33" font-family="Fredoka, Arial, sans-serif" font-weight="700" font-size="25.7" fill="#0f172a" text-anchor="middle">6</text>
+    <text x="256.00" y="350.88" font-family="Fredoka, Arial, sans-serif" font-weight="700" font-size="13.8" fill="#ea580c" text-anchor="middle">18</text>
+    <text x="196.42" y="368.37" font-family="Fredoka, Arial, sans-serif" font-weight="700" font-size="25.7" fill="#0f172a" text-anchor="middle">7</text>
+    <text x="211.08" y="338.84" font-family="Fredoka, Arial, sans-serif" font-weight="700" font-size="13.8" fill="#ea580c" text-anchor="middle">19</text>
+    <text x="152.80" y="324.75" font-family="Fredoka, Arial, sans-serif" font-weight="700" font-size="25.7" fill="#0f172a" text-anchor="middle">8</text>
+    <text x="178.20" y="305.96" font-family="Fredoka, Arial, sans-serif" font-weight="700" font-size="13.8" fill="#ea580c" text-anchor="middle">20</text>
+    <text x="136.83" y="265.17" font-family="Fredoka, Arial, sans-serif" font-weight="700" font-size="25.7" fill="#0f172a" text-anchor="middle">9</text>
+    <text x="166.17" y="261.04" font-family="Fredoka, Arial, sans-serif" font-weight="700" font-size="13.8" fill="#ea580c" text-anchor="middle">21</text>
+    <text x="152.80" y="205.58" font-family="Fredoka, Arial, sans-serif" font-weight="700" font-size="25.7" fill="#0f172a" text-anchor="middle">10</text>
+    <text x="178.20" y="216.12" font-family="Fredoka, Arial, sans-serif" font-weight="700" font-size="13.8" fill="#ea580c" text-anchor="middle">22</text>
+    <text x="196.42" y="161.97" font-family="Fredoka, Arial, sans-serif" font-weight="700" font-size="25.7" fill="#0f172a" text-anchor="middle">11</text>
+    <text x="211.08" y="183.24" font-family="Fredoka, Arial, sans-serif" font-weight="700" font-size="13.8" fill="#ea580c" text-anchor="middle">23</text>
+    <text x="256.00" y="146.00" font-family="Fredoka, Arial, sans-serif" font-weight="700" font-size="25.7" fill="#0f172a" text-anchor="middle">12</text>
+    <text x="256.00" y="171.21" font-family="Fredoka, Arial, sans-serif" font-weight="700" font-size="13.8" fill="#ea580c" text-anchor="middle">00</text>
+    <g transform="translate(256, 256) rotate(120)" filter="url(#handShadow)">
+      <line x1="0" y1="12.8" x2="0" y2="-62.3" stroke="#ea580c" stroke-width="11.0" stroke-linecap="round" />
+      <polygon points="-7.3,-60.5 0,-75.2 7.3,-60.5" fill="#ea580c" />
+    </g>
+    <g transform="translate(256, 256) rotate(0)" filter="url(#handShadow)">
+      <line x1="0" y1="16.5" x2="0" y2="-113.7" stroke="#0284c7" stroke-width="7.8" stroke-linecap="round" />
+      <polygon points="-6.4,-111.8 0,-128.3 6.4,-111.8" fill="#0284c7" />
+    </g>
+    <circle cx="256" cy="256" r="8.3" fill="#0f172a" stroke="#ffffff" stroke-width="3.2" />
+  </g>
+</svg>
