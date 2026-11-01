@@ -4,15 +4,14 @@
 ## 1. Identité & Objectif du Projet
 - **Nom du projet :** Tic-Tac
 - **Éditeur :** SASU Mestis — *Numérique en action*
-- **Nature :** Application web ludo-éducative (PWA) pour enfants dédiée à l'apprentissage progressif de la lecture de l'heure analogique et à la découverte du mécanisme d'une montre.
-- **Dépôt GitHub :** `maziarzendehroudi/tic-tac`
+- **Nature :** Application web ludo-éducative (PWA) pour enfants dédiée à l'apprentissage progressif de la lecture de l'heure analogique (12h, 24h et minutes) avec ambiance céleste dynamique Jour ☀️ / Nuit 🌙.
+- **Note d'architecture :** Le module `src/game/WatchMechanism.ts` (Atelier de l'Horloger) est conservé en réserve dans le code source mais désactivé du jeu actif.
 
-## 2. Architecture Pédagogique & Technique
-- **Stack :** TypeScript 6.0 strict (`tsc --noEmit`), Vite 8.2, Vitest, HTML5 Canvas 2D, Web Audio API natif.
-- **Progression Pédagogique en 6 Niveaux (1 Niveau = 1 Savoir-faire + 1 Pièce Mécanique) :**
-  1. **Niveau 1 (Heures pleines) ➔ `1. La Molette` :** Cadran `1..12` épuré.
-  2. **Niveau 2 (Demi-heures) ➔ `2. Le Ressort` :** Repères bleus `:00` / `:30` et ligne médiane.
-  3. **Niveau 3 (Quarts d'heure) ➔ `3. Aiguille des Heures` :** Repères bleus `:00, :15, :30, :45` et croix des quarts.
-  4. **Niveau 4 (Précision 5 minutes) ➔ `4. Relais & Aiguille des Minutes` :** Couronne extérieure bleue de la table de 5 (`00, 05..55`) + 60 graduations.
-  5. **Niveau 5 (Les 24 heures) ➔ `5. Relais & Aiguille des Secondes` :** Couronne extérieure orange `13..00` + badge Moment de la journée (`☀️ Matin`, `🌤️ Après-midi`, `🌆 Soir`, `🌙 Nuit`).
-  6. **Niveau 6 (Maître Horloger - Minute près) ➔ `6. Le Balancier Tic-Tac` :** Cadran cardinal (`12, 3, 6, 9`) + 60 graduations de minutes + réglage fin `➖ / ➕`.
+## 2. Architecture Pédagogique & Visuelle
+- **Séparation concentrique sur le cadran (`src/game/Clock.ts`) :**
+  - **Piste extérieure bleue (`r - 31`) :** Graduations 0..59 et repères des minutes (`00, 05..55`), alignés avec la pointe de la grande aiguille bleue.
+  - **Cercle médian (`r - 72`) :** Heures `1` à `12`.
+  - **Cercle intérieur (`r - 114`) :** Pastilles des heures 24h (`13` à `23` et `00`) aux niveaux 5 et 6, alignées avec la pointe de la petite aiguille dorée.
+- **Ambiance dynamique Jour / Nuit (`index.html`, `src/style.css`, `src/game/Clock.ts`) :**
+  - **Jour (`06h00 - 17h59`) :** Ciel bleu azur, Soleil rayonnant, nuages et médaillon solaire central.
+  - **Nuit (`18h00 - 05h59`) :** Ciel nocturne profond, Croissant de lune, étoiles scintillantes et médaillon lunaire central.
