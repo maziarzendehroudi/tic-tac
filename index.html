@@ -1,5 +1,5 @@
 <!doctype html>
-<html lang="fr">
+<html lang="fr" class="theme-day">
   <head>
     <meta charset="UTF-8" />
     <link rel="icon" type="image/svg+xml" href="./favicon.svg" />
@@ -11,28 +11,27 @@
     <link href="https://fonts.googleapis.com/css2?family=Fredoka:wght@400;600;700&display=swap" rel="stylesheet">
     <link rel="manifest" href="./manifest.json">
     <meta name="theme-color" content="#38bdf8">
-    <script type="module" crossorigin src="/tic-tac/assets/index-DTGywwgs.js"></script>
-    <link rel="stylesheet" crossorigin href="/tic-tac/assets/index-DV9Wa0U3.css">
+    <script type="module" crossorigin src="/tic-tac/assets/index-2rFawCJw.js"></script>
+    <link rel="stylesheet" crossorigin href="/tic-tac/assets/index-CTuCBRbp.css">
   </head>
   <body class="theme-day">
-    <!-- FOND DE CIEL PLEIN ÉCRAN (JOUR : CIEL BLEU CLAIR & NUAGES / NUIT : CIEL ÉTOILÉ) -->
+    <!-- FOND DE CIEL PLEIN ÉCRAN (POSITIONNÉ SANS COLLISION AVEC LES BOUTONS) -->
     <div id="sky-backdrop" aria-hidden="true">
       <div class="sun-orb"></div>
       <div class="cloud cloud-1"></div>
       <div class="cloud cloud-2"></div>
-      <div class="cloud cloud-3"></div>
       <div class="moon-orb"></div>
       <div class="stars-layer"></div>
     </div>
 
     <div id="app">
-      <!-- BARRE AUDIO & TEST PROVISOIRE -->
+      <!-- BARRE SUPÉRIEURE COMPACTE -->
       <div id="global-top-bar">
-        <button id="dev-unlock-btn" type="button" title="Bouton provisoire de test">🔓 Tout débloquer (Test)</button>
-        <button id="sound-toggle-btn" type="button" aria-pressed="true">🔊 Son actif</button>
+        <button id="dev-unlock-btn" type="button" title="Bouton provisoire de test">🔓 Mode Test</button>
+        <button id="sound-toggle-btn" type="button" aria-pressed="true">🔊 Son</button>
       </div>
 
-      <!-- VUE 1 : MENU PRINCIPAL -->
+      <!-- VUE 1 : MENU PRINCIPAL ERGONOMIQUE -->
       <div id="main-menu" class="view">
         <div id="main-title-box">
           <h1>⏱️ Tic-Tac</h1>
@@ -41,57 +40,68 @@
 
         <div id="levels-grid">
           <button class="level-rect lvl-1" data-level="1">
+            <span class="lvl-badge">1</span>
             <div class="lvl-content">
-              <span class="lvl-title">🥉 Niveau 1 ➔ Les Heures Piles</span>
+              <span class="lvl-title">Les Heures Piles</span>
               <span class="lvl-desc">Lire l'heure juste (ex : 3h00, 8h00)</span>
             </div>
-            <span class="lvl-check hidden">✅</span>
+            <span class="lvl-status play">▶</span>
           </button>
+
           <button class="level-rect lvl-2 locked" data-level="2">
+            <span class="lvl-badge">2</span>
             <div class="lvl-content">
-              <span class="lvl-title">🥈 Niveau 2 ➔ Les Demi-Heures</span>
-              <span class="lvl-desc">Repères :00 (en haut) et :30 « et demie » (en bas)</span>
+              <span class="lvl-title">Les Demi-Heures</span>
+              <span class="lvl-desc">Repères :00 (en haut) et :30 « et demie »</span>
             </div>
-            <span class="lvl-check hidden">✅</span>
+            <span class="lvl-status locked-icon">🔒</span>
           </button>
+
           <button class="level-rect lvl-3 locked" data-level="3">
+            <span class="lvl-badge">3</span>
             <div class="lvl-content">
-              <span class="lvl-title">🥇 Niveau 3 ➔ Les Quarts d'Heure</span>
+              <span class="lvl-title">Les Quarts d'Heure</span>
               <span class="lvl-desc">Repères :15 « et quart » et :45 « moins le quart »</span>
             </div>
-            <span class="lvl-check hidden">✅</span>
+            <span class="lvl-status locked-icon">🔒</span>
           </button>
+
           <button class="level-rect lvl-4 locked" data-level="4">
+            <span class="lvl-badge">4</span>
             <div class="lvl-content">
-              <span class="lvl-title">🏅 Niveau 4 ➔ Les Minutes de 5 en 5</span>
-              <span class="lvl-desc">La couronne bleue des minutes (05, 10, 20, 25...)</span>
+              <span class="lvl-title">Les Minutes de 5 en 5</span>
+              <span class="lvl-desc">La couronne bleue (05, 10, 20, 25...)</span>
             </div>
-            <span class="lvl-check hidden">✅</span>
+            <span class="lvl-status locked-icon">🔒</span>
           </button>
+
           <button class="level-rect lvl-5 locked" data-level="5">
+            <span class="lvl-badge">5</span>
             <div class="lvl-content">
-              <span class="lvl-title">🌟 Niveau 5 ➔ Les 24 Heures (Jour & Nuit)</span>
-              <span class="lvl-desc">Matin (08h), Après-midi (15h), Soir (20h) et Minuit (00h)</span>
+              <span class="lvl-title">Les 24 Heures (Jour & Nuit)</span>
+              <span class="lvl-desc">Matin (08h), Après-midi (15h), Soir (20h), Minuit</span>
             </div>
-            <span class="lvl-check hidden">✅</span>
+            <span class="lvl-status locked-icon">🔒</span>
           </button>
+
           <button class="level-rect lvl-6 locked" data-level="6">
+            <span class="lvl-badge">6</span>
             <div class="lvl-content">
-              <span class="lvl-title">👑 Niveau 6 ➔ Maître du Temps</span>
+              <span class="lvl-title">Maître du Temps</span>
               <span class="lvl-desc">Lire et placer les aiguilles à la minute près !</span>
             </div>
-            <span class="lvl-check hidden">✅</span>
+            <span class="lvl-status locked-icon">🔒</span>
           </button>
         </div>
       </div>
 
-      <!-- VUE 2 : ÉCRAN DE JEU (EMPLACEMENT FIXE QUESTION + BOUTONS, COMMENTAIRES EN DESSOUS) -->
+      <!-- VUE 2 : ÉCRAN DE JEU (STRUCTURE VERROUILLÉE) -->
       <div id="game-screen" class="view hidden">
         <div id="game-top-bar">
-          <button id="back-menu-btn" title="Retour au menu">
-            🏠 <span id="level-title-display">Niveau 1</span>
+          <button id="back-menu-btn" type="button" title="Retour au menu">
+            ← <span id="level-title-display">Niveau 1</span>
           </button>
-          <div id="phase-badge">Étape 1/2 : Lecture (0/3)</div>
+          <div id="phase-badge">1/2 Lecture <span class="stars-group"><span class="star-off">☆</span><span class="star-off">☆</span><span class="star-off">☆</span></span></div>
         </div>
 
         <div id="game-container">
@@ -112,23 +122,23 @@
 
             <div id="placement-tools" class="hidden">
               <div class="hand-selector-group">
-                <button id="select-hour-btn" type="button" class="hand-select-btn active-hand-btn">
-                  🟡 Heures
+                <button id="select-hour-btn" type="button" class="hand-select-btn hour-mode active-hand-btn">
+                  <span class="dot-indicator dot-hour"></span> Heures
                 </button>
-                <button id="select-minute-btn" type="button" class="hand-select-btn">
-                  🔵 Minutes
+                <button id="select-minute-btn" type="button" class="hand-select-btn minute-mode">
+                  <span class="dot-indicator dot-minute"></span> Minutes
                 </button>
               </div>
               <div class="step-nudge-group">
-                <button id="step-minus-btn" type="button" class="nudge-btn" title="Reculer l'aiguille">➖</button>
-                <button id="step-plus-btn" type="button" class="nudge-btn" title="Avancer l'aiguille">➕</button>
+                <button id="step-minus-btn" type="button" class="nudge-btn" aria-label="Reculer l'aiguille">−</button>
+                <button id="step-plus-btn" type="button" class="nudge-btn" aria-label="Avancer l'aiguille">+</button>
               </div>
             </div>
 
-            <button id="check-btn" class="hidden">✅ Vérifier</button>
+            <button id="check-btn" class="hidden">✓ Vérifier</button>
           </div>
 
-          <!-- 3. COMMENTAIRES (BONNE OU MAUVAISE RÉPONSE) TOUJOURS EN DESSOUS -->
+          <!-- 3. COMMENTAIRES TOUJOURS EN DESSOUS -->
           <div id="help-box" class="invisible-feedback">
             <span id="help-text"></span>
           </div>
