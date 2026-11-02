@@ -7,18 +7,12 @@ export class Clock {
     this.radius = radius;
   }
 
-  /**
-   * Dessine le cadran pédagogique avec :
-   * - Échafaudage progressif selon le niveau (1 à 6)
-   * - Mise en valeur automatique 1..12 vs 13..00 aux niveaux 5 & 6
-   * - Chantier C (highlightHourSector) : Coloration du secteur angulaire [H, H+1] en cas d'erreur
-   *   pour visualiser pourquoi la petite aiguille appartient toujours à l'heure H.
-   */
   public draw(
     level: number = 1,
     isDay: boolean = true,
     is24HourTarget: boolean = false,
-    highlightHourSector?: number
+    highlightHourSector?: number,
+    activeSelectedHour?: number
   ): void {
     const ctx = this.ctx;
     const r = this.radius;
@@ -38,7 +32,7 @@ export class Clock {
     ctx.strokeStyle = outerBezelColor;
     ctx.stroke();
 
-    // 2. Chantier C : Affichage du "Territoire de l'Heure" (secteur doré entre H et H+1) en cas d'erreur
+    // 2. Chantier C : Secteur doré [H, H+1] affiché en cas d'erreur pour illustrer le territoire de l'heure
     const showMinuteTrackBand = level >= 2 && level <= 5;
     if (typeof highlightHourSector === 'number') {
       const h12 = highlightHourSector % 12;
@@ -68,7 +62,7 @@ export class Clock {
       ctx.fill('evenodd');
     }
 
-    // 4. Repères géométriques subtils pour les demi-heures (Niv 2) et quarts d'heure (Niv 3)
+    // 4. Repères géométriques pour demi-heures (Niv 2) et quarts d'heure (Niv 3)
     if (level === 2 || level === 3) {
       ctx.save();
       ctx.setLineDash([5, 5]);
@@ -131,7 +125,12 @@ export class Clock {
     // 7. Chiffres des heures 1 à 12 et heures 24h (13 à 00 aux Niveaux 5 & 6)
     const hour12Radius = showMinuteTrackBand ? r - 66 : r - 52;
     const hour24Radius = showMinuteTrackBand ? r - 102 : r - 92;
-    const highlightedH12 = typeof highlightHourSector === 'number' ? (highlightHourSector % 12 || 12) : null;
+    const highlightedH12 =
+      typeof highlightHourSector === 'number'
+        ? highlightHourSector % 12 || 12
+        : typeof activeSelectedHour === 'number'
+          ? activeSelectedHour % 12 || 12
+          : null;
 
     for (let i = 1; i <= 12; i++) {
       const angle = (i * Math.PI) / 6;
@@ -139,14 +138,13 @@ export class Clock {
       const hy = -hour12Radius * Math.cos(angle);
       const isHighlightedHour = highlightedH12 === i;
 
-      // Halo de mise en évidence sur le chiffre de l'heure active si l'aide anti-piège est déclenchée
       if (isHighlightedHour && (!is24HourTarget || level < 5)) {
         ctx.save();
         ctx.beginPath();
         ctx.arc(hx, hy, 20, 0, 2 * Math.PI);
-        ctx.fillStyle = '#fef3c7';
+        ctx.fillStyle = typeof highlightHourSector === 'number' ? '#fef3c7' : 'rgba(254, 243, 199, 0.65)';
         ctx.fill();
-        ctx.lineWidth = 2.5;
+        ctx.lineWidth = 2;
         ctx.strokeStyle = '#ea580c';
         ctx.stroke();
         ctx.restore();
@@ -172,7 +170,7 @@ export class Clock {
           ctx.save();
           ctx.beginPath();
           ctx.arc(x24, y24, 15, 0, 2 * Math.PI);
-          ctx.fillStyle = '#fef3c7';
+          ctx.fillStyle = typeof highlightHourSector === 'number' ? '#fef3c7' : 'rgba(254, 243, 199, 0.65)';
           ctx.fill();
           ctx.lineWidth = 2;
           ctx.strokeStyle = '#ea580c';

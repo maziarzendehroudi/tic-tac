@@ -7,16 +7,46 @@ export class Hands {
     this.radius = radius;
   }
 
-  /**
-   * Dessine les aiguilles sans jamais chevaucher les chiffres :
-   * - Petite aiguille (Heures, Orange)
-   * - Grande aiguille (Minutes, Bleue)
-   * - Halo de préhension doux en Étape 2 (Placement) sur l'aiguille active
-   */
-  public draw(hours: number, minutes: number, level: number = 1, activeHand?: 'hour' | 'minute'): void {
+  public draw(
+    hours: number,
+    minutes: number,
+    level: number = 1,
+    activeHand?: 'hour' | 'minute',
+    ghostTarget?: { hours: number; minutes: number }
+  ): void {
     const ctx = this.ctx;
     const hourTip = level >= 5 ? this.radius - 118 : this.radius - 96;
     const minuteTip = level >= 2 && level <= 5 ? this.radius - 42 : this.radius - 24;
+
+    // 0. Silhouette d'aide en pointillés (affichée uniquement si l'enfant bloque après >= 2 erreurs en Placement)
+    if (ghostTarget) {
+      const ghostHourAngle = ((ghostTarget.hours % 12) * Math.PI) / 6 + (ghostTarget.minutes * Math.PI) / 360;
+      const ghostMinAngle = (ghostTarget.minutes * Math.PI) / 30;
+
+      ctx.save();
+      ctx.rotate(ghostHourAngle);
+      ctx.setLineDash([6, 5]);
+      ctx.beginPath();
+      ctx.moveTo(0, 0);
+      ctx.lineTo(0, -hourTip);
+      ctx.lineWidth = 8;
+      ctx.lineCap = 'round';
+      ctx.strokeStyle = 'rgba(234, 88, 12, 0.38)';
+      ctx.stroke();
+      ctx.restore();
+
+      ctx.save();
+      ctx.rotate(ghostMinAngle);
+      ctx.setLineDash([6, 5]);
+      ctx.beginPath();
+      ctx.moveTo(0, 0);
+      ctx.lineTo(0, -minuteTip);
+      ctx.lineWidth = 5;
+      ctx.lineCap = 'round';
+      ctx.strokeStyle = 'rgba(2, 132, 199, 0.38)';
+      ctx.stroke();
+      ctx.restore();
+    }
 
     // 1. Petite aiguille des Heures (Orange #ea580c)
     const hourAngle = ((hours % 12) * Math.PI) / 6 + (minutes * Math.PI) / 360;

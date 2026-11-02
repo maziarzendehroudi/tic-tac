@@ -22,11 +22,16 @@ export class TimeMath {
     return Math.round((angle / (2 * Math.PI)) * 60) % 60;
   }
 
+  /**
+   * Convertit la position du doigt en heure (1..12).
+   * Le facteur 0.35 garantit que viser directement le chiffre H OU viser la zone entre H et H+1
+   * sélectionne toujours l'heure H sans saut involontaire vers H-1.
+   */
   public static pointerToHours(x: number, y: number, currentMinutes: number = 0): number {
     let angle = Math.atan2(x, -y);
     if (angle < 0) angle += 2 * Math.PI;
     const rawHours = (angle / (2 * Math.PI)) * 12;
-    const shiftCompensation = (currentMinutes / 60) * 0.5;
+    const shiftCompensation = (currentMinutes / 60) * 0.35;
     const adjusted = (rawHours - shiftCompensation + 12) % 12;
     const totalHours = Math.round(adjusted) % 12;
     return totalHours === 0 ? 12 : totalHours;
@@ -113,10 +118,6 @@ export class TimeMath {
     return n === 0 ? 12 : n;
   }
 
-  /**
-   * Chantier D : Traduit une heure en expression orale française naturelle
-   * ("et demie", "et quart", "moins le quart", "Midi", "Minuit") pour enrichir le sens pédagogique.
-   */
   public static formatSpokenTime(hours24: number, minutes: number, level: number): string {
     const h24 = ((hours24 % 24) + 24) % 24;
     const h12 = h24 % 12 || 12;
@@ -145,8 +146,37 @@ export class TimeMath {
   }
 
   /**
-   * Chantiers A, C & D : Génère un indice méthodologique progressif.
-   * Au 1er essai, guide l'observation du secteur horaire et des minutes sans donner la solution brute.
+   * Indice méthodologique de 1er niveau (ne donne PAS la réponse finale pour laisser l'enfant chercher)
+   */
+  public static buildMethodHint(hours: number, minutes: number, level: number): string {
+    const dialHour = hours % 12 || 12;
+    const nextHour = (dialHour % 12) + 1;
+
+    let hourGuide = `Regarde la <strong>petite aiguille orange</strong> (les heures)`;
+    if (minutes >= 30) {
+      hourGuide = `Attention au piège : la <strong>petite aiguille orange</strong> est dans la zone dorée entre <strong>${dialHour}</strong> et <strong>${nextHour}</strong> (elle n'a pas encore atteint le ${nextHour} !)`;
+    } else if (level >= 5 && (hours >= 13 || hours === 0)) {
+      hourGuide = `Regarde le nombre <strong>orange à l'intérieur</strong> pointé par la petite aiguille`;
+    }
+
+    let minGuide = `et la <strong>grande aiguille bleue</strong> pour les minutes.`;
+    if (minutes === 0) {
+      minGuide = `et la <strong>grande aiguille bleue</strong> tout en haut (heure pile).`;
+    } else if (minutes === 30) {
+      minGuide = `et la <strong>grande aiguille bleue</strong> tout en bas (« <em>et demie</em> »).`;
+    } else if (minutes === 15 || minutes === 45) {
+      minGuide = `et le nombre bleu pointé par la <strong>grande aiguille bleue</strong>.`;
+    } else if (level >= 6) {
+      const base5 = Math.floor(minutes / 5) * 5;
+      const baseNum = base5 === 0 ? 12 : base5 / 5;
+      minGuide = `et compte les petites graduations après le <strong>${baseNum}</strong> (${base5} min + ...).`;
+    }
+
+    return `${hourGuide}, ${minGuide}`;
+  }
+
+  /**
+   * Explication complète (utilisée lors du 2e échec en Lecture)
    */
   public static buildPedagogicalHint(hours: number, minutes: number, level: number): string {
     const dialHour = hours % 12 || 12;
@@ -155,34 +185,33 @@ export class TimeMath {
 
     let hourPart = `la <strong>petite aiguille orange</strong> pointe sur le <strong>${dialHour}</strong>`;
     if (minutes >= 30) {
-      // Chantier C : explication explicite du piège de la petite aiguille entre H et H+1
       if (level >= 5 && (hours >= 13 || hours === 0)) {
         const h24Label = hours === 0 ? '00h' : `${hours}h`;
-        hourPart = `la <strong>petite aiguille orange</strong> est dans la zone dorée entre <strong>${dialHour}</strong> et <strong>${nextHour}</strong> : elle n'a pas encore atteint le ${nextHour}, il est donc toujours <strong>${h24Label}</strong>`;
+        hourPart = `la <strong>petite aiguille orange</strong> est dans la zone dorée entre <strong>${dialHour}</strong> et <strong>${nextHour}</strong> (il est donc <strong>${h24Label}</strong>)`;
       } else {
-        hourPart = `la <strong>petite aiguille orange</strong> est dans la zone dorée entre <strong>${dialHour}</strong> et <strong>${nextHour}</strong> : elle n'a pas encore dépassé le ${nextHour}, il est donc toujours <strong>${dialHour}h</strong>`;
+        hourPart = `la <strong>petite aiguille orange</strong> est dans la zone dorée entre <strong>${dialHour}</strong> et <strong>${nextHour}</strong> (il est donc <strong>${dialHour}h</strong>)`;
       }
     } else if (level >= 5 && (hours >= 13 || hours === 0)) {
       const h24Text = hours === 0 ? '00h (minuit)' : `${hours}h`;
-      hourPart = `la <strong>petite aiguille orange</strong> montre le <strong>${dialHour}</strong> (soit <strong>${h24Text}</strong> en orange)`;
+      hourPart = `la <strong>petite aiguille orange</strong> montre le <strong>${dialHour}</strong> (<strong>${h24Text}</strong> en orange)`;
     }
 
     let minPart = '';
     if (minutes === 0) {
-      minPart = `la <strong>grande aiguille bleue</strong> est en haut sur <strong>00</strong> (heure pile)`;
+      minPart = `la <strong>grande aiguille bleue</strong> est sur <strong>00</strong>`;
     } else if (minutes === 30) {
-      minPart = `la <strong>grande aiguille bleue</strong> est en bas sur <strong>30</strong> (« <em>et demie</em> »)`;
+      minPart = `la <strong>grande aiguille bleue</strong> est sur <strong>30</strong> (« <em>et demie</em> »)`;
     } else if (minutes === 15) {
-      minPart = `la <strong>grande aiguille bleue</strong> est à droite sur <strong>15</strong> (« <em>et quart</em> »)`;
+      minPart = `la <strong>grande aiguille bleue</strong> est sur <strong>15</strong> (« <em>et quart</em> »)`;
     } else if (minutes === 45) {
-      minPart = `la <strong>grande aiguille bleue</strong> est à gauche sur <strong>45</strong> (« <em>moins le quart</em> »)`;
+      minPart = `la <strong>grande aiguille bleue</strong> est sur <strong>45</strong> (« <em>moins le quart</em> »)`;
     } else if (minutes % 5 === 0) {
-      minPart = `la <strong>grande aiguille bleue</strong> pointe sur <strong>${minutes < 10 ? '0' + minutes : minutes}</strong> (${dialMinNum} × 5)`;
+      minPart = `la <strong>grande aiguille bleue</strong> est sur <strong>${minutes < 10 ? '0' + minutes : minutes}</strong> (${dialMinNum} × 5)`;
     } else {
       const base5 = Math.floor(minutes / 5) * 5;
       const baseNum = base5 === 0 ? 12 : base5 / 5;
       const extra = minutes - base5;
-      minPart = `la <strong>grande aiguille bleue</strong> est <strong>${extra} graduation(s)</strong> après le <strong>${baseNum}</strong> (${base5} + ${extra} = <strong>${minutes} min</strong>)`;
+      minPart = `la <strong>grande aiguille bleue</strong> est <strong>${extra} graduation(s)</strong> après le <strong>${baseNum}</strong> (<strong>${minutes} min</strong>)`;
     }
 
     return `${hourPart}, et ${minPart}.`;

@@ -4,7 +4,7 @@ import { QuestionManager } from './QuestionManager';
 import { SaveManager } from './SaveManager';
 import { SoundEngine } from './SoundEngine';
 
-describe('TimeMath — Jour/Nuit, Préhension Directe & Vocabulaire Courant (Chantiers C & D)', () => {
+describe('TimeMath — Jour/Nuit, Calibrage Angulaire :55 & Indices Progressifs', () => {
   it('distingue correctement les heures du Jour (06h..17h) et de la Nuit (18h..05h)', () => {
     expect(TimeMath.isDayTime(6)).toBe(true);
     expect(TimeMath.isDayTime(12)).toBe(true);
@@ -13,22 +13,36 @@ describe('TimeMath — Jour/Nuit, Préhension Directe & Vocabulaire Courant (Cha
     expect(TimeMath.isDayTime(0)).toBe(false);
   });
 
-  it('formate correctement les expressions courantes en français (Chantier D)', () => {
+  it('sélectionne toujours l’heure H à :55 que l’enfant vise le chiffre H (ex: 3.92) ou le secteur [H, H+1)', () => {
+    const radJustLeftOf4 = (3.92 * Math.PI) / 6;
+    const radInsideSector4 = (4.65 * Math.PI) / 6;
+    expect(
+      TimeMath.pointerToHours(Math.sin(radJustLeftOf4) * 100, -Math.cos(radJustLeftOf4) * 100, 55)
+    ).toBe(4);
+    expect(
+      TimeMath.pointerToHours(Math.sin(radInsideSector4) * 100, -Math.cos(radInsideSector4) * 100, 55)
+    ).toBe(4);
+  });
+
+  it('fournit un indice méthodologique au 1er essai sans dévoiler la minute exacte', () => {
+    const methodHint = TimeMath.buildMethodHint(8, 45, 3);
+    expect(methodHint).toContain('zone dorée entre <strong>8</strong> et <strong>9</strong>');
+    expect(methodHint).not.toContain('8h45');
+
+    const fullHint = TimeMath.buildPedagogicalHint(8, 45, 3);
+    expect(fullHint).toContain('moins le quart');
+  });
+
+  it('formate correctement les expressions courantes en français', () => {
     expect(TimeMath.formatSpokenTime(4, 30, 2)).toBe('4 h et demie');
     expect(TimeMath.formatSpokenTime(6, 15, 3)).toBe('6 h et quart');
     expect(TimeMath.formatSpokenTime(7, 45, 3)).toBe('8 h moins le quart');
     expect(TimeMath.formatSpokenTime(12, 0, 5)).toBe('Midi pile');
     expect(TimeMath.formatSpokenTime(0, 0, 5)).toBe('Minuit pile');
   });
-
-  it('explique le piège de la zone dorée entre H et H+1 lorsque les minutes dépassent 30 (Chantier C)', () => {
-    const hint45 = TimeMath.buildPedagogicalHint(8, 45, 3);
-    expect(hint45).toContain('zone dorée entre <strong>8</strong> et <strong>9</strong>');
-    expect(hint45).toContain('moins le quart');
-  });
 });
 
-describe('QuestionManager — Leurre Anti-Piège H+1 après :35 (Chantier C)', () => {
+describe('QuestionManager — Leurre Anti-Piège H+1 après :35', () => {
   it('inclut systématiquement le leurre H+1 lorsque les minutes valent 35 ou plus', () => {
     const qm4 = new QuestionManager(4);
     const target = {
@@ -45,7 +59,7 @@ describe('QuestionManager — Leurre Anti-Piège H+1 après :35 (Chantier C)', (
   });
 });
 
-describe('SaveManager — Notation 1..3 Étoiles & Grades sur 18 ⭐ (Chantiers A & B)', () => {
+describe('SaveManager — Notation 1..3 Étoiles & Grades sur 18 ⭐', () => {
   beforeEach(() => {
     const store: Record<string, string> = {};
     globalThis.localStorage = {
@@ -68,11 +82,9 @@ describe('SaveManager — Notation 1..3 Étoiles & Grades sur 18 ⭐ (Chantiers 
     save = SaveManager.applyLevelRewards(save, 1, 2);
     expect(save.levelStars[1]).toBe(2);
 
-    // Si l'enfant rejoue et fait mieux (3 étoiles), le score monte à 3
     save = SaveManager.applyLevelRewards(save, 1, 3);
     expect(save.levelStars[1]).toBe(3);
 
-    // Si l'enfant rejoue et fait moins bien (1 étoile), son record de 3 étoiles est préservé
     save = SaveManager.applyLevelRewards(save, 1, 1);
     expect(save.levelStars[1]).toBe(3);
 

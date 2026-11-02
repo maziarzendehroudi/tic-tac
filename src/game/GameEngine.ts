@@ -35,6 +35,7 @@ export class GameEngine {
   private errorsCount: number = 0;
   private levelTotalErrors: number = 0;
   private currentQuestionAssisted: boolean = false;
+  private showGhostGuide: boolean = false;
   private highlightHourSector: number | undefined = undefined;
 
   private currentLevel: number = 1;
@@ -44,6 +45,7 @@ export class GameEngine {
   private isDragging: boolean = false;
   private isTransitioning: boolean = false;
   private celebrationAnimId: number = 0;
+  private transitionTimerId: number | null = null;
   private activeHand: 'hour' | 'minute' = 'hour';
 
   constructor(canvas: HTMLCanvasElement) {
@@ -71,8 +73,26 @@ export class GameEngine {
     this.applySkyTheme(true);
   }
 
-  public startLevel(level: number): void {
+  private clearPendingTimers(): void {
     cancelAnimationFrame(this.celebrationAnimId);
+    if (this.transitionTimerId !== null) {
+      window.clearTimeout(this.transitionTimerId);
+      this.transitionTimerId = null;
+    }
+  }
+
+  private scheduleTransition(callback: () => void, delayMs: number): void {
+    if (this.transitionTimerId !== null) {
+      window.clearTimeout(this.transitionTimerId);
+    }
+    this.transitionTimerId = window.setTimeout(() => {
+      this.transitionTimerId = null;
+      callback();
+    }, delayMs);
+  }
+
+  public startLevel(level: number): void {
+    this.clearPendingTimers();
     this.currentLevel = level;
     this.currentPhase = 1;
     this.phaseSuccessCount = 0;
@@ -92,7 +112,7 @@ export class GameEngine {
   }
 
   private returnToMenu(): void {
-    cancelAnimationFrame(this.celebrationAnimId);
+    this.clearPendingTimers();
     this.isTransitioning = false;
     document.getElementById('game-screen')?.classList.add('hidden');
     document.getElementById('main-menu')?.classList.remove('hidden');
@@ -117,6 +137,7 @@ export class GameEngine {
     this.targetTime = this.questionManager.generateQuestion();
     this.errorsCount = 0;
     this.currentQuestionAssisted = false;
+    this.showGhostGuide = false;
     this.highlightHourSector = undefined;
     this.isTransitioning = false;
     this.hideHelp();
@@ -132,7 +153,9 @@ export class GameEngine {
     } else {
       const targetH12 = this.targetTime.hours % 12 || 12;
       this.currentHours = targetH12 === 9 ? 6 : 9;
-      this.currentMinutes = 0;
+      // Aux niveaux 2 à 6, on évite que la grande aiguille démarre déjà sur la minute cible
+      this.currentMinutes =
+        this.currentLevel >= 2 && this.targetTime.minutes === 0 ? 30 : 0;
       this.activeHand = 'hour';
       this.updateHandSelectorUI();
     }
@@ -344,9 +367,6 @@ export class GameEngine {
     }
   }
 
-  /**
-   * Chantier B : Met à jour la barre de grade (/ 18 ⭐) et les 3 étoiles de maîtrise sur chaque niveau
-   */
   private updateMenuUI(): void {
     const levelRects = document.querySelectorAll('.level-rect');
     const maxUnlocked = this.saveData.maxUnlockedLevel || 1;
@@ -404,22 +424,17 @@ export class GameEngine {
     helpBox.classList.remove('feedback-success', 'feedback-error');
   }
 
-  /**
-   * Chantier A (Maîtrise Active) & Chantier B (Notation 1..3 étoiles + Pluie d'étoiles en fin de niveau)
-   */
   private handleSuccessfulAnswer(): void {
     this.isTransitioning = true;
     this.triggerSuccessEffect();
 
-    // Chantier A : Si la réponse finale avait été dévoilée après >= 2 erreurs,
-    // on félicite l'enfant d'avoir appliqué l'aide, mais il doit réussir une nouvelle question seul pour gagner l'étoile !
     if (this.currentQuestionAssisted) {
       this.soundEngine.playSuccess();
       this.showFeedback(
-        `👍 <strong>Bien vu avec l'indice !</strong> Essaie la suivante tout seul pour gagner ton étoile ★`,
+        `👍 <strong>Bien vu avec l'aide !</strong> Réussis la suivante tout seul pour gagner ton étoile ★`,
         'success'
       );
-      setTimeout(() => {
+      this.scheduleTransition(() => {
         this.initNewQuestion();
         this.updateUI();
         this.render();
@@ -436,7 +451,7 @@ export class GameEngine {
         this.currentPhase = 2;
         this.phaseSuccessCount = 0;
         this.showFeedback('🎉 <strong>Bravo !</strong> Étape 2 : à toi de placer les aiguilles !', 'success');
-        setTimeout(() => {
+        this.scheduleTransition(() => {
           this.initNewQuestion();
           this.updateUI();
           this.render();
@@ -458,7 +473,7 @@ export class GameEngine {
 
         this.showFeedback(msg, 'success');
         this.playCelebrationAnimation(earnedStars);
-        setTimeout(() => { this.returnToMenu(); }, 2300);
+        this.scheduleTransition(() => { this.returnToMenu(); }, 2300);
         return;
       }
     }
@@ -466,21 +481,18 @@ export class GameEngine {
     this.soundEngine.playSuccess();
     const spokenSuffix = this.targetTime.spokenText ? ` (<em>${this.targetTime.spokenText}</em>)` : '';
     this.showFeedback(`✨ <strong>Bravo ! Il est bien ${this.targetTime.text}${spokenSuffix} !</strong>`, 'success');
-    setTimeout(() => {
+    this.scheduleTransition(() => {
       this.initNewQuestion();
       this.updateUI();
       this.render();
     }, 1250);
   }
 
-  /**
-   * Chantier B : Pluie d'étoiles et de confettis dorés sur le Canvas en fin de niveau
-   */
   private playCelebrationAnimation(earnedStars: 1 | 2 | 3): void {
     const colors = ['#fbbf24', '#38bdf8', '#34d399', '#f43f5e', '#a855f7'];
     const particles: CelebrationParticle[] = [];
     for (let i = 0; i < 42; i++) {
-      const angle = (Math.random() * Math.PI * 2);
+      const angle = Math.random() * Math.PI * 2;
       const speed = 2.5 + Math.random() * 5.5;
       particles.push({
         x: 0,
@@ -502,7 +514,7 @@ export class GameEngine {
       particles.forEach(p => {
         p.x += p.vx;
         p.y += p.vy;
-        p.vy += 0.16; // Gravité douce
+        p.vy += 0.16;
         p.rotation += p.vRot;
 
         ctx.save();
@@ -513,7 +525,6 @@ export class GameEngine {
         ctx.restore();
       });
 
-      // Badge central des étoiles gagnées
       ctx.beginPath();
       ctx.roundRect(-115, -34, 230, 68, 22);
       ctx.fillStyle = 'rgba(15, 23, 42, 0.92)';
@@ -539,12 +550,15 @@ export class GameEngine {
   private handleFailedAttempt(): void {
     this.errorsCount++;
     this.levelTotalErrors++;
-    // Chantier C : Affichage immédiat du secteur "Territoire de l'Heure" sur le cadran !
     this.highlightHourSector = this.targetTime.hours;
 
-    // Chantier A : Si l'enfant fait une 2e erreur sur la même question, la solution est révélée (question assistée)
-    if (this.errorsCount >= 2) {
+    // En Lecture : la solution est donnée au 2e échec.
+    // En Placement : le modèle en pointillés (silhouette) est affiché au 3e échec.
+    if (this.currentPhase === 1 && this.errorsCount >= 2) {
       this.currentQuestionAssisted = true;
+    } else if (this.currentPhase === 2 && this.errorsCount >= 3) {
+      this.currentQuestionAssisted = true;
+      this.showGhostGuide = true;
     }
 
     this.soundEngine.playError();
@@ -554,17 +568,21 @@ export class GameEngine {
   }
 
   private showDiagnosticHelp(): void {
-    const baseExplanation = TimeMath.buildPedagogicalHint(
-      this.targetTime.hours,
-      this.targetTime.minutes,
-      this.currentLevel
-    );
-
     if (this.currentPhase === 1) {
       if (this.errorsCount === 1) {
-        this.showFeedback(`💡 ${baseExplanation}`, 'error');
+        const methodHint = TimeMath.buildMethodHint(
+          this.targetTime.hours,
+          this.targetTime.minutes,
+          this.currentLevel
+        );
+        this.showFeedback(`💡 ${methodHint}`, 'error');
       } else {
-        this.showFeedback(`💡 ${baseExplanation} ➔ Clique sur <strong>${this.targetTime.text}</strong>.`, 'error');
+        const fullExplanation = TimeMath.buildPedagogicalHint(
+          this.targetTime.hours,
+          this.targetTime.minutes,
+          this.currentLevel
+        );
+        this.showFeedback(`💡 ${fullExplanation} ➔ Clique sur <strong>${this.targetTime.text}</strong>.`, 'error');
       }
     } else {
       const isHourCorrect = (this.currentHours % 12) === (this.targetTime.hours % 12);
@@ -576,7 +594,12 @@ export class GameEngine {
       const targetDialHour = this.targetTime.hours % 12 || 12;
       const targetDialMinNum = TimeMath.minuteToDialNumber(this.targetTime.minutes);
 
-      if (isHourCorrect && !isMinuteCorrect) {
+      if (this.showGhostGuide) {
+        this.showFeedback(
+          `💡 Aligne les aiguilles sur le modèle en pointillés pour afficher <strong>${this.targetTime.text}</strong> !`,
+          'error'
+        );
+      } else if (isHourCorrect && !isMinuteCorrect) {
         this.activeHand = 'minute';
         this.updateHandSelectorUI();
         this.render();
@@ -753,12 +776,28 @@ export class GameEngine {
   public render(): void {
     const isDay = this.currentLevel < 5 ? true : (this.targetTime ? this.targetTime.isDay : true);
     const is24HourTarget = this.targetTime ? TimeMath.is24HourRingTarget(this.targetTime.hours) : false;
-    this.clock.draw(this.currentLevel, isDay, is24HourTarget, this.highlightHourSector);
+    const activeHourPreview =
+      this.currentPhase === 2 && this.activeHand === 'hour' ? this.currentHours : undefined;
+
+    this.clock.draw(
+      this.currentLevel,
+      isDay,
+      is24HourTarget,
+      this.highlightHourSector,
+      activeHourPreview
+    );
+
+    const ghostTarget =
+      this.currentPhase === 2 && this.showGhostGuide && this.targetTime
+        ? { hours: this.targetTime.hours, minutes: this.targetTime.minutes }
+        : undefined;
+
     this.hands.draw(
       this.currentHours,
       this.currentMinutes,
       this.currentLevel,
-      this.currentPhase === 2 ? this.activeHand : undefined
+      this.currentPhase === 2 ? this.activeHand : undefined,
+      ghostTarget
     );
   }
 }
