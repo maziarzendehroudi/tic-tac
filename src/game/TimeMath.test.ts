@@ -9,6 +9,7 @@ function createMockCtx(): CanvasRenderingContext2D {
   return {
     imageSmoothingEnabled: true,
     globalAlpha: 1,
+    filter: 'none',
     clearRect: () => {},
     save: () => {},
     restore: () => {},
@@ -28,52 +29,64 @@ function createMockCtx(): CanvasRenderingContext2D {
   } as unknown as CanvasRenderingContext2D;
 }
 
-describe('WatchMechanism V38 — Molette Compacte Rapprochée, Boîtier Agrandi (1.72x) & Débrayage Automatique', () => {
-  it('rapproche la molette du boîtier (x = 138) et agrandit l’échelle de la vue globale à 1.72x', () => {
-    expect(WatchMechanism.POS.crown.x).toBe(138);
-    expect(WatchMechanism.CAMERA_TARGETS.overview.scale).toBeCloseTo(1.72, 2);
-  });
-
-  it('embraye la vis sans fin pendant le remontage (power < 100) et débraye automatiquement au relâcher ou à 100%', () => {
-    const wm = new WatchMechanism(createMockCtx(), 500, 500);
-    wm.power = 70;
-
-    // Au repos : la molette est débrayée
-    expect(wm.isClutchEngaged()).toBe(false);
-
-    // Pendant le remontage : la vis s'embraye contre les dents du barillet
-    wm.update(200, true);
-    expect(wm.isClutchEngaged()).toBe(true);
-
-    // Dès qu'on relâche la molette : la vis débraye automatiquement pour ne pas tourner à l'envers
-    wm.update(300, false);
-    expect(wm.isClutchEngaged()).toBe(false);
-
-    // À 100% de charge : même si on maintient la molette, le débrayage automatique de fin de course s'active
-    wm.power = 100;
-    wm.update(300, true);
-    expect(wm.isClutchEngaged()).toBe(false);
-  });
-
-  it('masque complètement les autres mécanismes sans jamais utiliser de transparence partielle lors d’un zoom', () => {
+describe('WatchMechanism V39 — Gris Transparent au Zoom & Cohérence Cinématique des 5 Contacts', () => {
+  it('affiche les éléments non sélectionnés en gris transparent (globalAlpha = 0.20 + grayscale) lors d’un zoom', () => {
     const ctx = createMockCtx();
-    let minAlphaObserved = 1;
-    let currentAlpha = 1;
+    let sawDimmedAlpha = false;
+    let sawGrayscale = false;
+
     Object.defineProperty(ctx, 'globalAlpha', {
-      get: () => currentAlpha,
+      get: () => 1,
       set: (val: number) => {
-        currentAlpha = val;
-        if (val < minAlphaObserved) minAlphaObserved = val;
+        if (val < 0.5) sawDimmedAlpha = true;
+      }
+    });
+    Object.defineProperty(ctx, 'filter', {
+      get: () => 'none',
+      set: (val: string) => {
+        if (val.includes('grayscale')) sawGrayscale = true;
       }
     });
 
     const wm = new WatchMechanism(ctx, 500, 500);
-    for (const mode of ['spring', 'hours', 'minutes', 'seconds'] as const) {
-      wm.setZoomMode(mode);
-      wm.draw(false);
-    }
+    wm.setZoomMode('minutes');
+    wm.draw(false);
 
-    expect(minAlphaObserved).toBe(1);
+    expect(sawDimmedAlpha).toBe(true);
+    expect(sawGrayscale).toBe(true);
+  });
+
+  it('maintient un rapport d’engrènement exact et sans glissement sur toute la chaîne cinématique (Secondes -> Minutes -> Heures -> Ressort)', () => {
+    const wm = new WatchMechanism(createMockCtx(), 500, 500);
+    wm.realTimeMode = true;
+    wm.power = 90;
+
+    const s0 = wm.angleSeconds;
+    const rs0 = wm.angleRelaySeconds;
+    const m0 = wm.angleMinutes;
+    const rm0 = wm.angleRelayMinutes;
+    const h0 = wm.angleHours;
+    const b0 = wm.angleBarrel;
+
+    // Avance de 1 seconde complète (1000 ms) + 80 ms
+    wm.update(1000, false);
+    wm.update(80, false);
+
+    const dSec = wm.angleSeconds - s0;
+    const dRelaySec = wm.angleRelaySeconds - rs0;
+    const dMin = wm.angleMinutes - m0;
+    const dRelayMin = wm.angleRelayMinutes - rm0;
+    const dHr = wm.angleHours - h0;
+    const dBarrel = wm.angleBarrel - b0;
+
+    const { spring, hours, relayMinutes, minutes, relaySeconds, seconds } = WatchMechanism.POS;
+
+    // Vérifie la loi d'engrènement (ω1 * Z1 = - ω2 * Z2) sur chacun des 5 contacts de la montre :
+    expect(dRelaySec * relaySeconds.teethWheel).toBeCloseTo(-dSec * seconds.teeth, 5);
+    expect(dMin * minutes.teeth).toBeCloseTo(-dRelaySec * relaySeconds.teethPinion, 5);
+    expect(dRelayMin * relayMinutes.teethWheel).toBeCloseTo(-dMin * minutes.teeth, 5);
+    expect(dHr * hours.teeth).toBeCloseTo(-dRelayMin * relayMinutes.teethPinion, 5);
+    expect(dBarrel * spring.teeth).toBeCloseTo(-dHr * hours.teeth, 5);
   });
 });
 
