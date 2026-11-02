@@ -8,6 +8,7 @@ import { WatchMechanism } from './WatchMechanism';
 function createMockCtx(): CanvasRenderingContext2D {
   return {
     imageSmoothingEnabled: true,
+    globalAlpha: 1,
     clearRect: () => {},
     save: () => {},
     restore: () => {},
@@ -27,19 +28,26 @@ function createMockCtx(): CanvasRenderingContext2D {
   } as unknown as CanvasRenderingContext2D;
 }
 
-describe('WatchMechanism V36 — 4 Boutons de Zoom Manuels, Vitesse Réelle par défaut & Rotation des 4 Mécanismes', () => {
-  it('supporte les 4 modes de zoom manuels (spring, hours, minutes, seconds) ainsi que le retour à overview', () => {
-    const wm = new WatchMechanism(createMockCtx(), 500, 500);
-    expect(wm.realTimeMode).toBe(true);
-    expect(wm.zoomMode).toBe('overview');
+describe('WatchMechanism V37 — Isolation Complète du Mécanisme Zoomé (Zéro Transparence Grise)', () => {
+  it('masque complètement les autres mécanismes sans jamais utiliser de transparence partielle (globalAlpha < 1) lors d’un zoom', () => {
+    const ctx = createMockCtx();
+    let minAlphaObserved = 1;
+    let currentAlpha = 1;
+    Object.defineProperty(ctx, 'globalAlpha', {
+      get: () => currentAlpha,
+      set: (val: number) => {
+        currentAlpha = val;
+        if (val < minAlphaObserved) minAlphaObserved = val;
+      }
+    });
 
+    const wm = new WatchMechanism(ctx, 500, 500);
     for (const mode of ['spring', 'hours', 'minutes', 'seconds'] as const) {
       wm.setZoomMode(mode);
-      expect(wm.zoomMode).toBe(mode);
+      wm.draw(false);
     }
 
-    wm.setZoomMode('overview');
-    expect(wm.zoomMode).toBe('overview');
+    expect(minAlphaObserved).toBe(1);
   });
 
   it('fait tourner franchement les 4 mécanismes (Ressort, Heures, Minutes, Secondes) en Vitesse réelle comme en Accéléré', () => {

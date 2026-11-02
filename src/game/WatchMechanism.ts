@@ -56,10 +56,10 @@ export class WatchMechanism {
    */
   private static readonly CAMERA_TARGETS: Record<WorkshopZoom, CameraTarget> = {
     overview: { scale: 1.44, x: 32, y: 0 },
-    spring: { scale: 2.55, x: 96, y: -18 },
-    hours: { scale: 2.35, x: 24, y: -12 },
-    minutes: { scale: 2.55, x: 0, y: -38 },
-    seconds: { scale: 2.55, x: -32, y: 0 }
+    spring: { scale: 2.45, x: 108, y: -16 },
+    hours: { scale: 2.35, x: 0, y: -14 },
+    minutes: { scale: 2.45, x: 0, y: -38 },
+    seconds: { scale: 2.45, x: -34, y: 0 }
   };
 
   constructor(
@@ -172,8 +172,6 @@ export class WatchMechanism {
     }
 
     // 3. Marche simultanée et visible des 4 mécanismes (Secondes, Minutes, Heures, Ressort) :
-    // - Vitesse réelle (par défaut) : 1 battement par seconde (1000 ms, Secondes = 6.0°/s, Minutes = 3.6°/s, Heures = 2.2°/s)
-    // - Mode accéléré               : 5 battements par seconde (200 ms, Secondes = 30.0°/s, Minutes = 7.2°/s, Heures = 3.8°/s)
     if (this.power > 0 && !isWinding) {
       const dischargeRate = this.realTimeMode ? 0.00025 : 0.0012;
       this.power = Math.max(0, this.power - deltaTime * dischargeRate);
@@ -219,6 +217,12 @@ export class WatchMechanism {
     }
   }
 
+  /**
+   * Dessine le mouvement :
+   * - En 'overview' : affiche les 4 mécanismes et les 3 aiguilles.
+   * - En zoom ('spring', 'hours', 'minutes', 'seconds') : masque complètement les autres mécanismes
+   *   (aucun élément en gris transparent).
+   */
   public draw(isWinding: boolean): void {
     this.ctx.clearRect(0, 0, this.width, this.height);
     this.ctx.save();
@@ -232,62 +236,52 @@ export class WatchMechanism {
     // 1. Début de bracelet (haut/bas) + Platine squelette avec les 60 graduations
     this.drawChassisWithBraceletStubs();
 
-    // 2. Roue dorée des Heures (mise en valeur dans Vue globale, Ressort, Heures et Minutes)
-    this.ctx.save();
-    this.ctx.globalAlpha =
-      z === 'overview' || z === 'hours' || z === 'spring' || z === 'minutes' ? 1 : 0.22;
-    this.drawToyDiscGear(hours.x, hours.y, hours.r, hours.teeth, this.angleHours, '#fbbf24', '#b45309', '#fef3c7', 8);
-    this.ctx.restore();
+    // 2. Mécanisme des Heures (affiché uniquement en Vue globale et en Zoom Heures)
+    if (z === 'overview' || z === 'hours') {
+      this.drawToyDiscGear(hours.x, hours.y, hours.r, hours.teeth, this.angleHours, '#fbbf24', '#b45309', '#fef3c7', 8);
+    }
 
-    // 3. Barillet du Ressort et Molette à droite (mis en valeur dans Ressort/Molette et Heures)
-    this.ctx.save();
-    this.ctx.globalAlpha = z === 'overview' || z === 'spring' ? 1 : z === 'hours' ? 0.85 : 0.2;
-    this.drawToyBarrel(spring.x, spring.y, spring.r, spring.teeth, this.angleBarrel, this.power);
-    this.ctx.restore();
+    // 3. Mécanisme Ressort / Molette (affiché uniquement en Vue globale et en Zoom Ressort/Molette)
+    if (z === 'overview' || z === 'spring') {
+      this.drawToyBarrel(spring.x, spring.y, spring.r, spring.teeth, this.angleBarrel, this.power);
+      this.drawRightCrownAndWormStem(crown.x, crown.y, this.wormOffset, isWinding && this.power < 100);
+    }
 
-    this.ctx.save();
-    this.ctx.globalAlpha = z === 'overview' || z === 'spring' ? 1 : 0.22;
-    this.drawRightCrownAndWormStem(crown.x, crown.y, this.wormOffset, isWinding && this.power < 100);
-    this.ctx.restore();
+    // 4. Mécanisme des Minutes (affiché uniquement en Vue globale et en Zoom Minutes)
+    if (z === 'overview' || z === 'minutes') {
+      this.drawSteppedRelayGear(
+        relayMinutes.x,
+        relayMinutes.y,
+        relayMinutes.rPinion,
+        relayMinutes.teethPinion,
+        relayMinutes.rWheel,
+        relayMinutes.teethWheel,
+        this.angleRelayMinutes,
+        '#fbbf24',
+        '#0284c7',
+        '#38bdf8'
+      );
+      this.drawToyDiscGear(minutes.x, minutes.y, minutes.r, minutes.teeth, this.angleMinutes, '#38bdf8', '#0284c7', '#e0f2fe', 6);
+    }
 
-    // 4. Train des Minutes à double roue (mis en valeur dans Minutes)
-    this.ctx.save();
-    this.ctx.globalAlpha =
-      z === 'overview' || z === 'minutes' ? 1 : z === 'seconds' ? 0.42 : 0.18;
-    this.drawSteppedRelayGear(
-      relayMinutes.x,
-      relayMinutes.y,
-      relayMinutes.rPinion,
-      relayMinutes.teethPinion,
-      relayMinutes.rWheel,
-      relayMinutes.teethWheel,
-      this.angleRelayMinutes,
-      '#fbbf24',
-      '#0284c7',
-      '#38bdf8'
-    );
-    this.drawToyDiscGear(minutes.x, minutes.y, minutes.r, minutes.teeth, this.angleMinutes, '#38bdf8', '#0284c7', '#e0f2fe', 6);
-    this.ctx.restore();
+    // 5. Mécanisme des Secondes (affiché uniquement en Vue globale et en Zoom Secondes)
+    if (z === 'overview' || z === 'seconds') {
+      this.drawSteppedRelayGear(
+        relaySeconds.x,
+        relaySeconds.y,
+        relaySeconds.rPinion,
+        relaySeconds.teethPinion,
+        relaySeconds.rWheel,
+        relaySeconds.teethWheel,
+        this.angleRelaySeconds,
+        '#38bdf8',
+        '#be123c',
+        '#f43f5e'
+      );
+      this.drawToyDiscGear(seconds.x, seconds.y, seconds.r, seconds.teeth, this.angleSeconds, '#f43f5e', '#be123c', '#ffe4e6', 4);
+    }
 
-    // 5. Train des Secondes à gauche & Roue centrale rouge (mis en valeur dans Secondes)
-    this.ctx.save();
-    this.ctx.globalAlpha = z === 'overview' || z === 'seconds' ? 1 : 0.18;
-    this.drawSteppedRelayGear(
-      relaySeconds.x,
-      relaySeconds.y,
-      relaySeconds.rPinion,
-      relaySeconds.teethPinion,
-      relaySeconds.rWheel,
-      relaySeconds.teethWheel,
-      this.angleRelaySeconds,
-      '#38bdf8',
-      '#be123c',
-      '#f43f5e'
-    );
-    this.drawToyDiscGear(seconds.x, seconds.y, seconds.r, seconds.teeth, this.angleSeconds, '#f43f5e', '#be123c', '#ffe4e6', 4);
-    this.ctx.restore();
-
-    // 6. Les 3 aiguilles avec mise en valeur selon le zoom actif
+    // 6. Aiguilles correspondant strictement au mécanisme observé
     this.drawHandsOnly();
 
     this.ctx.restore();
@@ -295,6 +289,7 @@ export class WatchMechanism {
 
   private drawChassisWithBraceletStubs(): void {
     const borderColor = '#d97706';
+    const z = this.zoomMode;
 
     this.ctx.fillStyle = '#334155';
     this.ctx.strokeStyle = borderColor;
@@ -328,13 +323,20 @@ export class WatchMechanism {
       this.ctx.stroke();
     }
 
+    // Affiche uniquement le pont du mécanisme actif (ou les 3 en vue globale)
     this.ctx.beginPath();
-    this.ctx.moveTo(0, 0);
-    this.ctx.lineTo(82, -41);
-    this.ctx.moveTo(0, 0);
-    this.ctx.lineTo(0, -76);
-    this.ctx.moveTo(0, 0);
-    this.ctx.lineTo(-68, 0);
+    if (z === 'overview' || z === 'spring') {
+      this.ctx.moveTo(0, 0);
+      this.ctx.lineTo(82, -41);
+    }
+    if (z === 'overview' || z === 'minutes') {
+      this.ctx.moveTo(0, 0);
+      this.ctx.lineTo(0, -76);
+    }
+    if (z === 'overview' || z === 'seconds') {
+      this.ctx.moveTo(0, 0);
+      this.ctx.lineTo(-68, 0);
+    }
     this.ctx.strokeStyle = 'rgba(148, 163, 184, 0.2)';
     this.ctx.lineWidth = 6;
     this.ctx.lineCap = 'round';
@@ -612,53 +614,59 @@ export class WatchMechanism {
   private drawHandsOnly(): void {
     const z = this.zoomMode;
 
-    // Petite aiguille des Heures
-    this.ctx.save();
-    this.ctx.globalAlpha = z === 'overview' || z === 'hours' ? 1 : 0.22;
-    this.ctx.rotate(this.angleHours);
-    this.ctx.shadowColor = 'rgba(0, 0, 0, 0.65)';
-    this.ctx.shadowBlur = 5;
-    this.ctx.beginPath();
-    this.ctx.moveTo(0, 12);
-    this.ctx.lineTo(0, -76);
-    this.ctx.strokeStyle = '#fbbf24';
-    this.ctx.lineWidth = 9;
-    this.ctx.lineCap = 'round';
-    this.ctx.stroke();
-    this.ctx.strokeStyle = '#78350f';
-    this.ctx.lineWidth = 1.8;
-    this.ctx.stroke();
-    this.ctx.restore();
+    // En zoom 'spring' (Ressort / Molette), aucune aiguille centrale n'est dessinée
+    if (z === 'spring') return;
 
-    // Grande aiguille des Minutes
-    this.ctx.save();
-    this.ctx.globalAlpha = z === 'overview' || z === 'minutes' ? 1 : 0.22;
-    this.ctx.rotate(this.angleMinutes);
-    this.ctx.shadowColor = 'rgba(0, 0, 0, 0.65)';
-    this.ctx.shadowBlur = 5;
-    this.ctx.beginPath();
-    this.ctx.moveTo(0, 16);
-    this.ctx.lineTo(0, -108);
-    this.ctx.strokeStyle = '#38bdf8';
-    this.ctx.lineWidth = 6.5;
-    this.ctx.lineCap = 'round';
-    this.ctx.stroke();
-    this.ctx.restore();
+    // Petite aiguille des Heures (uniquement en Vue globale et en Zoom Heures)
+    if (z === 'overview' || z === 'hours') {
+      this.ctx.save();
+      this.ctx.rotate(this.angleHours);
+      this.ctx.shadowColor = 'rgba(0, 0, 0, 0.65)';
+      this.ctx.shadowBlur = 5;
+      this.ctx.beginPath();
+      this.ctx.moveTo(0, 12);
+      this.ctx.lineTo(0, -76);
+      this.ctx.strokeStyle = '#fbbf24';
+      this.ctx.lineWidth = 9;
+      this.ctx.lineCap = 'round';
+      this.ctx.stroke();
+      this.ctx.strokeStyle = '#78350f';
+      this.ctx.lineWidth = 1.8;
+      this.ctx.stroke();
+      this.ctx.restore();
+    }
 
-    // Trotteuse rouge des Secondes
-    this.ctx.save();
-    this.ctx.globalAlpha = z === 'overview' || z === 'seconds' ? 1 : 0.22;
-    this.ctx.rotate(this.angleSeconds);
-    this.ctx.shadowColor = 'rgba(0, 0, 0, 0.5)';
-    this.ctx.shadowBlur = 4;
-    this.ctx.beginPath();
-    this.ctx.moveTo(0, 18);
-    this.ctx.lineTo(0, -118);
-    this.ctx.strokeStyle = '#f43f5e';
-    this.ctx.lineWidth = 3.2;
-    this.ctx.lineCap = 'round';
-    this.ctx.stroke();
-    this.ctx.restore();
+    // Grande aiguille des Minutes (uniquement en Vue globale et en Zoom Minutes)
+    if (z === 'overview' || z === 'minutes') {
+      this.ctx.save();
+      this.ctx.rotate(this.angleMinutes);
+      this.ctx.shadowColor = 'rgba(0, 0, 0, 0.65)';
+      this.ctx.shadowBlur = 5;
+      this.ctx.beginPath();
+      this.ctx.moveTo(0, 16);
+      this.ctx.lineTo(0, -108);
+      this.ctx.strokeStyle = '#38bdf8';
+      this.ctx.lineWidth = 6.5;
+      this.ctx.lineCap = 'round';
+      this.ctx.stroke();
+      this.ctx.restore();
+    }
+
+    // Trotteuse rouge des Secondes (uniquement en Vue globale et en Zoom Secondes)
+    if (z === 'overview' || z === 'seconds') {
+      this.ctx.save();
+      this.ctx.rotate(this.angleSeconds);
+      this.ctx.shadowColor = 'rgba(0, 0, 0, 0.5)';
+      this.ctx.shadowBlur = 4;
+      this.ctx.beginPath();
+      this.ctx.moveTo(0, 18);
+      this.ctx.lineTo(0, -118);
+      this.ctx.strokeStyle = '#f43f5e';
+      this.ctx.lineWidth = 3.2;
+      this.ctx.lineCap = 'round';
+      this.ctx.stroke();
+      this.ctx.restore();
+    }
 
     // Rubis central
     this.ctx.beginPath();
