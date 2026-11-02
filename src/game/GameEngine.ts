@@ -360,6 +360,26 @@ export class GameEngine {
       }
     });
 
+    const forceRefreshBtn = document.getElementById('force-refresh-btn');
+    forceRefreshBtn?.addEventListener('click', async () => {
+      forceRefreshBtn.textContent = '⏳...';
+      try {
+        if ('serviceWorker' in navigator) {
+          const registrations = await navigator.serviceWorker.getRegistrations();
+          await Promise.all(registrations.map(reg => reg.unregister()));
+        }
+        if ('caches' in window) {
+          const keys = await caches.keys();
+          await Promise.all(keys.map(key => caches.delete(key)));
+        }
+      } catch {
+        // Poursuit le rechargement forcé même en cas de restriction navigateur
+      }
+      const url = new URL(window.location.href);
+      url.searchParams.set('t', String(Date.now()));
+      window.location.replace(url.toString());
+    });
+
     const devUnlockBtn = document.getElementById('dev-unlock-btn');
     devUnlockBtn?.addEventListener('click', () => {
       const currentMuted = this.saveData.muted;
