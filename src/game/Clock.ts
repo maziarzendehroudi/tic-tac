@@ -78,7 +78,7 @@ export class Clock {
       ctx.stroke();
     }
 
-    // 5. Repères des minutes en bleu (r - 25)
+    // 5. Repères des minutes en bleu (r - 25, niveaux 2 à 5)
     const minuteLabelRadius = r - 25;
     let minutesToDisplay: number[] = [];
     if (level === 2) minutesToDisplay = [0, 30];
@@ -100,27 +100,45 @@ export class Clock {
       ctx.fillText(label, mx, my);
     });
 
-    // 6. Chiffres des heures 1 à 12 et heures 24h (13 à 00 aux Niveaux 5 & 6)
+    // 6. Chiffres des heures :
+    // - Niveaux 1 à 6 : 1 à 12 (avec couronne intérieure 13..00 aux niveaux 5 et 6)
+    // - Niveau 7 ("L'Horloge des Grands") : uniquement 12, 3, 6, 9 et des index bâtons pour les autres heures !
     const hour12Radius = showMinuteTrackBand ? r - 66 : r - 52;
     const hour24Radius = showMinuteTrackBand ? r - 102 : r - 92;
 
     for (let i = 1; i <= 12; i++) {
       const angle = (i * Math.PI) / 6;
+
+      if (level >= 7 && i % 3 !== 0) {
+        // Index bâton horaire sobre pour les heures non cardinales au Niveau 7
+        const markerOuter = r - 36;
+        const markerInner = r - 56;
+        ctx.save();
+        ctx.beginPath();
+        ctx.moveTo(markerInner * Math.sin(angle), -markerInner * Math.cos(angle));
+        ctx.lineTo(markerOuter * Math.sin(angle), -markerOuter * Math.cos(angle));
+        ctx.lineWidth = 4.5;
+        ctx.strokeStyle = '#334155';
+        ctx.lineCap = 'round';
+        ctx.stroke();
+        ctx.restore();
+        continue;
+      }
+
       const hx = hour12Radius * Math.sin(angle);
       const hy = -hour12Radius * Math.cos(angle);
 
-      // A. Heures 1 à 12
       ctx.save();
-      ctx.font = '700 29px "Fredoka", sans-serif';
+      ctx.font = level >= 7 ? '700 32px "Fredoka", sans-serif' : '700 29px "Fredoka", sans-serif';
       ctx.fillStyle = hourNumberColor;
-      ctx.globalAlpha = level >= 5 && is24HourTarget ? 0.45 : 1;
+      ctx.globalAlpha = (level === 5 || level === 6) && is24HourTarget ? 0.45 : 1;
       ctx.textAlign = 'center';
       ctx.textBaseline = 'middle';
       ctx.fillText(i.toString(), hx, hy);
       ctx.restore();
 
-      // B. Heures 24h (13 à 23 et 00) aux Niveaux 5 et 6
-      if (level >= 5) {
+      // Heures 24h (13 à 23 et 00) aux Niveaux 5 et 6 uniquement
+      if (level === 5 || level === 6) {
         const h24Text = i === 12 ? '00' : (i + 12).toString();
         const x24 = hour24Radius * Math.sin(angle);
         const y24 = -hour24Radius * Math.cos(angle);

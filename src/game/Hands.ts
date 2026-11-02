@@ -7,6 +7,9 @@ export class Hands {
     this.radius = radius;
   }
 
+  /**
+   * Dessine les aiguilles épurées (sans curseur blanc sur le corps de l'aiguille)
+   */
   public draw(
     hours: number,
     minutes: number,
@@ -15,10 +18,9 @@ export class Hands {
     ghostTarget?: { hours: number; minutes: number }
   ): void {
     const ctx = this.ctx;
-    const hourTip = level >= 5 ? this.radius - 118 : this.radius - 96;
+    const hourTip = level === 5 || level === 6 ? this.radius - 118 : this.radius - 96;
     const minuteTip = level >= 2 && level <= 5 ? this.radius - 42 : this.radius - 24;
 
-    // 0. Silhouette d'aide en pointillés (affichée uniquement si l'enfant bloque après >= 2 erreurs en Placement)
     if (ghostTarget) {
       const ghostHourAngle = ((ghostTarget.hours % 12) * Math.PI) / 6 + (ghostTarget.minutes * Math.PI) / 360;
       const ghostMinAngle = (ghostTarget.minutes * Math.PI) / 30;
@@ -53,8 +55,8 @@ export class Hands {
     ctx.save();
     ctx.rotate(hourAngle);
     if (activeHand === 'hour') {
-      ctx.shadowColor = 'rgba(234, 88, 12, 0.55)';
-      ctx.shadowBlur = 14;
+      ctx.shadowColor = 'rgba(234, 88, 12, 0.45)';
+      ctx.shadowBlur = 10;
     }
 
     ctx.beginPath();
@@ -72,13 +74,6 @@ export class Hands {
     ctx.closePath();
     ctx.fillStyle = '#ea580c';
     ctx.fill();
-
-    if (activeHand === 'hour') {
-      ctx.beginPath();
-      ctx.arc(0, -(hourTip * 0.62), 6, 0, 2 * Math.PI);
-      ctx.fillStyle = '#fff7ed';
-      ctx.fill();
-    }
     ctx.restore();
 
     // 2. Grande aiguille des Minutes (Bleue #0284c7)
@@ -86,8 +81,8 @@ export class Hands {
     ctx.save();
     ctx.rotate(minuteAngle);
     if (activeHand === 'minute') {
-      ctx.shadowColor = 'rgba(2, 132, 199, 0.55)';
-      ctx.shadowBlur = 14;
+      ctx.shadowColor = 'rgba(2, 132, 199, 0.45)';
+      ctx.shadowBlur = 10;
     }
 
     ctx.beginPath();
@@ -105,13 +100,6 @@ export class Hands {
     ctx.closePath();
     ctx.fillStyle = '#0284c7';
     ctx.fill();
-
-    if (activeHand === 'minute') {
-      ctx.beginPath();
-      ctx.arc(0, -(minuteTip * 0.68), 5.5, 0, 2 * Math.PI);
-      ctx.fillStyle = '#f0f9ff';
-      ctx.fill();
-    }
     ctx.restore();
 
     // 3. Pivot central

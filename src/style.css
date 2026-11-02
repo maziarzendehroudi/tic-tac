@@ -15,7 +15,7 @@ html, body {
 }
 
 /* ============================================================================
-   1. FOND DE CIEL SANS COUPURE HAUT/BAS (RADIAL CENTRÉ SUR L'HORLOGE)
+   1. FOND DE CIEL SANS COUPURE HAUT/BAS
    ============================================================================ */
 html.theme-day,
 body.theme-day {
@@ -37,7 +37,6 @@ body.theme-night {
   overflow: hidden;
 }
 
-/* Le bord haut et le bord bas du dégradé radial rejoignent exactement background-color (#38bdf8 / #0b132b) */
 body.theme-day #sky-backdrop {
   background: radial-gradient(circle at 50% 42%, #bae6fd 0%, #7dd3fc 48%, #38bdf8 100%);
 }
@@ -134,7 +133,7 @@ body {
   width: 100%;
   max-width: 480px;
   min-height: 100dvh;
-  padding: 12px 16px 16px;
+  padding: 10px 16px 14px;
   display: flex;
   flex-direction: column;
   align-items: center;
@@ -144,7 +143,7 @@ body {
 .view {
   width: 100%;
   flex: 1;
-  max-height: 760px;
+  max-height: 780px;
   display: flex;
   flex-direction: column;
   align-items: center;
@@ -155,7 +154,7 @@ body {
 }
 
 /* ============================================================================
-   3. PAGE D'ACCUEIL & CARTES DE NIVEAUX (BORDURES UNIFORMES NON TRONQUÉES)
+   3. PAGE D'ACCUEIL, PROFILS & ICÔNE SON ÉPURÉE
    ============================================================================ */
 #global-top-bar {
   width: 100%;
@@ -164,19 +163,26 @@ body {
   align-items: center;
 }
 
-#dev-unlock-btn,
-#sound-toggle-btn {
+.top-left-actions {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+#profile-btn,
+#dev-unlock-btn {
   background: rgba(15, 23, 42, 0.78);
   backdrop-filter: blur(6px);
   color: #f8fafc;
-  border: 2px solid rgba(255, 255, 255, 0.32);
-  padding: 6px 14px;
+  border: 2px solid rgba(255, 255, 255, 0.35);
+  padding: 5px 12px;
   border-radius: 20px;
   font-size: 0.8rem;
   font-weight: 700;
   cursor: pointer;
-  box-shadow: 0 3px 8px rgba(15, 23, 42, 0.2);
+  box-shadow: 0 3px 8px rgba(15, 23, 42, 0.18);
 }
+
 #dev-unlock-btn {
   color: #fde68a;
   border-color: rgba(251, 191, 36, 0.6);
@@ -186,51 +192,73 @@ body {
   border-color: rgba(52, 211, 153, 0.6);
 }
 
-#main-title-box {
-  text-align: center;
-  margin: 4px 0 8px;
-  width: 100%;
-}
-#main-title-box h1 {
-  font-size: 2.25rem;
-  color: #0f172a;
-  margin-bottom: 2px;
-  text-shadow: 0 2px 0 rgba(255, 255, 255, 0.85);
+/* Icône du son 100 % épurée en blanc semi-transparent (barrée quand muet) */
+#sound-toggle-btn {
+  background: transparent;
+  border: none;
+  box-shadow: none;
+  color: rgba(255, 255, 255, 0.92);
+  width: 40px;
+  height: 40px;
+  padding: 6px;
+  cursor: pointer;
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  gap: 10px;
+  filter: drop-shadow(0 2px 4px rgba(15, 23, 42, 0.28));
+  transition: transform 0.12s ease, opacity 0.2s ease;
 }
-.brand-app-icon {
-  width: 44px;
-  height: 44px;
-  border-radius: 12px;
-  filter: drop-shadow(0 4px 8px rgba(15, 23, 42, 0.25));
+#sound-toggle-btn:active {
+  transform: scale(0.9);
+}
+#sound-toggle-btn .mute-slash {
+  display: none;
+}
+#sound-toggle-btn.is-muted {
+  color: rgba(255, 255, 255, 0.65);
+}
+#sound-toggle-btn.is-muted .sound-wave {
+  opacity: 0.25;
+}
+#sound-toggle-btn.is-muted .mute-slash {
+  display: block;
+}
+
+#main-title-box {
+  text-align: center;
+  margin: 2px 0 6px;
+  width: 100%;
+}
+#main-title-box h1 {
+  font-size: 2.2rem;
+  color: #0f172a;
+  margin-bottom: 1px;
+  text-shadow: 0 2px 0 rgba(255, 255, 255, 0.85);
 }
 #main-title-box p {
-  font-size: 0.94rem;
+  font-size: 0.9rem;
   font-weight: 700;
   color: #075985;
 }
 
 #player-progress-bar {
-  margin-top: 6px;
+  margin-top: 5px;
   display: inline-flex;
   align-items: center;
   gap: 10px;
   background: rgba(15, 23, 42, 0.82);
-  padding: 6px 14px;
+  padding: 5px 14px;
   border-radius: 20px;
   border: 2px solid rgba(255, 255, 255, 0.32);
   box-shadow: 0 4px 10px rgba(15, 23, 42, 0.18);
 }
 #player-rank-title {
-  font-size: 0.84rem;
+  font-size: 0.82rem;
   font-weight: 700;
   color: #f8fafc;
 }
 #player-stars-count {
-  font-size: 0.84rem;
+  font-size: 0.82rem;
   font-weight: 700;
   color: #fbbf24;
   background: rgba(251, 191, 36, 0.18);
@@ -238,24 +266,25 @@ body {
   border-radius: 12px;
 }
 
+/* Grille compacte pour accueillir les 7 niveaux sur un seul écran mobile */
 #levels-grid {
   display: flex;
   flex-direction: column;
-  gap: 9px;
+  gap: 7px;
   width: 100%;
 }
 
 .level-rect {
   border: 2px solid rgba(255, 255, 255, 0.35);
-  border-radius: 18px;
-  padding: 12px 15px;
+  border-radius: 16px;
+  padding: 9px 14px;
   text-align: left;
   cursor: pointer;
-  box-shadow: 0 5px 12px rgba(15, 23, 42, 0.18);
+  box-shadow: 0 4px 10px rgba(15, 23, 42, 0.16);
   transition: transform 0.12s ease;
   display: flex;
   align-items: center;
-  gap: 12px;
+  gap: 11px;
   color: white;
 }
 .level-rect:active:not(.locked) {
@@ -263,16 +292,16 @@ body {
 }
 
 .lvl-badge {
-  width: 36px;
-  height: 36px;
-  min-width: 36px;
+  width: 32px;
+  height: 32px;
+  min-width: 32px;
   border-radius: 50%;
   background: rgba(255, 255, 255, 0.24);
   border: 2px solid rgba(255, 255, 255, 0.55);
   display: flex;
   align-items: center;
   justify-content: center;
-  font-size: 1.1rem;
+  font-size: 1rem;
   font-weight: 700;
   color: #ffffff;
 }
@@ -284,7 +313,7 @@ body {
   min-width: 0;
 }
 .lvl-title {
-  font-size: 1.06rem;
+  font-size: 1.02rem;
   font-weight: 700;
   white-space: nowrap;
   overflow: hidden;
@@ -292,15 +321,15 @@ body {
 }
 
 .lvl-status {
-  width: 34px;
-  height: 34px;
-  min-width: 34px;
+  width: 32px;
+  height: 32px;
+  min-width: 32px;
   flex-shrink: 0;
   border-radius: 50%;
   display: flex;
   align-items: center;
   justify-content: center;
-  font-size: 1rem;
+  font-size: 0.95rem;
   font-weight: 700;
 }
 .lvl-status.play {
@@ -309,20 +338,20 @@ body {
 }
 .lvl-status.locked-icon {
   background: rgba(15, 23, 42, 0.3);
-  font-size: 0.9rem;
+  font-size: 0.85rem;
 }
 .lvl-status.stars-badge {
   width: auto;
-  min-width: 66px;
-  padding: 4px 10px;
-  border-radius: 14px;
+  min-width: 62px;
+  padding: 3px 9px;
+  border-radius: 12px;
   background: rgba(15, 23, 42, 0.42);
   border: 1.5px solid rgba(255, 255, 255, 0.4);
   display: inline-flex;
   align-items: center;
   justify-content: center;
   gap: 2px;
-  font-size: 1rem;
+  font-size: 0.95rem;
   white-space: nowrap;
 }
 .lvl-star-on { color: #fde047; }
@@ -334,6 +363,7 @@ body {
 .level-rect.lvl-4 { background: linear-gradient(135deg, #e11d48, #be123c); }
 .level-rect.lvl-5 { background: linear-gradient(135deg, #7c3aed, #5b21b6); }
 .level-rect.lvl-6 { background: linear-gradient(135deg, #db2777, #9d174d); }
+.level-rect.lvl-7 { background: linear-gradient(135deg, #1e293b, #0f172a); border-color: #fbbf24; }
 
 .level-rect.locked {
   background: rgba(15, 23, 42, 0.52) !important;
@@ -344,13 +374,12 @@ body {
 }
 
 /* ============================================================================
-   4. ÉCRAN DE JEU (BOUTONS NETS SANS COINS TRONQUÉS & HAUTEUR STABLE)
+   4. ÉCRAN DE JEU (PLACEMENT 100 % AU DOIGT & BOUTON SUIVANT ➔)
    ============================================================================ */
 #game-top-bar {
   width: 100%;
 }
 
-/* Bordure uniforme tout autour pour éliminer l'effet de coin coupé */
 #back-menu-btn {
   width: 100%;
   border: 2px solid rgba(255, 255, 255, 0.32);
@@ -387,7 +416,7 @@ body {
   display: flex;
   justify-content: center;
   align-items: center;
-  width: min(100%, 325px, 42dvh);
+  width: min(100%, 340px, 45dvh);
   aspect-ratio: 1;
   filter: drop-shadow(0 10px 22px rgba(15, 23, 42, 0.24));
 }
@@ -397,27 +426,31 @@ canvas {
   width: 100%;
   height: 100%;
   touch-action: none;
+  cursor: grab;
+}
+canvas:active {
+  cursor: grabbing;
 }
 
 #ui-container {
   display: flex;
   flex-direction: column;
   align-items: center;
-  gap: 8px;
+  gap: 10px;
   width: 100%;
 }
 
-/* 1. Question fixe sur 1 ligne claire */
+/* 1. Question fixe avec badge neutre */
 #instruction {
-  min-height: 40px;
-  font-size: clamp(1.08rem, 4.4vw, 1.28rem);
+  min-height: 42px;
+  font-size: clamp(1.1rem, 4.4vw, 1.3rem);
   font-weight: 700;
   text-align: center;
   display: flex;
   flex-wrap: wrap;
   align-items: center;
   justify-content: center;
-  gap: 6px;
+  gap: 7px;
   color: #0f172a;
   text-shadow: 0 1px 0 rgba(255, 255, 255, 0.85);
 }
@@ -437,22 +470,17 @@ body.theme-night #instruction {
   text-shadow: none;
 }
 
-.hr-badge {
-  color: #ffffff;
-  background: #ea580c;
-  padding: 2px 9px;
-  border-radius: 10px;
+/* Badge neutre uniforme (sans distinction orange/bleu) */
+.target-time-badge {
+  color: #f8fafc;
+  background: #1e293b;
+  border: 2px solid rgba(255, 255, 255, 0.4);
+  padding: 2px 12px;
+  border-radius: 12px;
+  font-size: 1.25rem;
+  letter-spacing: 0.5px;
   text-shadow: none;
-  cursor: pointer;
-}
-
-.min-badge {
-  color: #ffffff;
-  background: #0284c7;
-  padding: 2px 9px;
-  border-radius: 10px;
-  text-shadow: none;
-  cursor: pointer;
+  box-shadow: 0 3px 8px rgba(15, 23, 42, 0.25);
 }
 
 /* 2. Zone des boutons fixe */
@@ -473,7 +501,6 @@ body.theme-night #instruction {
   display: none;
 }
 
-/* Bordure uniforme 2px sur les 4 côtés : plus aucun coin tronqué sur fond de nuit ou de jour */
 .choice-btn {
   background: #1e293b;
   border: 2px solid rgba(255, 255, 255, 0.35);
@@ -504,99 +531,23 @@ body.theme-night #instruction {
   transform: scale(0.96);
 }
 
-/* Outils de placement en 2 lignes aérées (Zéro troncature sur petits écrans) */
 #placement-tools {
-  display: flex;
-  flex-direction: column;
-  gap: 8px;
   width: 100%;
+  display: flex;
+  justify-content: center;
 }
 #placement-tools.hidden {
   display: none;
 }
 
-.hand-selector-group {
-  display: flex;
-  gap: 8px;
-  width: 100%;
-}
-
-.hand-select-btn {
-  flex: 1;
-  background: rgba(15, 23, 42, 0.78);
-  color: #cbd5e1;
-  border: 2px solid rgba(255, 255, 255, 0.28);
-  padding: 9px 10px;
-  border-radius: 14px;
-  font-size: 0.9rem;
-  font-weight: 700;
-  cursor: pointer;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  gap: 6px;
-  white-space: nowrap;
-}
-
-.dot-indicator {
-  width: 11px;
-  height: 11px;
-  flex-shrink: 0;
-  border-radius: 50%;
-  display: inline-block;
-}
-.dot-hour { background: #ea580c; border: 2px solid #fed7aa; }
-.dot-minute { background: #0284c7; border: 2px solid #bae6fd; }
-
-.hand-select-btn.hour-mode.active-hand-btn {
-  background: #0f172a;
-  color: #ffffff;
-  border-color: #fb923c;
-  box-shadow: 0 0 12px rgba(234, 88, 12, 0.45);
-}
-.hand-select-btn.minute-mode.active-hand-btn {
-  background: #0f172a;
-  color: #ffffff;
-  border-color: #38bdf8;
-  box-shadow: 0 0 12px rgba(2, 132, 199, 0.45);
-}
-
-.verify-row {
-  display: flex;
-  align-items: center;
-  gap: 10px;
-  width: 100%;
-}
-
-.nudge-btn {
-  background: #1e293b;
-  color: #ffffff;
-  border: 2px solid rgba(255, 255, 255, 0.35);
-  width: 52px;
-  height: 50px;
-  flex-shrink: 0;
-  border-radius: 16px;
-  font-size: 1.6rem;
-  line-height: 1;
-  font-weight: 700;
-  cursor: pointer;
-  box-shadow: 0 4px 10px rgba(15, 23, 42, 0.28);
-  display: flex;
-  align-items: center;
-  justify-content: center;
-}
-.nudge-btn:active {
-  transform: scale(0.94);
-}
-
 #check-btn {
-  flex: 1;
-  height: 50px;
+  width: 100%;
+  height: 54px;
   background: linear-gradient(135deg, #10b981, #059669);
   color: #ffffff;
   border: 2px solid #6ee7b7;
-  padding: 0 20px;
-  font-size: 1.2rem;
+  padding: 0 24px;
+  font-size: 1.24rem;
   font-weight: 700;
   border-radius: 16px;
   cursor: pointer;
@@ -604,25 +555,28 @@ body.theme-night #instruction {
   display: flex;
   align-items: center;
   justify-content: center;
-  white-space: nowrap;
 }
 #check-btn:active {
   transform: scale(0.97);
 }
 
-/* 3. Zone de commentaires toujours en dessous */
+/* 3. Zone de commentaires + Bouton "Suivant ➔" en dessous */
 #help-box {
   width: 100%;
-  min-height: 60px;
+  min-height: 64px;
   display: flex;
   align-items: center;
-  justify-content: center;
+  justify-content: space-between;
+  gap: 10px;
   padding: 10px 14px;
   border-radius: 16px;
   font-size: 0.9rem;
   line-height: 1.35;
-  text-align: center;
+  text-align: left;
   transition: opacity 0.2s ease;
+}
+#help-text {
+  flex: 1;
 }
 #help-box.invisible-feedback {
   visibility: hidden;
@@ -630,45 +584,165 @@ body.theme-night #instruction {
   pointer-events: none;
 }
 #help-box.feedback-success {
-  background: rgba(6, 78, 59, 0.95);
+  background: rgba(6, 78, 59, 0.96);
   border: 2px solid #34d399;
   color: #ecfdf5;
-  box-shadow: 0 6px 18px rgba(16, 185, 129, 0.3);
+  box-shadow: 0 6px 18px rgba(16, 185, 129, 0.32);
 }
 #help-box.feedback-error {
   background: rgba(15, 23, 42, 0.95);
   border: 2px solid #fbbf24;
   color: #fef3c7;
+  text-align: center;
   box-shadow: 0 6px 18px rgba(15, 23, 42, 0.32);
 }
 
-/* Modal PWA */
+#next-question-btn {
+  background: #fbbf24;
+  color: #0f172a;
+  border: 2px solid #fef08a;
+  padding: 9px 16px;
+  border-radius: 12px;
+  font-size: 0.98rem;
+  font-weight: 700;
+  cursor: pointer;
+  white-space: nowrap;
+  flex-shrink: 0;
+  box-shadow: 0 3px 10px rgba(0, 0, 0, 0.25);
+  transition: transform 0.12s ease;
+}
+#next-question-btn:active {
+  transform: scale(0.95);
+}
+#next-question-btn.hidden {
+  display: none;
+}
+
+/* ============================================================================
+   5. MODALES (PROFILS FRATRIE & PWA)
+   ============================================================================ */
 .modal {
   position: fixed;
   top: 0;
   left: 0;
   width: 100%;
   height: 100%;
-  background: rgba(15, 23, 42, 0.65);
-  backdrop-filter: blur(4px);
+  background: rgba(15, 23, 42, 0.7);
+  backdrop-filter: blur(5px);
   display: flex;
   justify-content: center;
   align-items: center;
   z-index: 100;
-  padding: 15px;
+  padding: 16px;
 }
 .modal.hidden { display: none; }
 .modal-content {
-  background: white;
+  background: #ffffff;
   color: #0f172a;
-  padding: 24px;
-  border-radius: 28px;
+  padding: 22px;
+  border-radius: 24px;
   width: 100%;
-  max-width: 400px;
+  max-width: 390px;
   text-align: center;
   display: flex;
   flex-direction: column;
+  gap: 12px;
+  box-shadow: 0 20px 40px rgba(0, 0, 0, 0.4);
 }
+
+.profile-subtitle {
+  font-size: 0.86rem;
+  color: #475569;
+  margin-top: -6px;
+}
+
+#profiles-list {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  max-height: 210px;
+  overflow-y: auto;
+}
+
+.profile-item {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.profile-select-btn {
+  flex: 1;
+  background: #f1f5f9;
+  border: 2px solid #cbd5e1;
+  color: #0f172a;
+  padding: 10px 14px;
+  border-radius: 14px;
+  font-size: 0.96rem;
+  font-weight: 700;
+  cursor: pointer;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+.profile-item.active-profile .profile-select-btn {
+  background: #e0f2fe;
+  border-color: #0284c7;
+  color: #0369a1;
+}
+
+.prof-stars {
+  font-size: 0.85rem;
+  color: #d97706;
+}
+
+.profile-del-btn {
+  background: #fee2e2;
+  color: #dc2626;
+  border: 1.5px solid #fca5a5;
+  width: 38px;
+  height: 40px;
+  border-radius: 12px;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+#add-profile-form {
+  display: flex;
+  gap: 8px;
+  width: 100%;
+}
+#new-profile-input {
+  flex: 1;
+  border: 2px solid #cbd5e1;
+  border-radius: 12px;
+  padding: 9px 12px;
+  font-size: 0.92rem;
+  font-weight: 600;
+  outline: none;
+  user-select: text;
+}
+#new-profile-input:focus {
+  border-color: #0284c7;
+}
+#add-profile-submit {
+  background: #0284c7;
+  color: #ffffff;
+  border: none;
+  padding: 9px 14px;
+  border-radius: 12px;
+  font-weight: 700;
+  cursor: pointer;
+}
+#profile-close-btn {
+  background: #e2e8f0;
+  color: #334155;
+  border: none;
+  padding: 10px;
+  border-radius: 12px;
+  font-weight: 700;
+  cursor: pointer;
+}
+
 .install-icon {
   background: transparent;
   width: 84px;
@@ -676,7 +750,7 @@ body.theme-night #instruction {
   display: flex;
   align-items: center;
   justify-content: center;
-  margin: 0 auto 12px;
+  margin: 0 auto 4px;
 }
 .install-app-icon {
   width: 84px;
@@ -688,7 +762,6 @@ body.theme-night #instruction {
   display: flex;
   gap: 10px;
   width: 100%;
-  margin-top: 10px;
 }
 .install-actions button {
   flex: 1;
@@ -716,8 +789,8 @@ body.theme-night #instruction {
 
 @keyframes btnCorrectPop {
   0% { transform: scale(1); }
-  45% { transform: scale(1.1); }
-  100% { transform: scale(1.04); }
+  45% { transform: scale(1.08); }
+  100% { transform: scale(1.03); }
 }
 
 @keyframes btnWrongWiggle {
@@ -747,17 +820,4 @@ body.theme-night #instruction {
 .choice-btn.btn-wrong,
 #check-btn.btn-wrong {
   animation: btnWrongWiggle 0.45s ease-in-out;
-}
-
-/* Bouton Son sous forme d'icône ronde épurée */
-#sound-toggle-btn {
-  width: 38px;
-  height: 38px;
-  padding: 0;
-  border-radius: 50%;
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  font-size: 1.1rem;
-  line-height: 1;
 }

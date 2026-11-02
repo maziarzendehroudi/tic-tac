@@ -25,14 +25,17 @@ export class QuestionManager {
     return this.level;
   }
 
+  /**
+   * Format universel avec deux-points ("9:30" aux niveaux 1-4, "09:30" / "21:30" aux niveaux 5-7)
+   */
   public static formatTimeText(hours: number, minutes: number, level: number): string {
     const m = minutes < 10 ? `0${minutes}` : `${minutes}`;
     if (level >= 5) {
       const h = hours < 10 ? `0${hours}` : `${hours}`;
-      return `${h}h${m}`;
+      return `${h}:${m}`;
     }
     const displayHour = hours % 12 || 12;
-    return `${displayHour}h${m}`;
+    return `${displayHour}:${m}`;
   }
 
   public static getPeriodLabel(hours24: number, level: number): string {
@@ -83,6 +86,16 @@ export class QuestionManager {
       if (minutes % 5 === 0) {
         minutes = (minutes + Math.floor(Math.random() * 4) + 1) % 60;
       }
+    } else if (this.level >= 7) {
+      // Niveau 7 (Horloge des Grands : 12, 3, 6, 9 uniquement) :
+      // privilégie les heures hors 12/3/6/9 (1, 2, 4, 5, 7, 8, 10, 11) pour exercer le repérage spatial !
+      const nonCardinalHours24 = [1, 2, 4, 5, 7, 8, 10, 11, 13, 14, 16, 17, 19, 20, 22, 23];
+      if (Math.random() < 0.8) {
+        hours = nonCardinalHours24[Math.floor(Math.random() * nonCardinalHours24.length)];
+      } else {
+        hours = Math.floor(Math.random() * 24);
+      }
+      minutes = Math.floor(Math.random() * 60);
     }
 
     const isDay = TimeMath.isDayTime(hours);
@@ -117,8 +130,6 @@ export class QuestionManager {
       );
     };
 
-    // Chantier C : Lorsque minutes >= 35 (ex: 4h45 ou 8h50), la petite aiguille est proche de H+1.
-    // On inclut systématiquement le leurre H+1 (ex: 5h45 ou 9h50) pour entraîner l'enfant à éviter ce piège !
     if (correct.minutes >= 35) {
       const trapNextHour = this.createTargetFrom(correct.hours + 1, correct.minutes);
       if (isDistinctAndUnambiguous(trapNextHour)) {
@@ -126,7 +137,6 @@ export class QuestionManager {
       }
     }
 
-    // Aux niveaux 5 et 6 : leurre 12h/24h (ex: 08h20 vs 20h20)
     if (this.level >= 5 && choices.length < 3) {
       const amPmDecoy = this.createTargetFrom((correct.hours + 12) % 24, correct.minutes);
       if (isDistinctAndUnambiguous(amPmDecoy)) {
@@ -134,7 +144,6 @@ export class QuestionManager {
       }
     }
 
-    // Leurre sur l'heure voisine (+1h ou -1h)
     if (choices.length < 3) {
       const deltaH = Math.random() < 0.5 ? 1 : -1;
       const hourDecoy = this.createTargetFrom(correct.hours + deltaH, correct.minutes);
@@ -143,12 +152,11 @@ export class QuestionManager {
       }
     }
 
-    // Leurre sur les minutes
     if (choices.length < 3 && this.level >= 2) {
       let altMin = (correct.minutes + 30) % 60;
       if (this.level === 3) altMin = (correct.minutes + 15) % 60;
       else if (this.level === 4 || this.level === 5) altMin = (correct.minutes + 5) % 60;
-      else if (this.level === 6) altMin = (correct.minutes + 2) % 60;
+      else if (this.level >= 6) altMin = (correct.minutes + 2) % 60;
 
       const minDecoy = this.createTargetFrom(correct.hours, altMin);
       if (isDistinctAndUnambiguous(minDecoy)) {

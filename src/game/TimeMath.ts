@@ -40,6 +40,11 @@ export class TimeMath {
     return Math.hypot(px - projX, py - projY);
   }
 
+  /**
+   * Préhension 100 % tactile intelligente :
+   * - Si les deux aiguilles sont proches ou superposées, sélectionne prioritairement celle qui n'est pas encore sur sa cible !
+   * - Permet de glisser le doigt jusqu'à l'extérieur du cadran (effet bras de levier) pour viser à la minute près aux niveaux 6 et 7.
+   */
   public static pickHandFromPointer(
     x: number,
     y: number,
@@ -47,16 +52,18 @@ export class TimeMath {
     minutes: number,
     radius: number,
     level: number,
-    currentActive: 'hour' | 'minute'
+    currentActive: 'hour' | 'minute',
+    targetHours?: number,
+    targetMinutes?: number
   ): 'hour' | 'minute' {
-    if (level === 1) {
+    if (level === 1 && minutes === 0) {
       return 'hour';
     }
 
     const hourAngle = ((hours % 12) * Math.PI) / 6 + (minutes * Math.PI) / 360;
     const minuteAngle = (minutes * Math.PI) / 30;
 
-    const hourLen = level >= 5 ? radius - 118 : radius - 96;
+    const hourLen = level === 5 || level === 6 ? radius - 118 : radius - 96;
     const minLen = level >= 2 && level <= 5 ? radius - 42 : radius - 24;
 
     const hx = Math.sin(hourAngle) * hourLen;
@@ -67,22 +74,31 @@ export class TimeMath {
     const dHour = this.distToSegment(x, y, hx, hy);
     const dMin = this.distToSegment(x, y, mx, my);
 
-    if (dHour < 34 || dMin < 34) {
-      if (Math.abs(dHour - dMin) < 10) {
-        return Math.hypot(x, y) > hourLen * 0.85 ? 'minute' : 'hour';
+    if (dHour < 42 || dMin < 42) {
+      if (Math.abs(dHour - dMin) < 16) {
+        if (typeof targetHours === 'number' && typeof targetMinutes === 'number') {
+          const isHourAlreadyOk = (hours % 12) === (targetHours % 12);
+          const isMinAlreadyOk =
+            level >= 6
+              ? this.circularMinuteDiff(minutes, targetMinutes) <= 1
+              : minutes === targetMinutes;
+          if (isHourAlreadyOk && !isMinAlreadyOk) return 'minute';
+          if (!isHourAlreadyOk && isMinAlreadyOk) return 'hour';
+        }
+        return Math.hypot(x, y) > hourLen * 0.82 ? 'minute' : 'hour';
       }
       return dHour < dMin ? 'hour' : 'minute';
     }
 
     const distFromCenter = Math.hypot(x, y);
-    if (distFromCenter > radius * 0.68) return 'minute';
+    if (distFromCenter > radius * 0.62) return 'minute';
     if (distFromCenter < radius * 0.52) return 'hour';
     return currentActive;
   }
 
   public static snapMinutes(minutes: number, level: number): number {
     const clean = ((minutes % 60) + 60) % 60;
-    if (level === 6) return clean;
+    if (level >= 6) return clean;
     const snapped = Math.round(clean / 5) * 5;
     return snapped >= 60 ? 0 : snapped;
   }
@@ -101,7 +117,7 @@ export class TimeMath {
   ): boolean {
     const isHourCorrect = (currentHours % 12) === (targetHours % 12);
     const isMinuteCorrect =
-      level === 6
+      level >= 6
         ? this.circularMinuteDiff(currentMinutes, targetMinutes) <= 1
         : currentMinutes === targetMinutes;
 
@@ -124,26 +140,22 @@ export class TimeMath {
     }
 
     if (minutes === 0) {
-      return level <= 2 ? `${h12} h pile` : '';
+      return level <= 2 ? `${h12} heures pile` : '';
     }
     if (minutes === 15) {
-      return level <= 4 ? `${h12} h et quart` : '';
+      return level <= 4 ? `${h12} heures et quart` : '';
     }
     if (minutes === 30) {
       if (level >= 5 && h24 === 12) return 'Midi et demie';
       if (level >= 5 && h24 === 0) return 'Minuit et demie';
-      return level <= 4 ? `${h12} h et demie` : '';
+      return level <= 4 ? `${h12} heures et demie` : '';
     }
     if (minutes === 45) {
-      return level <= 4 ? `${nextH12} h moins le quart` : '';
+      return level <= 4 ? `${nextH12} heures moins le quart` : '';
     }
     return '';
   }
 
-  /**
-   * Génère un indice pertinent et ciblé en Phase 1 (Lecture) selon le bouton erroné cliqué par l'enfant,
-   * SANS jamais donner le chiffre de la bonne réponse !
-   */
   public static buildReadDiagnosticHint(
     targetHours: number,
     targetMinutes: number,
@@ -156,32 +168,38 @@ export class TimeMath {
     const nextH12 = (targetH12 % 12) + 1;
     const blueHandDialNum = this.minuteToDialNumber(targetMinutes);
 
-    // 1. Erreur Matin (1..12) vs Après-midi/Soir/Minuit (13..00) aux Niveaux 5 et 6
+    // 1. Erreur Matin (1..12) vs Après-midi/Soir/Minuit (13..00) aux Niveaux 5, 6 et 7
     if (level >= 5 && chosenH12 === targetH12 && chosenMinutes === targetMinutes && chosenHours !== targetHours) {
       if (targetHours === 0) {
-        return 'C’est <strong>la nuit (minuit)</strong> : en haut du cadran, minuit s’écrit <strong>00h</strong> !';
+        return 'C’est <strong>la nuit (minuit)</strong> : en haut du cadran, minuit s’écrit <strong>00:00</strong> !';
       }
       if (targetHours === 12) {
-        return 'C’est <strong>le midi</strong> : au milieu de la journée, midi s’écrit <strong>12h</strong> !';
+        return 'C’est <strong>le midi</strong> : au milieu de la journée, midi s’écrit <strong>12:00</strong> !';
       }
       if (targetHours >= 13) {
+        if (level === 7) {
+          return 'C’est <strong>l’après-midi ou le soir</strong> : ajoute 12 à l’heure du matin (ex : 1h ➔ 13h, 4h ➔ 16h) !';
+        }
         return 'C’est <strong>l’après-midi ou le soir</strong> : lis le petit nombre <strong>orange</strong> à l’intérieur du cadran !';
       }
-      return 'C’est <strong>le matin / la nuit (avant midi)</strong> : lis le grand chiffre <strong>noir</strong> du cadran !';
+      return 'C’est <strong>le matin / la nuit (avant midi)</strong> : lis l’heure entre <strong>01 et 11</strong> !';
     }
 
-    // 2. Piège classique H+1 : les minutes sont justes (>= 30) mais l'enfant a choisi l'heure suivante (ex: 9h45 au lieu de 8h45)
+    // 2. Piège classique H+1 : les minutes sont justes (>= 30) mais l'enfant a choisi l'heure suivante
     if (chosenMinutes === targetMinutes && targetMinutes >= 30 && chosenH12 === nextH12) {
       return 'Piège ! La <strong>petite aiguille orange</strong> s’approche du chiffre suivant, mais elle ne l’a <strong>pas encore dépassé</strong>.';
     }
 
-    // 3. Inversion des deux aiguilles (l'enfant a lu l'aiguille bleue comme étant l'heure)
+    // 3. Inversion des deux aiguilles
     if (chosenH12 === blueHandDialNum && chosenH12 !== targetH12) {
       return 'Attention à ne pas inverser : c’est la <strong>petite aiguille orange</strong> qui indique les heures !';
     }
 
     // 4. Les minutes sont justes, mais l'heure est fausse
     if (chosenMinutes === targetMinutes) {
+      if (level === 7) {
+        return 'Les minutes sont justes ! Aide-toi des repères <strong>12, 3, 6, 9</strong> pour trouver l’heure de la petite aiguille orange.';
+      }
       if (level >= 5 && (targetHours >= 13 || targetHours === 0)) {
         return 'Les minutes sont justes ! Pour l’heure, regarde quel nombre <strong>orange</strong> est pointé par la petite aiguille.';
       }
@@ -199,16 +217,12 @@ export class TimeMath {
       if (level === 4 || level === 5) {
         return 'L’heure est juste ! Suis la <strong>grande aiguille bleue</strong> jusqu’au nombre bleu écrit au bord du cadran.';
       }
-      return 'L’heure est juste ! Compte de 5 en 5 jusqu’au dernier grand trait bleu, puis ajoute les petites graduations.';
+      return 'L’heure est juste ! Compte de 5 en 5 sur les grands traits bleus, puis ajoute les petites graduations.';
     }
 
-    // 6. Les deux sont faux
     return 'Observe d’abord la <strong>petite aiguille orange</strong> pour l’heure, puis la <strong>grande aiguille bleue</strong> pour les minutes.';
   }
 
-  /**
-   * Génère un indice pertinent en Phase 2 (Placement) selon la position actuelle des aiguilles de l'enfant
-   */
   public static buildPlacementDiagnosticHint(
     currentHours: number,
     currentMinutes: number,
@@ -218,38 +232,41 @@ export class TimeMath {
   ): string {
     const isHourCorrect = (currentHours % 12) === (targetHours % 12);
     const isMinuteCorrect =
-      level === 6
+      level >= 6
         ? this.circularMinuteDiff(currentMinutes, targetMinutes) <= 1
         : currentMinutes === targetMinutes;
 
     if (isHourCorrect && !isMinuteCorrect) {
       if (targetMinutes === 0) {
-        return 'L’heure est bonne ! Pour une <strong>heure pile (:00)</strong>, place la grande aiguille bleue tout en haut sur le 12.';
+        return 'L’heure est bonne ! Pour <strong>:00 (heure pile)</strong>, glisse la grande aiguille bleue tout en haut sur le 12.';
       }
       if (level === 2 && targetMinutes === 30) {
-        return 'L’heure est bonne ! Pour <strong>:30 (« et demie »)</strong>, place la grande aiguille bleue tout en bas sur le 6.';
+        return 'L’heure est bonne ! Pour <strong>:30 (« et demie »)</strong>, glisse la grande aiguille bleue tout en bas sur le 6.';
       }
-      if (level === 6) {
+      if (level >= 6) {
         const diff = this.circularMinuteDiff(currentMinutes, targetMinutes);
         if (diff <= 4) {
-          return 'Tu es tout près ! Utilise les boutons <strong>−</strong> et <strong>+</strong> pour ajuster la grande aiguille bleue à la graduation près.';
+          return 'Tu es tout près ! Glisse doucement la <strong>grande aiguille bleue</strong> sur la graduation exacte.';
         }
-        return 'L’heure est bonne ! Compte de 5 en 5 sur les grands traits bleus, puis ajuste les minutes avec <strong>−</strong> et <strong>+</strong>.';
+        return 'L’heure est bonne ! Compte de 5 en 5 sur les grands traits bleus, puis ajuste la <strong>grande aiguille bleue</strong>.';
       }
-      return 'L’heure est bonne ! Tourne maintenant la <strong>grande aiguille bleue</strong> sur le repère bleu des minutes demandé.';
+      return 'L’heure est bonne ! Glisse maintenant la <strong>grande aiguille bleue</strong> sur le repère des minutes demandé.';
     }
 
     if (!isHourCorrect && isMinuteCorrect) {
-      if (level >= 5 && (targetHours >= 13 || targetHours === 0)) {
-        return 'Les minutes sont bonnes ! Place maintenant la <strong>petite aiguille orange</strong> en face du nombre orange demandé.';
+      if (level === 7) {
+        return 'Les minutes sont bonnes ! Aide-toi des repères <strong>12, 3, 6, 9</strong> pour placer la <strong>petite aiguille orange</strong>.';
       }
-      return 'Les minutes sont bonnes ! Tourne maintenant la <strong>petite aiguille orange</strong> sur le chiffre des heures demandé.';
+      if (level >= 5 && (targetHours >= 13 || targetHours === 0)) {
+        return 'Les minutes sont bonnes ! Glisse la <strong>petite aiguille orange</strong> en face du nombre orange demandé.';
+      }
+      return 'Les minutes sont bonnes ! Glisse maintenant la <strong>petite aiguille orange</strong> sur le chiffre des heures demandé.';
     }
 
     if (level === 1) {
-      return 'Tourne la <strong>petite aiguille orange</strong> vers le chiffre de l’heure demandée (ou utilise <strong>−</strong> et <strong>+</strong>).';
+      return 'Glisse la <strong>petite aiguille orange</strong> avec ton doigt vers le chiffre de l’heure demandée.';
     }
 
-    return 'Place d’abord la <strong>petite aiguille orange</strong> sur l’heure, puis la <strong>grande aiguille bleue</strong> sur les minutes.';
+    return 'Glisse d’abord la <strong>petite aiguille orange</strong> sur l’heure, puis la <strong>grande aiguille bleue</strong> sur les minutes.';
   }
 }

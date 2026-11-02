@@ -42,9 +42,9 @@ export class GameEngine {
   private phaseSuccessCount: number = 0;
 
   private isDragging: boolean = false;
-  private isTransitioning: boolean = false;
+  private isWaitingNext: boolean = false;
+  private nextActionCallback: (() => void) | null = null;
   private celebrationAnimId: number = 0;
-  private transitionTimerId: number | null = null;
   private activeHand: 'hour' | 'minute' = 'hour';
 
   constructor(canvas: HTMLCanvasElement) {
@@ -72,31 +72,18 @@ export class GameEngine {
     this.applySkyTheme(true);
   }
 
-  private clearPendingTimers(): void {
+  private clearPendingAnimations(): void {
     cancelAnimationFrame(this.celebrationAnimId);
-    if (this.transitionTimerId !== null) {
-      window.clearTimeout(this.transitionTimerId);
-      this.transitionTimerId = null;
-    }
-  }
-
-  private scheduleTransition(callback: () => void, delayMs: number): void {
-    if (this.transitionTimerId !== null) {
-      window.clearTimeout(this.transitionTimerId);
-    }
-    this.transitionTimerId = window.setTimeout(() => {
-      this.transitionTimerId = null;
-      callback();
-    }, delayMs);
+    this.isWaitingNext = false;
+    this.nextActionCallback = null;
   }
 
   public startLevel(level: number): void {
-    this.clearPendingTimers();
+    this.clearPendingAnimations();
     this.currentLevel = level;
     this.currentPhase = 1;
     this.phaseSuccessCount = 0;
     this.levelTotalErrors = 0;
-    this.isTransitioning = false;
     this.questionManager.setLevel(level);
 
     document.getElementById('main-menu')?.classList.add('hidden');
@@ -111,8 +98,7 @@ export class GameEngine {
   }
 
   private returnToMenu(): void {
-    this.clearPendingTimers();
-    this.isTransitioning = false;
+    this.clearPendingAnimations();
     document.getElementById('game-screen')?.classList.add('hidden');
     document.getElementById('main-menu')?.classList.remove('hidden');
     this.applySkyTheme(true);
@@ -133,11 +119,13 @@ export class GameEngine {
   }
 
   private initNewQuestion(): void {
+    cancelAnimationFrame(this.celebrationAnimId);
     this.targetTime = this.questionManager.generateQuestion();
     this.errorsCount = 0;
     this.currentQuestionAssisted = false;
     this.showGhostGuide = false;
-    this.isTransitioning = false;
+    this.isWaitingNext = false;
+    this.nextActionCallback = null;
     this.hideHelp();
     this.resetButtonsState();
 
@@ -154,7 +142,6 @@ export class GameEngine {
       this.currentMinutes =
         this.currentLevel >= 2 && this.targetTime.minutes === 0 ? 30 : 0;
       this.activeHand = 'hour';
-      this.updateHandSelectorUI();
     }
   }
 
@@ -205,46 +192,45 @@ export class GameEngine {
       this.updateMenuUI();
     });
 
-    document.getElementById('select-hour-btn')?.addEventListener('click', () => {
-      this.activeHand = 'hour';
+    // --- GESTION MULTI-PROFILS (FRATRIE) ---
+    document.getElementById('profile-btn')?.addEventListener('click', () => {
       this.soundEngine.playSnap();
-      this.updateHandSelectorUI();
-      this.render();
+      this.openProfileModal();
     });
 
-    document.getElementById('select-minute-btn')?.addEventListener('click', () => {
-      this.activeHand = 'minute';
+    document.getElementById('profile-close-btn')?.addEventListener('click', () => {
       this.soundEngine.playSnap();
-      this.updateHandSelectorUI();
-      this.render();
+      document.getElementById('profile-modal')?.classList.add('hidden');
     });
 
-    document.getElementById('instruction')?.addEventListener('click', (e) => {
-      if (this.currentPhase !== 2) return;
-      const target = e.target as HTMLElement;
-      if (target.classList.contains('hr-badge')) {
-        this.activeHand = 'hour';
+    const addProfileForm = document.getElementById('add-profile-form') as HTMLFormElement | null;
+    addProfileForm?.addEventListener('submit', (e) => {
+      e.preventDefault();
+      const input = document.getElementById('new-profile-input') as HTMLInputElement | null;
+      const name = input?.value.trim() || '';
+      if (!name) return;
+      const created = SaveManager.createProfile(name, this.saveData.muted);
+      this.saveData = created.save;
+      if (input) input.value = '';
+      this.soundEngine.playSuccess();
+      this.renderProfilesList();
+      this.updateDevButtonUI();
+      this.updateMenuUI();
+      document.getElementById('profile-modal')?.classList.add('hidden');
+    });
+
+    // --- BOUTON "SUIVANT ➔" POUR AVANCER AU RYTHME DE L'ENFANT ---
+    document.getElementById('next-question-btn')?.addEventListener('click', () => {
+      if (this.isWaitingNext && this.nextActionCallback) {
         this.soundEngine.playSnap();
-        this.updateHandSelectorUI();
-        this.render();
-      } else if (target.classList.contains('min-badge')) {
-        this.activeHand = 'minute';
-        this.soundEngine.playSnap();
-        this.updateHandSelectorUI();
-        this.render();
+        const cb = this.nextActionCallback;
+        this.nextActionCallback = null;
+        this.isWaitingNext = false;
+        cb();
       }
     });
 
-    document.getElementById('step-minus-btn')?.addEventListener('click', () => {
-      if (this.currentPhase !== 2 || this.isTransitioning) return;
-      this.nudgeActiveHand(-1);
-    });
-
-    document.getElementById('step-plus-btn')?.addEventListener('click', () => {
-      if (this.currentPhase !== 2 || this.isTransitioning) return;
-      this.nudgeActiveHand(1);
-    });
-
+    // --- PRÉHENSION 100 % AU DOIGT SUR LE CADRAN ---
     const getPointerPos = (e: MouseEvent | TouchEvent) => {
       const rect = this.canvas.getBoundingClientRect();
       const clientX = 'touches' in e ? e.touches[0].clientX : (e as MouseEvent).clientX;
@@ -257,7 +243,7 @@ export class GameEngine {
     };
 
     const onStart = (e: MouseEvent | TouchEvent) => {
-      if (this.currentPhase === 1 || this.isTransitioning) return;
+      if (this.currentPhase === 1 || this.isWaitingNext) return;
       e.preventDefault();
       const pos = getPointerPos(e);
 
@@ -268,16 +254,17 @@ export class GameEngine {
         this.currentMinutes,
         this.radius,
         this.currentLevel,
-        this.activeHand
+        this.activeHand,
+        this.targetTime.hours,
+        this.targetTime.minutes
       );
-      this.updateHandSelectorUI();
 
       this.isDragging = true;
       this.updateFromPointer(pos.x, pos.y);
     };
 
     const onMove = (e: MouseEvent | TouchEvent) => {
-      if (!this.isDragging || this.currentPhase === 1 || this.isTransitioning) return;
+      if (!this.isDragging || this.currentPhase === 1 || this.isWaitingNext) return;
       e.preventDefault();
       const pos = getPointerPos(e);
       this.updateFromPointer(pos.x, pos.y);
@@ -288,6 +275,7 @@ export class GameEngine {
       this.isDragging = false;
       this.snapToGrid();
       this.soundEngine.playSnap();
+      this.render();
     };
 
     this.canvas.addEventListener('mousedown', onStart);
@@ -298,7 +286,15 @@ export class GameEngine {
     window.addEventListener('touchend', onEnd);
 
     document.getElementById('check-btn')?.addEventListener('click', () => {
-      if (!this.isTransitioning && this.currentPhase === 2) {
+      if (this.isWaitingNext && this.nextActionCallback) {
+        this.soundEngine.playSnap();
+        const cb = this.nextActionCallback;
+        this.nextActionCallback = null;
+        this.isWaitingNext = false;
+        cb();
+        return;
+      }
+      if (!this.isWaitingNext && this.currentPhase === 2) {
         this.checkPlaceAnswer();
       }
     });
@@ -306,7 +302,7 @@ export class GameEngine {
     const choiceBtns = document.querySelectorAll('#choices-container .choice-btn');
     choiceBtns.forEach((btn, index) => {
       btn.addEventListener('click', () => {
-        if (!this.isTransitioning && this.currentPhase === 1) {
+        if (!this.isWaitingNext && this.currentPhase === 1) {
           (btn as HTMLElement).blur();
           this.checkReadAnswer(index);
         }
@@ -314,42 +310,65 @@ export class GameEngine {
     });
   }
 
-  private nudgeActiveHand(direction: -1 | 1): void {
-    if (this.activeHand === 'hour') {
-      const nextH = ((this.currentHours - 1 + direction + 12) % 12) + 1;
-      this.currentHours = nextH;
-      this.soundEngine.playTick(true);
-    } else {
-      const step = this.currentLevel === 6 ? 1 : 5;
-      this.currentMinutes = (this.currentMinutes + direction * step + 60) % 60;
-      this.soundEngine.playTick(this.currentMinutes % 2 === 0);
-    }
-    this.render();
+  private openProfileModal(): void {
+    this.renderProfilesList();
+    document.getElementById('profile-modal')?.classList.remove('hidden');
   }
 
-  private updateHandSelectorUI(): void {
-    const selectorGroup = document.querySelector('.hand-selector-group') as HTMLElement | null;
-    const hrBtn = document.getElementById('select-hour-btn');
-    const minBtn = document.getElementById('select-minute-btn');
+  private renderProfilesList(): void {
+    const listEl = document.getElementById('profiles-list');
+    if (!listEl) return;
+    const profiles = SaveManager.getProfiles();
+    const active = SaveManager.getActiveProfile();
 
-    // Au Niveau 1 (Heures piles), les minutes restent toujours sur 12 (:00), inutile d'afficher le sélecteur d'aiguille
-    if (selectorGroup) {
-      selectorGroup.style.display = this.currentLevel === 1 ? 'none' : 'flex';
-    }
+    listEl.innerHTML = '';
+    profiles.forEach(profile => {
+      const stars = SaveManager.getTotalStars(profile.save);
+      const row = document.createElement('div');
+      row.className = `profile-item${profile.id === active.id ? ' active-profile' : ''}`;
 
-    if (this.activeHand === 'hour') {
-      hrBtn?.classList.add('active-hand-btn');
-      minBtn?.classList.remove('active-hand-btn');
-    } else {
-      minBtn?.classList.add('active-hand-btn');
-      hrBtn?.classList.remove('active-hand-btn');
-    }
+      const selectBtn = document.createElement('button');
+      selectBtn.type = 'button';
+      selectBtn.className = 'profile-select-btn';
+      selectBtn.innerHTML = `<span class="prof-name">👤 ${profile.name}</span><span class="prof-stars">⭐ ${stars}/${SaveManager.MAX_STARS}</span>`;
+      selectBtn.addEventListener('click', () => {
+        this.saveData = SaveManager.switchProfile(profile.id);
+        this.soundEngine.setMuted(this.saveData.muted);
+        this.soundEngine.playSnap();
+        this.updateSoundButtonUI();
+        this.updateDevButtonUI();
+        this.updateMenuUI();
+        document.getElementById('profile-modal')?.classList.add('hidden');
+      });
+
+      row.appendChild(selectBtn);
+
+      if (profiles.length > 1) {
+        const delBtn = document.createElement('button');
+        delBtn.type = 'button';
+        delBtn.className = 'profile-del-btn';
+        delBtn.title = `Supprimer ${profile.name}`;
+        delBtn.textContent = '✕';
+        delBtn.addEventListener('click', (e) => {
+          e.stopPropagation();
+          const updatedActive = SaveManager.deleteProfile(profile.id);
+          this.saveData = updatedActive.save;
+          this.soundEngine.playSnap();
+          this.renderProfilesList();
+          this.updateDevButtonUI();
+          this.updateMenuUI();
+        });
+        row.appendChild(delBtn);
+      }
+
+      listEl.appendChild(row);
+    });
   }
 
   private updateSoundButtonUI(): void {
     const btn = document.getElementById('sound-toggle-btn');
     if (btn) {
-      btn.textContent = this.saveData.muted ? '🔇' : '🔊';
+      btn.classList.toggle('is-muted', this.saveData.muted);
       btn.setAttribute('aria-pressed', String(!this.saveData.muted));
       btn.setAttribute('title', this.saveData.muted ? 'Son coupé' : 'Son actif');
     }
@@ -370,13 +389,17 @@ export class GameEngine {
   private updateMenuUI(): void {
     const levelRects = document.querySelectorAll('.level-rect');
     const maxUnlocked = this.saveData.maxUnlockedLevel || 1;
+    const activeProfile = SaveManager.getActiveProfile();
+
+    const profileLabel = document.getElementById('current-profile-name');
+    if (profileLabel) profileLabel.textContent = activeProfile.name;
 
     const totalStars = SaveManager.getTotalStars(this.saveData);
     const rankTitle = SaveManager.getRankTitle(totalStars);
     const rankEl = document.getElementById('player-rank-title');
     const starsCountEl = document.getElementById('player-stars-count');
     if (rankEl) rankEl.textContent = rankTitle;
-    if (starsCountEl) starsCountEl.textContent = `⭐ ${totalStars} / 18`;
+    if (starsCountEl) starsCountEl.textContent = `⭐ ${totalStars} / ${SaveManager.MAX_STARS}`;
 
     levelRects.forEach(rect => {
       const level = parseInt(rect.getAttribute('data-level') || '1', 10);
@@ -407,38 +430,56 @@ export class GameEngine {
     });
   }
 
-  private showFeedback(html: string, type: 'success' | 'error'): void {
+  private showFeedback(
+    html: string,
+    type: 'success' | 'error',
+    nextCallback?: () => void,
+    nextBtnLabel: string = 'Suivant ➔'
+  ): void {
     const helpBox = document.getElementById('help-box');
     const helpText = document.getElementById('help-text');
+    const nextBtn = document.getElementById('next-question-btn');
     if (!helpBox || !helpText) return;
 
     helpText.innerHTML = html;
     helpBox.classList.remove('invisible-feedback', 'hidden', 'feedback-success', 'feedback-error');
     helpBox.classList.add(type === 'success' ? 'feedback-success' : 'feedback-error');
+
+    if (nextBtn) {
+      if (nextCallback) {
+        nextBtn.textContent = nextBtnLabel;
+        nextBtn.classList.remove('hidden');
+        this.isWaitingNext = true;
+        this.nextActionCallback = nextCallback;
+      } else {
+        nextBtn.classList.add('hidden');
+      }
+    }
   }
 
   private hideHelp(): void {
     const helpBox = document.getElementById('help-box');
+    const nextBtn = document.getElementById('next-question-btn');
     if (!helpBox) return;
     helpBox.classList.add('invisible-feedback');
     helpBox.classList.remove('feedback-success', 'feedback-error');
+    nextBtn?.classList.add('hidden');
   }
 
   private handleSuccessfulAnswer(): void {
-    this.isTransitioning = true;
     this.triggerSuccessEffect();
 
     if (this.currentQuestionAssisted) {
       this.soundEngine.playSuccess();
       this.showFeedback(
         `👍 <strong>Bien vu !</strong> Réussis la suivante du premier coup pour gagner ton étoile ★`,
-        'success'
+        'success',
+        () => {
+          this.initNewQuestion();
+          this.updateUI();
+          this.render();
+        }
       );
-      this.scheduleTransition(() => {
-        this.initNewQuestion();
-        this.updateUI();
-        this.render();
-      }, 1450);
       return;
     }
 
@@ -448,14 +489,18 @@ export class GameEngine {
     if (this.phaseSuccessCount >= 3) {
       if (this.currentPhase === 1) {
         this.soundEngine.playSuccess();
-        this.currentPhase = 2;
-        this.phaseSuccessCount = 0;
-        this.showFeedback('🎉 <strong>Bravo !</strong> Étape 2 : à toi de placer les aiguilles !', 'success');
-        this.scheduleTransition(() => {
-          this.initNewQuestion();
-          this.updateUI();
-          this.render();
-        }, 1450);
+        this.showFeedback(
+          '🎉 <strong>Bravo !</strong> Étape 2 : à toi de placer les aiguilles avec ton doigt !',
+          'success',
+          () => {
+            this.currentPhase = 2;
+            this.phaseSuccessCount = 0;
+            this.initNewQuestion();
+            this.updateUI();
+            this.render();
+          },
+          'Étape 2 ➔'
+        );
         return;
       } else {
         this.soundEngine.playLevelComplete();
@@ -471,21 +516,30 @@ export class GameEngine {
             ? `🏆 <strong>Niveau ${this.currentLevel} parfait (${starsStr}) !</strong>`
             : `🏆 <strong>Niveau ${this.currentLevel} validé (${starsStr}) !</strong>`;
 
-        this.showFeedback(msg, 'success');
         this.playCelebrationAnimation(earnedStars);
-        this.scheduleTransition(() => { this.returnToMenu(); }, 2200);
+        this.showFeedback(
+          msg,
+          'success',
+          () => {
+            this.returnToMenu();
+          },
+          'Menu 🏆'
+        );
         return;
       }
     }
 
     this.soundEngine.playSuccess();
     const spokenSuffix = this.targetTime.spokenText ? ` (<em>${this.targetTime.spokenText}</em>)` : '';
-    this.showFeedback(`✨ <strong>Bravo ! Il est bien ${this.targetTime.text}${spokenSuffix} !</strong>`, 'success');
-    this.scheduleTransition(() => {
-      this.initNewQuestion();
-      this.updateUI();
-      this.render();
-    }, 1200);
+    this.showFeedback(
+      `✨ <strong>Bravo ! Il est bien ${this.targetTime.text}${spokenSuffix} !</strong>`,
+      'success',
+      () => {
+        this.initNewQuestion();
+        this.updateUI();
+        this.render();
+      }
+    );
   }
 
   private playCelebrationAnimation(earnedStars: 1 | 2 | 3): void {
@@ -580,21 +634,6 @@ export class GameEngine {
 
     this.soundEngine.playError();
     this.triggerShakeEffect();
-
-    const isHourCorrect = (this.currentHours % 12) === (this.targetTime.hours % 12);
-    const isMinuteCorrect =
-      this.currentLevel === 6
-        ? TimeMath.circularMinuteDiff(this.currentMinutes, this.targetTime.minutes) <= 1
-        : this.currentMinutes === this.targetTime.minutes;
-
-    if (isHourCorrect && !isMinuteCorrect) {
-      this.activeHand = 'minute';
-      this.updateHandSelectorUI();
-    } else if (!isHourCorrect && isMinuteCorrect) {
-      this.activeHand = 'hour';
-      this.updateHandSelectorUI();
-    }
-
     this.render();
 
     if (this.showGhostGuide) {
@@ -710,9 +749,11 @@ export class GameEngine {
     else this.handleFailedReadAttempt(selectedChoice);
   }
 
-  private formatColoredTargetHTML(target: TimeTarget): string {
-    const [hPart, mPart] = target.text.split('h');
-    return `<span class="hr-badge" title="Toucher pour régler les heures">${hPart}h</span><span class="min-badge" title="Toucher pour régler les minutes">${mPart}</span>`;
+  /**
+   * Badge d'heure cible neutre (sans distinction de couleur orange/bleu)
+   */
+  private formatNeutralTargetHTML(target: TimeTarget): string {
+    return `<span class="target-time-badge">${target.text}</span>`;
   }
 
   private updatePhaseStarsUI(): void {
@@ -751,9 +792,8 @@ export class GameEngine {
     } else {
       placementTools?.classList.remove('hidden');
       choicesContainer?.classList.add('hidden');
-      this.updateHandSelectorUI();
       if (instructionEl) {
-        instructionEl.innerHTML = `${periodChip}<span>Place les aiguilles sur</span> ${this.formatColoredTargetHTML(this.targetTime)}`;
+        instructionEl.innerHTML = `${periodChip}<span>Place les aiguilles sur</span> ${this.formatNeutralTargetHTML(this.targetTime)}`;
       }
     }
   }
@@ -777,7 +817,7 @@ export class GameEngine {
       this.currentHours,
       this.currentMinutes,
       this.currentLevel,
-      this.currentPhase === 2 ? this.activeHand : undefined,
+      this.currentPhase === 2 && this.isDragging ? this.activeHand : undefined,
       ghostTarget
     );
   }
