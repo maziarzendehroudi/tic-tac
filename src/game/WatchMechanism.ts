@@ -23,24 +23,21 @@ export class WatchMechanism {
   private targetFocusX: number = WatchMechanism.DEFAULT_FOCUS_X;
   private targetFocusY: number = WatchMechanism.DEFAULT_FOCUS_Y;
 
-  /**
-   * Temps horloger maître en secondes (initialisé à 10h09m55s = 36595s)
-   * Garantit le ratio mécanique exact 1 : 60 : 720 entre Secondes, Minutes et Heures !
-   */
-  public watchTimeSeconds: number = 10 * 3600 + 9 * 60 + 55;
-
   public wormOffset: number = 0;
   public angleBarrel: number = 0;
-  public angleHours: number = 0;
+  public angleHours: number = (10 * Math.PI) / 6;
   public angleRelayMinutes: number = 0;
-  public angleMinutes: number = 0;
+  public angleMinutes: number = (10 * Math.PI) / 30;
   public angleRelaySeconds: number = 0;
   public angleSeconds: number = 0;
 
+  private baseAngleHours: number = (10 * Math.PI) / 6;
+  private baseAngleMinutes: number = (10 * Math.PI) / 30;
+
   private stepTimerMs: number = 0;
-  private secondsStepIndex: number = 55;
-  private prevSecondsAngle: number = (55 * Math.PI) / 30;
-  private targetSecondsAngle: number = (55 * Math.PI) / 30;
+  private secondsStepIndex: number = 0;
+  private prevSecondsAngle: number = 0;
+  private targetSecondsAngle: number = 0;
 
   private windingStepAccumulator: number = 0;
   private isTicPhase: boolean = true;
@@ -48,14 +45,6 @@ export class WatchMechanism {
   private onTickCallback?: (isTic: boolean) => void;
   private onWindingClickCallback?: () => void;
 
-  /**
-   * Géométrie horlogère exacte :
-   * - Molette ('crown') à droite (x = +178, y = 0)
-   * - Ressort ('spring', r = 36, 12 dents) en (x = +82, y = -41) -> engrène avec la vis (y = 0) et la roue des heures (0,0, r = 56)
-   * - Relais des minutes ('relayMinutes', y = -76) -> pignon (r = 20, 8 dents) sur heures (r = 56) et roue (r = 36, 12 dents) sur minutes (r = 40)
-   * - Relais des secondes ('relaySeconds', x = -68, y = 0) -> pignon (r = 28, 10 dents) sur minutes (r = 40) et roue (r = 44, 14 dents) sur secondes (r = 24, 8 dents)
-   * - Échappement Tic-Tac ('escapement', x = 0, y = 44) -> son bec accroche le sommet des dents de la roue des secondes (rOuter = 27.2)
-   */
   public static readonly POS = {
     crown: { x: 178, y: 0 },
     spring: { x: 82, y: -41, r: 36, teeth: 12 },
@@ -80,13 +69,13 @@ export class WatchMechanism {
     this.height = height;
     this.onTickCallback = onTick;
     this.onWindingClickCallback = onWindingClick;
-    this.syncAllGearsFromMasterTime(1);
+    this.syncMeshedGears();
   }
 
   /**
    * Loi d'engrènement géométrique exacte entre deux roues dentées extérieures :
    * Calcule l'angle de la roue menée (driven) pour que chacune de ses dents
-   * tombe pile au milieu du creux (valley) de la roue menante (driver), sans jamais se chevaucher.
+   * tombe pile au milieu du creux (valley) de la roue menante (driver).
    */
   public static computeDrivenGearAngle(
     driverX: number,
@@ -108,27 +97,14 @@ export class WatchMechanism {
   }
 
   /**
-   * Synchronise les 3 aiguilles selon la loi horlogère exacte (1 : 60 : 720)
-   * et aligne toutes les dents des roues en prise.
+   * Synchronise sans choc de dents les 3 couples d'engrenages :
+   * 1) Barillet du ressort ('spring') <-> Roue des heures ('hours')
+   * 2) Double roue relais ('relayMinutes') <-> Roue des minutes ('minutes')
+   * 3) Double roue relais ('relaySeconds') <-> Roue des secondes ('seconds')
    */
-  private syncAllGearsFromMasterTime(saccadeProgress: number): void {
+  private syncMeshedGears(): void {
     const { spring, hours, relayMinutes, minutes, relaySeconds, seconds } = WatchMechanism.POS;
 
-    // 1. Angle saccadé de la trotteuse des secondes (6° par seconde)
-    let deltaStep = this.targetSecondsAngle - this.prevSecondsAngle;
-    if (deltaStep < 0) deltaStep += Math.PI * 2;
-    if (deltaStep > Math.PI) deltaStep = 0;
-    this.angleSeconds = (this.prevSecondsAngle + deltaStep * saccadeProgress) % (Math.PI * 2);
-
-    // 2. Angle de la grande aiguille des minutes : exactement 1/60e des secondes (1 tour = 3600 s)
-    const exactMinutes = (this.watchTimeSeconds / 60) % 60;
-    this.angleMinutes = (exactMinutes / 60) * (Math.PI * 2);
-
-    // 3. Angle de la petite aiguille des heures : exactement 1/720e des secondes (1 tour = 43200 s = 12 h)
-    const exactHours = (this.watchTimeSeconds / 3600) % 12;
-    this.angleHours = (exactHours / 12) * (Math.PI * 2);
-
-    // 4. Synchronisation sans choc des dents sur tout le train de rouages :
     this.angleBarrel = WatchMechanism.computeDrivenGearAngle(
       hours.x, hours.y, hours.teeth, this.angleHours,
       spring.x, spring.y, spring.teeth
@@ -160,9 +136,6 @@ export class WatchMechanism {
     this.selectedOrgan = 'overview';
   }
 
-  /**
-   * Zoom au pincement (ou molette) centré sur le point exact entre les deux doigts
-   */
   public zoomAtPoint(scaleMultiplier: number, canvasX: number, canvasY: number): void {
     const prevScale = this.targetScale;
     const nextScale = Math.max(
@@ -188,9 +161,6 @@ export class WatchMechanism {
     }
   }
 
-  /**
-   * Déplacement (pan) à 1 doigt lorsque la vue est zoomée
-   */
   public panBy(deltaCanvasX: number, deltaCanvasY: number): void {
     if (this.targetScale <= WatchMechanism.MIN_SCALE + 0.05) return;
     this.targetFocusX = Math.max(
@@ -204,9 +174,6 @@ export class WatchMechanism {
     this.selectedOrgan = this.detectOrganAtWorldPoint(this.targetFocusX, this.targetFocusY);
   }
 
-  /**
-   * Touche directe ou double-tap sur un organe pour afficher son explication ou zoomer dessus
-   */
   public selectOrganAtCanvasPoint(canvasX: number, canvasY: number, zoomInOnTap: boolean = false): WorkshopOrgan {
     const worldX = (canvasX - this.width / 2) / this.currentScale + this.currentFocusX;
     const worldY = (canvasY - this.height / 2) / this.currentScale + this.currentFocusY;
@@ -273,20 +240,28 @@ export class WatchMechanism {
       return;
     }
 
-    // 3. Marche du mouvement avec vrai ratio horloger 1 : 60 : 720 :
-    // - Vitesse réelle (1x)  : 1 pas = 1000 ms (1 tour de secondes = 60 s = +1 min pile)
-    // - Mode accéléré (15x) : 1 pas = 66.67 ms (1 tour de secondes = 4 s = +1 min pile)
+    // 3. Marche simultanée et visible des 4 mécanismes (Secondes, Minutes, Heures, Ressort) :
+    // - Vitesse réelle : 1 battement par seconde (1000 ms, Secondes = 6.0°/s, Minutes = 3.6°/s, Heures = 2.2°/s, Ressort = 2.93°/s)
+    // - Mode accéléré  : 5 battements par seconde (200 ms, Secondes = 30.0°/s, Minutes = 7.2°/s, Heures = 3.8°/s, Ressort = 5.07°/s)
     if (this.power > 0 && !isWinding) {
-      const speedFactor = this.realTimeMode ? 1 : 15;
-      const dischargeRate = this.realTimeMode ? 0.0002 : 0.0014;
+      const dischargeRate = this.realTimeMode ? 0.00025 : 0.0012;
       this.power = Math.max(0, this.power - deltaTime * dischargeRate);
 
-      const stepPeriodMs = 1000 / speedFactor;
-      const stepAngleSec = Math.PI / 30; // 1 seconde = 6°
+      const stepPeriodMs = this.realTimeMode ? 1000 : 200;
+      const stepAngleSec = Math.PI / 30; // 1 graduation = 6°
 
-      // Avance le compteur horloger maître en secondes
-      this.watchTimeSeconds += (deltaTime / 1000) * speedFactor;
+      const degToRad = Math.PI / 180;
+      const dtSec = deltaTime / 1000;
 
+      // Vitesses angulaires franches garantissant que les 4 mécanismes tournent visiblement à l'œil nu
+      // tout en respectant la hiérarchie horlogère (Secondes > Minutes > Heures)
+      const minDegPerSec = this.realTimeMode ? 3.6 : 7.2;
+      const hrDegPerSec = this.realTimeMode ? 2.2 : 3.8;
+
+      this.baseAngleMinutes = (this.baseAngleMinutes + dtSec * minDegPerSec * degToRad) % (Math.PI * 2);
+      this.baseAngleHours = (this.baseAngleHours + dtSec * hrDegPerSec * degToRad) % (Math.PI * 2);
+
+      // Avancée SACCADÉE de la roue des secondes et de l'échappement Tic-Tac
       this.stepTimerMs += deltaTime;
       while (this.stepTimerMs >= stepPeriodMs) {
         this.stepTimerMs -= stepPeriodMs;
@@ -298,11 +273,22 @@ export class WatchMechanism {
         this.isTicPhase = !this.isTicPhase;
       }
 
-      const jumpDurationMs = Math.min(60, stepPeriodMs * 0.55);
+      const jumpDurationMs = Math.min(65, stepPeriodMs * 0.45);
       const jumpProgress = Math.min(1, this.stepTimerMs / jumpDurationMs);
       const easedJump = 1 - Math.pow(1 - jumpProgress, 3);
 
-      this.syncAllGearsFromMasterTime(easedJump);
+      let deltaStep = this.targetSecondsAngle - this.prevSecondsAngle;
+      if (deltaStep < 0) deltaStep += Math.PI * 2;
+      if (deltaStep > Math.PI) deltaStep = 0;
+      this.angleSeconds = (this.prevSecondsAngle + deltaStep * easedJump) % (Math.PI * 2);
+
+      // Légère impulsion mécanique lors du lâcher de dent de l'échappement + rotation continue
+      const tickPulse = Math.sin(jumpProgress * Math.PI) * 0.008;
+      this.angleMinutes = (this.baseAngleMinutes + tickPulse) % (Math.PI * 2);
+      this.angleHours = (this.baseAngleHours + tickPulse * 0.6) % (Math.PI * 2);
+
+      // Synchronise le Barillet du Ressort, le Relais des Minutes et le Relais des Secondes
+      this.syncMeshedGears();
     }
   }
 
@@ -315,7 +301,7 @@ export class WatchMechanism {
 
     const { crown, spring, hours, relayMinutes, minutes, relaySeconds, seconds, escapement } = WatchMechanism.POS;
 
-    // 1. Début de bracelet (haut/bas) + Platine squelette avec les 60 graduations de secondes/minutes
+    // 1. Début de bracelet (haut/bas) + Platine squelette avec les 60 graduations
     this.drawChassisWithBraceletStubs();
 
     // 2. Roue dorée des Heures (au centre, plan inférieur)
@@ -340,7 +326,7 @@ export class WatchMechanism {
     );
     this.drawToyDiscGear(minutes.x, minutes.y, minutes.r, minutes.teeth, this.angleMinutes, '#38bdf8', '#0284c7', '#e0f2fe', 6);
 
-    // 5. Train des Secondes à gauche & Échappement Tic-Tac en bas (plan supérieur, engrènement exact !)
+    // 5. Train des Secondes à gauche & Échappement Tic-Tac en bas (plan supérieur)
     this.drawSteppedRelayGear(
       relaySeconds.x,
       relaySeconds.y,
@@ -356,7 +342,7 @@ export class WatchMechanism {
     this.drawToyDiscGear(seconds.x, seconds.y, seconds.r, seconds.teeth, this.angleSeconds, '#f43f5e', '#be123c', '#ffe4e6', 4);
     this.drawSimpleTicTacClicker(escapement.x, escapement.y, this.isTicPhase ? 1 : -1);
 
-    // 6. Aiguilles calibrées (1 : 60 : 720)
+    // 6. Les 3 aiguilles
     this.drawHandsOnly();
 
     this.ctx.restore();
@@ -383,7 +369,6 @@ export class WatchMechanism {
     this.ctx.strokeStyle = borderColor;
     this.ctx.stroke();
 
-    // 60 graduations fines en bord de platine pour visualiser chaque saut de 1 seconde et de 1 minute
     for (let i = 0; i < 60; i++) {
       const isFive = i % 5 === 0;
       const a = (i * Math.PI) / 30;
@@ -693,7 +678,6 @@ export class WatchMechanism {
     this.ctx.lineWidth = 3.2;
     this.ctx.stroke();
 
-    // Bec d'ancre remontant jusqu'à y_local = -16 (soit y = 44 - 16 = 28, pile sur le sommet des dents de la roue des secondes !)
     this.ctx.beginPath();
     this.ctx.moveTo(0, 10);
     this.ctx.lineTo(-5.5, -16);

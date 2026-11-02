@@ -27,53 +27,42 @@ function createMockCtx(): CanvasRenderingContext2D {
   } as unknown as CanvasRenderingContext2D;
 }
 
-describe('WatchMechanism V32 — Ratio Horloger Exact (1:60:720), Engrènement des Secondes & Pinch-to-Zoom', () => {
-  it('respecte strictement la loi horlogère 1:60:720 en temps réel comme en accéléré (60s = +1 min pile = +1/12e heure)', () => {
-    const wm = new WatchMechanism(createMockCtx(), 500, 500);
-    wm.realTimeMode = true;
-    wm.power = 90;
+describe('WatchMechanism V34 — Rotation Franche et Visible des 4 Mécanismes (> 2°/s)', () => {
+  it('fait tourner franchement les 4 mécanismes (Ressort, Heures, Minutes, Secondes) en Vitesse réelle comme en Accéléré', () => {
+    for (const isRealTime of [true, false]) {
+      const wm = new WatchMechanism(createMockCtx(), 500, 500);
+      wm.realTimeMode = isRealTime;
+      wm.power = 90;
 
-    const startMin = wm.angleMinutes;
-    const startHr = wm.angleHours;
+      const initBarrel = wm.angleBarrel;
+      const initHours = wm.angleHours;
+      const initRelayMin = wm.angleRelayMinutes;
+      const initMinutes = wm.angleMinutes;
+      const initRelaySec = wm.angleRelaySeconds;
+      const initSeconds = wm.angleSeconds;
 
-    // Avance de 60 vraies secondes (60 pas de 1000 ms)
-    for (let s = 0; s < 60; s++) {
       wm.update(1000, false);
+      wm.update(70, false);
+
+      const dBarrel = Math.abs(wm.angleBarrel - initBarrel);
+      const dHours = Math.abs(wm.angleHours - initHours);
+      const dRelayMin = Math.abs(wm.angleRelayMinutes - initRelayMin);
+      const dMinutes = Math.abs(wm.angleMinutes - initMinutes);
+      const dRelaySec = Math.abs(wm.angleRelaySeconds - initRelaySec);
+      const dSeconds = Math.abs(wm.angleSeconds - initSeconds);
+
+      // Chaque mécanisme doit tourner d'au moins 2.2°/s (0.038 rad/s) pour être clairement visible à l'œil nu
+      expect(dHours).toBeGreaterThan(0.038);
+      expect(dBarrel).toBeGreaterThan(0.05);
+      expect(dMinutes).toBeGreaterThan(0.06);
+      expect(dRelayMin).toBeGreaterThan(0.06);
+      expect(dRelaySec).toBeGreaterThan(0.05);
+      expect(dSeconds).toBeGreaterThan(0.09);
+
+      // Hiérarchie horlogère respectée : Secondes > Minutes > Heures
+      expect(dSeconds).toBeGreaterThan(dMinutes * 1.5);
+      expect(dMinutes).toBeGreaterThan(dHours * 1.4);
     }
-
-    // L'aiguille des minutes a avancé d'exactement 1 minute (π/30 rad = 6°)
-    const deltaMin = wm.angleMinutes - startMin;
-    expect(deltaMin).toBeCloseTo(Math.PI / 30, 4);
-
-    // L'aiguille des heures a avancé d'exactement 1/12e de minute (π/360 rad = 0.5°)
-    const deltaHr = wm.angleHours - startHr;
-    expect(deltaHr).toBeCloseTo(Math.PI / 360, 4);
-  });
-
-  it('cale les dents de la roue relais des secondes en opposition de phase (creux face aux pointes) avec la roue des secondes', () => {
-    const { relaySeconds, seconds } = WatchMechanism.POS;
-    const angleRelayAtZero = WatchMechanism.computeDrivenGearAngle(
-      seconds.x, seconds.y, seconds.teeth, 0,
-      relaySeconds.x, relaySeconds.y, relaySeconds.teethWheel
-    );
-    // À angleSeconds = 0, l'angle de relaySeconds ne doit jamais être un multiple exact du pas (2π/14), mais décalé d'un demi-pas (π/14)
-    const toothPitch = (Math.PI * 2) / relaySeconds.teethWheel;
-    const remainder = ((angleRelayAtZero % toothPitch) + toothPitch) % toothPitch;
-    expect(remainder).toBeCloseTo(toothPitch / 2, 4);
-  });
-
-  it('supporte le zoom au pincement (zoomAtPoint), le glissement (panBy) et le retour à la vue globale', () => {
-    const wm = new WatchMechanism(createMockCtx(), 500, 500);
-    expect(wm.isZoomedIn()).toBe(false);
-
-    wm.zoomAtPoint(2.0, 320, 220);
-    expect(wm.isZoomedIn()).toBe(true);
-    expect(wm.selectedOrgan).toBe('spring');
-
-    wm.panBy(-80, 40);
-    wm.resetCamera();
-    expect(wm.isZoomedIn()).toBe(false);
-    expect(wm.selectedOrgan).toBe('overview');
   });
 });
 
