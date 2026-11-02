@@ -748,3 +748,16 @@ body.theme-night #instruction {
 #check-btn.btn-wrong {
   animation: btnWrongWiggle 0.45s ease-in-out;
 }
+
+/* Bouton Son sous forme d'icône ronde épurée */
+#sound-toggle-btn {
+  width: 38px;
+  height: 38px;
+  padding: 0;
+  border-radius: 50%;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 1.1rem;
+  line-height: 1;
+}

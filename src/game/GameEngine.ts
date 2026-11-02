@@ -349,8 +349,9 @@ export class GameEngine {
   private updateSoundButtonUI(): void {
     const btn = document.getElementById('sound-toggle-btn');
     if (btn) {
-      btn.textContent = this.saveData.muted ? '🔇 Muet' : '🔊 Son';
+      btn.textContent = this.saveData.muted ? '🔇' : '🔊';
       btn.setAttribute('aria-pressed', String(!this.saveData.muted));
+      btn.setAttribute('title', this.saveData.muted ? 'Son coupé' : 'Son actif');
     }
   }
 
