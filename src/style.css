@@ -1126,3 +1126,14 @@ body.theme-night #instruction {
   border-color: #fde047 !important;
   box-shadow: 0 4px 12px rgba(245, 158, 11, 0.4) !important;
 }
+
+/* ============================================================================
+   9. ATELIER V29 : ZONE CANVAS MAXIMISÉE (+35%) SANS CADRAN
+   ============================================================================ */
+#workshop-canvas-wrap {
+  width: 100% !important;
+  max-width: 460px !important;
+  flex: 1 1 auto !important;
+  min-height: 0 !important;
+  aspect-ratio: 460 / 380 !important;
+}

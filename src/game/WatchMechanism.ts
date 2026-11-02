@@ -12,12 +12,11 @@ export class WatchMechanism {
   private height: number;
 
   public power: number = 80;
-  public showDial: boolean = true;
   public realTimeMode: boolean = false;
   public zoomMode: WorkshopZoom = 'overview';
 
-  private currentScale: number = 1.14;
-  private currentFocusX: number = 10;
+  private currentScale: number = 1.35;
+  private currentFocusX: number = 34;
   private currentFocusY: number = 0;
 
   private wormOffset: number = 0;
@@ -37,11 +36,11 @@ export class WatchMechanism {
 
   /**
    * Disposition horlogère en miroir avec Molette à droite (3h) :
-   * - Molette ('crown') à droite (x = +178, y = 0), tige filetée vers la gauche jusqu'au palier (x = +58).
+   * - Molette ('crown') à droite (x = +178, y = 0), tige filetée vers la gauche jusqu'au palier (x = +44).
    * - Barillet du ressort ('spring', r = 36, 12 dents) à droite en (x = +82, y = -41) :
    *   1) Ses dents inférieures (y = -5) engrènent dans la vis sans fin (y = 0).
    *   2) Sa distance à la roue des heures (0, 0, r = 56, 16 dents) vaut √(82² + 41²) = 91.68 px (≈ 36 + 56 = 92 px).
-   * - Relais des secondes ('relaySeconds') basculé à gauche (x = -68, y = 0).
+   * - Relais des secondes ('relaySeconds') en miroir à gauche (x = -68, y = 0).
    */
   public static readonly POS = {
     crown: { x: 178, y: 0 },
@@ -54,11 +53,16 @@ export class WatchMechanism {
     escapement: { x: 0, y: 38 }
   };
 
+  /**
+   * Échelle agrandie (+35% en vue globale, 2.45x en mode loupe) :
+   * Le mécanisme (de x = -128 à x = +200, et y = -138 à y = +138 avec le début du bracelet)
+   * remplit désormais la quasi-totalité du Canvas 460×380.
+   */
   private static readonly CAMERA_TARGETS: Record<WorkshopZoom, CameraTarget> = {
-    overview: { scale: 1.14, x: 10, y: 0 },
-    spring: { scale: 2.05, x: 92, y: -18 },
-    minutes: { scale: 2.05, x: 0, y: -42 },
-    seconds: { scale: 2.05, x: -26, y: 12 }
+    overview: { scale: 1.35, x: 34, y: 0 },
+    spring: { scale: 2.45, x: 96, y: -18 },
+    minutes: { scale: 2.45, x: 0, y: -38 },
+    seconds: { scale: 2.45, x: -26, y: 12 }
   };
 
   constructor(
@@ -92,9 +96,6 @@ export class WatchMechanism {
       (this.angleHours - angleHtoS) * (hours.teeth / spring.teeth);
   }
 
-  /**
-   * Convertit les coordonnées écran du toucher en coordonnées du mécanisme (tenant compte du zoom actif)
-   */
   public isPointInCrown(canvasX: number, canvasY: number): boolean {
     const worldX = (canvasX - this.width / 2) / this.currentScale + this.currentFocusX;
     const worldY = (canvasY - this.height / 2) / this.currentScale + this.currentFocusY;
@@ -107,7 +108,6 @@ export class WatchMechanism {
   }
 
   public update(deltaTime: number, isWinding: boolean): void {
-    // 1. Interpolation fluide de la caméra (Loupe d'Horloger)
     const targetCam = WatchMechanism.CAMERA_TARGETS[this.zoomMode];
     const camLerp = Math.min(1, deltaTime * 0.012);
     this.currentScale += (targetCam.scale - this.currentScale) * camLerp;
@@ -117,7 +117,6 @@ export class WatchMechanism {
     const { spring, relayMinutes, minutes, relaySeconds, seconds } = WatchMechanism.POS;
     const threadPitch = 12;
 
-    // 2. Remontage par la molette de droite (vis sans fin entraînant le ressort)
     if (isWinding) {
       const deltaWorm = deltaTime * 0.09;
       this.wormOffset = (this.wormOffset + deltaWorm) % threadPitch;
@@ -135,13 +134,10 @@ export class WatchMechanism {
       }
     }
 
-    // 3. Marche du mouvement (Mode Accéléré vs Mode Vitesse Réelle)
     if (this.power > 0 && !isWinding) {
       const dischargeRate = this.realTimeMode ? 0.00015 : 0.0014;
       this.power = Math.max(0, this.power - deltaTime * dischargeRate);
 
-      // En vitesse réelle : 1 tour de trotteuse en 60 s (soit π/30 rad/s).
-      // En vitesse accélérée : démonstration cinématique où l'on voit tourner toutes les roues !
       const deltaSec = this.realTimeMode
         ? (deltaTime / 1000) * (Math.PI / 30)
         : (deltaTime / 1000) * (Math.PI / 2.5);
@@ -185,10 +181,10 @@ export class WatchMechanism {
 
     const { crown, spring, hours, relayMinutes, minutes, relaySeconds, seconds, escapement } = WatchMechanism.POS;
 
-    // 1. Platine squelette épurée (sans boîtier ni cornes de bracelet)
-    this.drawMinimalChassis();
+    // 1. Début de bracelet (haut/bas) + Platine squelette sans boîtier
+    this.drawChassisWithBraceletStubs();
 
-    // 2. Roue des Heures (active dans les zooms 'spring' et 'minutes')
+    // 2. Roue des Heures
     this.ctx.save();
     this.ctx.globalAlpha =
       this.zoomMode === 'overview' || this.zoomMode === 'spring' || this.zoomMode === 'minutes' ? 1 : 0.25;
@@ -241,25 +237,39 @@ export class WatchMechanism {
     this.drawSimpleTicTacClicker(escapement.x, escapement.y, this.angleSeconds * seconds.teeth);
     this.ctx.restore();
 
-    // 6. Aiguilles et repères horaires
-    this.drawDialAndHands();
+    // 6. Aiguilles seules (sans cadran)
+    this.drawHandsOnly();
 
     this.ctx.restore();
   }
 
   /**
-   * Platine squelette légère sans boîtier massif ni attaches de bracelet
+   * Dessine le début du bracelet (en haut et en bas) directement rattaché à la platine r = 126
    */
-  private drawMinimalChassis(): void {
+  private drawChassisWithBraceletStubs(): void {
+    const borderColor = '#d97706';
+
+    // Début de bracelet (haut et bas) repris de la version précédente et ajusté sur r = 126
+    this.ctx.fillStyle = '#334155';
+    this.ctx.strokeStyle = borderColor;
+    this.ctx.lineWidth = 3;
+    [-1, 1].forEach(dir => {
+      this.ctx.beginPath();
+      this.ctx.roundRect(-48, dir * 114 - (dir === 1 ? 0 : 24), 96, 24, 6);
+      this.ctx.fill();
+      this.ctx.stroke();
+    });
+
+    // Platine principale du mécanisme (sans lunette/boîtier extérieur)
     this.ctx.beginPath();
-    this.ctx.arc(0, 0, 124, 0, Math.PI * 2);
-    this.ctx.fillStyle = 'rgba(9, 13, 22, 0.85)';
+    this.ctx.arc(0, 0, 126, 0, Math.PI * 2);
+    this.ctx.fillStyle = '#090d16';
     this.ctx.fill();
-    this.ctx.lineWidth = 2.5;
-    this.ctx.strokeStyle = 'rgba(148, 163, 184, 0.28)';
+    this.ctx.lineWidth = 4.5;
+    this.ctx.strokeStyle = borderColor;
     this.ctx.stroke();
 
-    // Ponts horlogers fins reliant les axes
+    // Ponts horlogers reliant les axes
     this.ctx.beginPath();
     this.ctx.moveTo(0, 0);
     this.ctx.lineTo(82, -41);
@@ -269,35 +279,29 @@ export class WatchMechanism {
     this.ctx.lineTo(-68, 0);
     this.ctx.moveTo(0, 0);
     this.ctx.lineTo(0, 38);
-    this.ctx.strokeStyle = 'rgba(148, 163, 184, 0.18)';
+    this.ctx.strokeStyle = 'rgba(148, 163, 184, 0.2)';
     this.ctx.lineWidth = 6;
     this.ctx.lineCap = 'round';
     this.ctx.stroke();
   }
 
-  /**
-   * Dessine la molette à DROITE (x = +178) et sa tige à vis sans fin qui s'étend vers la gauche
-   * sous la roue dentée du ressort (x = +82) jusqu'au palier en laiton (x = +54).
-   */
   private drawRightCrownAndWormStem(x: number, y: number, offset: number, isWinding: boolean): void {
     this.ctx.save();
     this.ctx.translate(x, y);
 
     const stemRight = -12;
-    const stemLength = 122; // De x = +166 jusqu'à x = +44 (passe sous le ressort centré en x = +82)
-    const stemLeft = stemRight - stemLength; // -134 en coordonnées locales
-    const wormZoneLeft = -124; // Zone filetée de x = +54 à x = +110
+    const stemLength = 122;
+    const stemLeft = stemRight - stemLength;
+    const wormZoneLeft = -124;
     const wormZoneRight = -68;
     const pitch = 12;
 
-    // 1. Arbre métallique principal
     this.ctx.fillStyle = '#94a3b8';
     this.ctx.fillRect(stemLeft, -5, stemLength, 10);
     this.ctx.strokeStyle = '#334155';
     this.ctx.lineWidth = 2;
     this.ctx.strokeRect(stemLeft, -5, stemLength, 10);
 
-    // 2. Filets trapézoïdaux de la vis sans fin (en prise directe avec le bas du ressort à y ≈ -5)
     this.ctx.fillStyle = isWinding ? '#fde047' : '#e2e8f0';
     this.ctx.strokeStyle = '#334155';
     this.ctx.lineWidth = 1.6;
@@ -323,7 +327,6 @@ export class WatchMechanism {
       this.ctx.stroke();
     }
 
-    // 3. Palier de maintien en laiton à l'extrémité gauche de la vis (x = +44)
     this.ctx.fillStyle = '#d97706';
     this.ctx.strokeStyle = '#78350f';
     this.ctx.lineWidth = 2;
@@ -332,7 +335,6 @@ export class WatchMechanism {
     this.ctx.fill();
     this.ctx.stroke();
 
-    // 4. Molette extérieure crantée à droite
     if (isWinding) {
       this.ctx.shadowColor = '#fbbf24';
       this.ctx.shadowBlur = 18;
@@ -374,8 +376,6 @@ export class WatchMechanism {
     this.ctx.lineWidth = 2;
     this.ctx.stroke();
 
-    // Spires du ressort qui se contractent vers le centre quand l'énergie monte à 100%
-    // et se détendent vers le bord quand l'énergie baisse !
     this.ctx.beginPath();
     const turns = 3.8;
     const innerR = 4.5;
@@ -572,24 +572,7 @@ export class WatchMechanism {
     this.ctx.restore();
   }
 
-  private drawDialAndHands(): void {
-    if (this.showDial && this.zoomMode === 'overview') {
-      this.ctx.beginPath();
-      this.ctx.arc(0, 0, 146, 0, Math.PI * 2);
-      this.ctx.arc(0, 0, 118, 0, Math.PI * 2, true);
-      this.ctx.fillStyle = 'rgba(15, 23, 42, 0.72)';
-      this.ctx.fill('evenodd');
-
-      for (let i = 1; i <= 12; i++) {
-        const a = (i * Math.PI) / 6;
-        this.ctx.fillStyle = '#f8fafc';
-        this.ctx.font = 'bold 18px "Fredoka", sans-serif';
-        this.ctx.textAlign = 'center';
-        this.ctx.textBaseline = 'middle';
-        this.ctx.fillText(i.toString(), Math.sin(a) * 132, -Math.cos(a) * 132);
-      }
-    }
-
+  private drawHandsOnly(): void {
     // Petite aiguille des Heures
     this.ctx.save();
     this.ctx.globalAlpha = this.zoomMode === 'seconds' ? 0.25 : 1;

@@ -184,13 +184,9 @@ export class GameEngine {
   private renderWorkshopUI(): void {
     const tray = document.getElementById('workshop-parts-tray');
     const instr = document.getElementById('workshop-instruction');
-    const dialBtn = document.getElementById('toggle-dial-btn');
     const speedBtn = document.getElementById('toggle-speed-btn');
     if (!tray || !this.watchMechanism) return;
 
-    if (dialBtn) {
-      dialBtn.textContent = this.watchMechanism.showDial ? '👁️ Cadran : Oui' : '👁️ Cadran : Non';
-    }
     if (speedBtn) {
       speedBtn.textContent = this.watchMechanism.realTimeMode ? '⏱️ Vitesse réelle' : '⏩ Accéléré';
       speedBtn.classList.toggle('real-time-active', this.watchMechanism.realTimeMode);
@@ -296,13 +292,6 @@ export class GameEngine {
     document.getElementById('workshop-back-btn')?.addEventListener('click', () => {
       this.soundEngine.playSnap();
       this.returnToMenu();
-    });
-
-    document.getElementById('toggle-dial-btn')?.addEventListener('click', () => {
-      if (!this.watchMechanism) return;
-      this.watchMechanism.showDial = !this.watchMechanism.showDial;
-      this.soundEngine.playSnap();
-      this.renderWorkshopUI();
     });
 
     document.getElementById('toggle-speed-btn')?.addEventListener('click', () => {
