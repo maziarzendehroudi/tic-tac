@@ -28,7 +28,11 @@
         <div id="global-top-bar">
           <div class="top-left-actions">
             <button id="profile-btn" type="button" title="Changer de joueur">
-              👤 <span id="current-profile-name">Joueur 1</span> ▾
+              <svg class="user-svg-icon" viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"></path>
+                <circle cx="12" cy="7" r="4"></circle>
+              </svg>
+              <span id="current-profile-name">Joueur 1</span> ▾
             </button>
             <button id="dev-unlock-btn" type="button" title="Bouton provisoire de test">🔓 Mode Test</button>
             <button id="force-refresh-btn" type="button" title="Vider le cache PWA et forcer la mise à jour">⚡ Maj</button>
@@ -48,7 +52,7 @@
           <p>Apprends à lire l'heure pas à pas !</p>
           <div id="player-progress-bar">
             <span id="player-rank-title">⏱️ Apprenti du Temps</span>
-            <span id="player-stars-count">⭐ 0 / 21</span>
+            <span id="player-stars-count">★ 0 / 21</span>
           </div>
         </div>
 
@@ -163,7 +167,7 @@
         </div>
       </div>
 
-      <!-- VUE 3 : LE VÉRITABLE ATELIER DE L'HORLOGER (6 PIÈCES + MOLETTE + JAUGE RESSORT + CADRAN) -->
+      <!-- VUE 3 : LE VÉRITABLE ATELIER DE L'HORLOGER -->
       <div id="workshop-screen" class="view hidden">
         <div id="workshop-top-bar">
           <button id="workshop-back-btn" type="button" title="Retour au menu">
@@ -182,10 +186,11 @@
 
         <div id="workshop-ui">
           <div id="workshop-controls-row">
-            <button id="wind-crown-btn" type="button">🔄 Maintenir pour remonter</button>
+            <button id="wind-crown-btn" type="button">🔄 Remonter</button>
             <button id="toggle-dial-btn" type="button">👁️ Cadran : Oui</button>
+            <button id="toggle-all-parts-btn" type="button">🔧 Démonter</button>
           </div>
-          <div id="workshop-instruction">Touche les 6 pièces en bas pour assembler le mécanisme de ta montre !</div>
+          <div id="workshop-instruction">Touche les pièces sur la montre ou les boutons en bas pour assembler ton mécanisme !</div>
           <div id="workshop-parts-tray"></div>
         </div>
       </div>

@@ -9,8 +9,7 @@ export class Clock {
 
   public draw(
     level: number = 1,
-    isDay: boolean = true,
-    is24HourTarget: boolean = false
+    isDay: boolean = true
   ): void {
     const ctx = this.ctx;
     const r = this.radius;
@@ -63,16 +62,17 @@ export class Clock {
     // 4. Graduations au bord du cadran
     for (let i = 0; i < 60; i++) {
       const isFiveMark = i % 5 === 0;
+      const isQuarterMark = i % 15 === 0;
       if (level === 1 && !isFiveMark) continue;
 
       const angle = (i * Math.PI) / 30;
       const tickOuter = r - 5;
-      const tickInner = isFiveMark ? r - 15 : r - 10;
+      const tickInner = isFiveMark ? (level >= 7 && isQuarterMark ? r - 18 : r - 15) : r - 10;
 
       ctx.beginPath();
       ctx.moveTo(tickInner * Math.sin(angle), -tickInner * Math.cos(angle));
       ctx.lineTo(tickOuter * Math.sin(angle), -tickOuter * Math.cos(angle));
-      ctx.lineWidth = isFiveMark ? 3 : 1.4;
+      ctx.lineWidth = isFiveMark ? (level >= 7 && isQuarterMark ? 4 : 3) : 1.4;
       ctx.strokeStyle = isFiveMark ? minuteColor : '#94a3b8';
       ctx.lineCap = 'round';
       ctx.stroke();
@@ -102,23 +102,23 @@ export class Clock {
 
     // 6. Chiffres des heures :
     // - Niveaux 1 à 6 : 1 à 12
-    // - Niveau 5 uniquement : couronne intérieure orange 13..00
-    // - Niveau 7 : uniquement 12, 3, 6, 9 et des index bâtons pour les autres heures
-    const hour12Radius = showMinuteTrackBand ? r - 66 : r - 52;
-    const hour24Radius = r - 102;
+    // - Niveau 5 uniquement : couronne intérieure orange 13..00 (opacité franche 1.0 sans estompage spoiler)
+    // - Niveau 7 : uniquement 12, 3, 6, 9 et des index bâtons horlogers ancrés près de la minuterie
+    const hour12Radius = showMinuteTrackBand ? r - 68 : r - 54;
+    const hour24Radius = r - 104;
 
     for (let i = 1; i <= 12; i++) {
       const angle = (i * Math.PI) / 6;
 
       if (level >= 7 && i % 3 !== 0) {
-        const markerOuter = r - 36;
-        const markerInner = r - 56;
+        const markerOuter = r - 20;
+        const markerInner = r - 42;
         ctx.save();
         ctx.beginPath();
         ctx.moveTo(markerInner * Math.sin(angle), -markerInner * Math.cos(angle));
         ctx.lineTo(markerOuter * Math.sin(angle), -markerOuter * Math.cos(angle));
-        ctx.lineWidth = 4.5;
-        ctx.strokeStyle = '#334155';
+        ctx.lineWidth = 5;
+        ctx.strokeStyle = '#1e293b';
         ctx.lineCap = 'round';
         ctx.stroke();
         ctx.restore();
@@ -129,26 +129,29 @@ export class Clock {
       const hy = -hour12Radius * Math.cos(angle);
 
       ctx.save();
-      ctx.font = level >= 7 ? '700 32px "Fredoka", sans-serif' : '700 29px "Fredoka", sans-serif';
-      ctx.fillStyle = hourNumberColor;
-      ctx.globalAlpha = level === 5 && is24HourTarget ? 0.45 : 1;
+      ctx.font = level >= 7 ? '700 32px "Fredoka", sans-serif' : '700 28px "Fredoka", sans-serif';
       ctx.textAlign = 'center';
       ctx.textBaseline = 'middle';
+      ctx.lineWidth = 4;
+      ctx.strokeStyle = '#ffffff';
+      ctx.strokeText(i.toString(), hx, hy);
+      ctx.fillStyle = hourNumberColor;
       ctx.fillText(i.toString(), hx, hy);
       ctx.restore();
 
-      // Heures 24h (13 à 23 et 00) au Niveau 5 uniquement
       if (level === 5) {
         const h24Text = i === 12 ? '00' : (i + 12).toString();
         const x24 = hour24Radius * Math.sin(angle);
         const y24 = -hour24Radius * Math.cos(angle);
 
         ctx.save();
-        ctx.font = is24HourTarget ? '700 16px "Fredoka", sans-serif' : '600 14px "Fredoka", sans-serif';
-        ctx.fillStyle = hour24Color;
-        ctx.globalAlpha = is24HourTarget ? 1 : 0.3;
+        ctx.font = '700 15px "Fredoka", sans-serif';
         ctx.textAlign = 'center';
         ctx.textBaseline = 'middle';
+        ctx.lineWidth = 3;
+        ctx.strokeStyle = '#ffffff';
+        ctx.strokeText(h24Text, x24, y24);
+        ctx.fillStyle = hour24Color;
         ctx.fillText(h24Text, x24, y24);
         ctx.restore();
       }

@@ -47,6 +47,30 @@ export class WatchMechanism {
     this.onWindingClickCallback = onWindingClick;
   }
 
+  /**
+   * Détecte si l'enfant touche directement une pièce ou son badge sur le Canvas de l'Atelier
+   */
+  public getPartAtPoint(canvasX: number, canvasY: number): string | null {
+    const lx = canvasX - this.width / 2;
+    const ly = canvasY - this.height / 2;
+
+    const hitZones: Array<{ id: string; x: number; y: number; r: number }> = [
+      { id: 'crown', x: -178, y: -12, r: 44 },
+      { id: 'spring', x: -92, y: -14, r: 48 },
+      { id: 'escapement', x: 0, y: 62, r: 42 },
+      { id: 'seconds', x: 75, y: 28, r: 46 },
+      { id: 'minutes', x: 0, y: -82, r: 44 },
+      { id: 'hours', x: -32, y: 34, r: 52 }
+    ];
+
+    for (const z of hitZones) {
+      if (Math.hypot(lx - z.x, ly - z.y) <= z.r) {
+        return z.id;
+      }
+    }
+    return null;
+  }
+
   public isPointInCrown(canvasX: number, canvasY: number): boolean {
     const localX = canvasX - this.width / 2;
     const localY = canvasY - this.height / 2;

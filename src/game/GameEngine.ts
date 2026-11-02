@@ -107,7 +107,7 @@ export class GameEngine {
         this.workshopCanvas.width,
         this.workshopCanvas.height,
         (isTic) => this.soundEngine.playTick(isTic),
-        () => this.soundEngine.playSnap()
+        () => this.soundEngine.playWindingClick()
       );
     }
 
@@ -133,6 +133,7 @@ export class GameEngine {
     this.phaseSuccessCount = 0;
     this.levelTotalErrors = 0;
     this.questionManager.setLevel(level);
+    this.questionManager.resetHistory();
 
     document.getElementById('main-menu')?.classList.add('hidden');
     document.getElementById('workshop-screen')?.classList.add('hidden');
@@ -156,6 +157,14 @@ export class GameEngine {
     if (this.saveData.unlockedParts.length < ALL_PARTS.length) {
       this.saveData.unlockedParts = [...ALL_PARTS];
       SaveManager.save(this.saveData);
+    }
+
+    const instr = document.getElementById('workshop-instruction');
+    if (instr) {
+      instr.textContent =
+        this.saveData.placedParts.length === ALL_PARTS.length
+          ? '👑 Toutes les pièces sont en place ! Maintiens la molette ou clique sur 🔧 Démonter pour réassembler !'
+          : 'Touche les pièces sur la montre ou les boutons en bas pour assembler ton mécanisme !';
     }
 
     this.renderWorkshopUI();
@@ -185,14 +194,40 @@ export class GameEngine {
     if (textEl) textEl.textContent = `🔋 Énergie : ${pct}%`;
   }
 
+  private toggleWorkshopPart(partId: string): void {
+    const info = PART_INFO[partId];
+    if (!info) return;
+    const instr = document.getElementById('workshop-instruction');
+    const idx = this.saveData.placedParts.indexOf(partId);
+    if (idx === -1) {
+      this.saveData.placedParts.push(partId);
+      if (this.saveData.placedParts.length === ALL_PARTS.length) {
+        this.soundEngine.playLevelComplete();
+      } else {
+        this.soundEngine.playSuccess();
+      }
+      if (instr) instr.innerHTML = `✨ <strong>${info.label}</strong> : ${info.desc}`;
+    } else {
+      this.saveData.placedParts.splice(idx, 1);
+      this.soundEngine.playSnap();
+      if (instr) instr.textContent = `${info.label} retirée du mécanisme.`;
+    }
+    SaveManager.save(this.saveData);
+    this.renderWorkshopUI();
+  }
+
   private renderWorkshopUI(): void {
     const tray = document.getElementById('workshop-parts-tray');
-    const instr = document.getElementById('workshop-instruction');
     const dialBtn = document.getElementById('toggle-dial-btn');
+    const toggleAllBtn = document.getElementById('toggle-all-parts-btn');
     if (!tray || !this.watchMechanism) return;
 
     if (dialBtn) {
       dialBtn.textContent = this.watchMechanism.showDial ? '👁️ Cadran : Oui' : '👁️ Cadran : Non';
+    }
+    if (toggleAllBtn) {
+      const allPlaced = this.saveData.placedParts.length === ALL_PARTS.length;
+      toggleAllBtn.textContent = allPlaced ? '🔧 Démonter' : '🔧 Tout monter';
     }
 
     tray.innerHTML = '';
@@ -204,28 +239,10 @@ export class GameEngine {
       btn.className = `workshop-part-btn${isPlaced ? ' placed' : ''}`;
       btn.textContent = isPlaced ? `✓ ${info.label}` : `+ ${info.label}`;
       btn.addEventListener('click', () => {
-        const idx = this.saveData.placedParts.indexOf(partId);
-        if (idx === -1) {
-          this.saveData.placedParts.push(partId);
-          this.soundEngine.playSuccess();
-          if (instr) instr.innerHTML = `✨ <strong>${info.label}</strong> : ${info.desc}`;
-        } else {
-          this.saveData.placedParts.splice(idx, 1);
-          this.soundEngine.playSnap();
-          if (instr) instr.textContent = `${info.label} retirée du mécanisme.`;
-        }
-        SaveManager.save(this.saveData);
-        this.renderWorkshopUI();
+        this.toggleWorkshopPart(partId);
       });
       tray.appendChild(btn);
     });
-
-    if (instr && !instr.innerHTML) {
-      instr.textContent =
-        this.saveData.placedParts.length === ALL_PARTS.length
-          ? '👑 Toutes les pièces sont en place ! Maintiens la molette à gauche pour remonter le ressort !'
-          : 'Touche les 6 pièces en bas pour assembler le mécanisme de ta montre !';
-    }
   }
 
   private returnToMenu(): void {
@@ -313,10 +330,27 @@ export class GameEngine {
       this.renderWorkshopUI();
     });
 
-    // Remontage par le bouton "🔄 Remonter" ou directement sur la molette (crown) du Canvas
+    document.getElementById('toggle-all-parts-btn')?.addEventListener('click', () => {
+      const instr = document.getElementById('workshop-instruction');
+      if (this.saveData.placedParts.length === ALL_PARTS.length) {
+        this.saveData.placedParts = [];
+        this.soundEngine.playSnap();
+        if (instr) instr.textContent = '🔧 Toutes les pièces sont démontées ! Touche-les une par une pour reconstruire ta montre.';
+      } else {
+        this.saveData.placedParts = [...ALL_PARTS];
+        this.soundEngine.playLevelComplete();
+        if (instr) instr.textContent = '👑 Toutes les pièces sont montées ! Maintiens la molette à gauche pour remonter le ressort !';
+      }
+      SaveManager.save(this.saveData);
+      this.renderWorkshopUI();
+    });
+
     const windBtn = document.getElementById('wind-crown-btn');
     const startWinding = (e: Event) => {
       e.preventDefault();
+      if (!this.saveData.placedParts.includes('crown')) {
+        this.toggleWorkshopPart('crown');
+      }
       this.isWinding = true;
     };
     const stopWinding = () => {
@@ -335,9 +369,17 @@ export class GameEngine {
         const clientY = 'touches' in e ? e.touches[0].clientY : (e as MouseEvent).clientY;
         const canvasX = (clientX - rect.left) * (this.workshopCanvas.width / rect.width);
         const canvasY = (clientY - rect.top) * (this.workshopCanvas.height / rect.height);
-        if (this.watchMechanism.isPointInCrown(canvasX, canvasY)) {
+
+        if (this.saveData.placedParts.includes('crown') && this.watchMechanism.isPointInCrown(canvasX, canvasY)) {
           e.preventDefault();
           this.isWinding = true;
+          return;
+        }
+
+        const hitPart = this.watchMechanism.getPartAtPoint(canvasX, canvasY);
+        if (hitPart) {
+          e.preventDefault();
+          this.toggleWorkshopPart(hitPart);
         }
       };
       this.workshopCanvas.addEventListener('mousedown', onWorkshopPointerDown);
@@ -373,7 +415,7 @@ export class GameEngine {
           await Promise.all(keys.map(key => caches.delete(key)));
         }
       } catch {
-        // Poursuit le rechargement forcé même en cas de restriction navigateur
+        // Poursuit le rechargement forcé
       }
       const url = new URL(window.location.href);
       url.searchParams.set('t', String(Date.now()));
@@ -531,7 +573,7 @@ export class GameEngine {
       const selectBtn = document.createElement('button');
       selectBtn.type = 'button';
       selectBtn.className = 'profile-select-btn';
-      selectBtn.innerHTML = `<span class="prof-name">👤 ${profile.name}</span><span class="prof-stars">⭐ ${stars}/${SaveManager.MAX_STARS}</span>`;
+      selectBtn.innerHTML = `<span class="prof-name">${profile.name}</span><span class="prof-stars">★ ${stars}/${SaveManager.MAX_STARS}</span>`;
       selectBtn.addEventListener('click', () => {
         this.saveData = SaveManager.switchProfile(profile.id);
         this.soundEngine.setMuted(this.saveData.muted);
@@ -600,7 +642,7 @@ export class GameEngine {
     const rankEl = document.getElementById('player-rank-title');
     const starsCountEl = document.getElementById('player-stars-count');
     if (rankEl) rankEl.textContent = rankTitle;
-    if (starsCountEl) starsCountEl.textContent = `⭐ ${totalStars} / ${SaveManager.MAX_STARS}`;
+    if (starsCountEl) starsCountEl.textContent = `★ ${totalStars} / ${SaveManager.MAX_STARS}`;
 
     levelRects.forEach(rect => {
       const level = parseInt(rect.getAttribute('data-level') || '1', 10);
@@ -636,7 +678,7 @@ export class GameEngine {
     if (workshopBtn && workshopStatus) {
       if (workshopUnlocked) {
         workshopBtn.classList.remove('locked');
-        workshopStatus.textContent = `${this.saveData.placedParts.length}/6 ⚙️`;
+        workshopStatus.innerHTML = `<span class="lvl-star-on">${this.saveData.placedParts.length}/6</span>`;
         workshopStatus.className = 'lvl-status stars-badge';
       } else {
         workshopBtn.classList.add('locked');
@@ -655,6 +697,7 @@ export class GameEngine {
     const helpBox = document.getElementById('help-box');
     const helpText = document.getElementById('help-text');
     const nextBtn = document.getElementById('next-question-btn');
+    const placementTools = document.getElementById('placement-tools');
     if (!helpBox || !helpText) return;
 
     helpText.innerHTML = html;
@@ -667,6 +710,10 @@ export class GameEngine {
         nextBtn.classList.remove('hidden');
         this.isWaitingNext = true;
         this.nextActionCallback = nextCallback;
+        // Masque le bouton "✓ Vérifier" dès que la réponse est bonne pour ne laisser que "Suivant ➔"
+        if (this.currentPhase === 2) {
+          placementTools?.classList.add('hidden');
+        }
       } else {
         nextBtn.classList.add('hidden');
       }
@@ -830,12 +877,18 @@ export class GameEngine {
     this.celebrationAnimId = requestAnimationFrame(animate);
   }
 
-  private handleFailedReadAttempt(selectedChoice: TimeTarget): void {
+  private handleFailedReadAttempt(selectedChoice: TimeTarget, clickedBtn: HTMLElement | null): void {
     this.errorsCount++;
     this.levelTotalErrors++;
 
     if (this.errorsCount >= 2) {
       this.currentQuestionAssisted = true;
+    }
+
+    // Grise et verrouille le bouton erroné déjà tenté pour aider l'enfant à procéder par élimination
+    if (clickedBtn) {
+      clickedBtn.classList.add('choice-tried');
+      clickedBtn.setAttribute('disabled', 'true');
     }
 
     this.soundEngine.playError();
@@ -940,7 +993,10 @@ export class GameEngine {
       document.activeElement.blur();
     }
     const allBtns = document.querySelectorAll('#choices-container .choice-btn, #check-btn');
-    allBtns.forEach(btn => btn.classList.remove('btn-correct', 'btn-wrong'));
+    allBtns.forEach(btn => {
+      btn.classList.remove('btn-correct', 'btn-wrong', 'choice-tried');
+      btn.removeAttribute('disabled');
+    });
   }
 
   private checkPlaceAnswer(): void {
@@ -964,6 +1020,7 @@ export class GameEngine {
 
     const choiceBtns = document.querySelectorAll('#choices-container .choice-btn');
     const clickedBtn = (choiceBtns[choiceIndex] as HTMLElement) || null;
+    if (clickedBtn?.hasAttribute('disabled')) return;
 
     const isMinutesExact = selectedChoice.minutes === this.targetTime.minutes;
     const isHoursExact =
@@ -975,7 +1032,7 @@ export class GameEngine {
     this.animateButtonFeedback(clickedBtn, isCorrect);
 
     if (isCorrect) this.handleSuccessfulAnswer();
-    else this.handleFailedReadAttempt(selectedChoice);
+    else this.handleFailedReadAttempt(selectedChoice, clickedBtn);
   }
 
   private formatNeutralTargetHTML(target: TimeTarget): string {
@@ -1035,9 +1092,7 @@ export class GameEngine {
 
   public render(): void {
     const isDay = this.currentLevel < 5 ? true : (this.targetTime ? this.targetTime.isDay : true);
-    const is24HourTarget = this.targetTime ? TimeMath.is24HourRingTarget(this.targetTime.hours) : false;
-
-    this.clock.draw(this.currentLevel, isDay, is24HourTarget);
+    this.clock.draw(this.currentLevel, isDay);
 
     const ghostTarget =
       this.currentPhase === 2 && this.showGhostGuide && this.targetTime

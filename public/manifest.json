@@ -36,7 +36,7 @@
   ],
   "start_url": "/tic-tac/",
   "scope": "/tic-tac/",
-  "background_color": "#38bdf8",
+  "background_color": "#0b132b",
   "theme_color": "#38bdf8",
   "display": "standalone",
   "orientation": "portrait"

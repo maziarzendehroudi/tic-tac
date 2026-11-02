@@ -12,6 +12,7 @@ export interface TimeTarget {
 export class QuestionManager {
   private level: number;
   private lastQuestionText: string = '';
+  private usedQuestions: Set<string> = new Set();
 
   constructor(level: number = 1) {
     this.level = level;
@@ -19,10 +20,15 @@ export class QuestionManager {
 
   public setLevel(level: number): void {
     this.level = level;
+    this.usedQuestions.clear();
   }
 
   public getLevel(): number {
     return this.level;
+  }
+
+  public resetHistory(): void {
+    this.usedQuestions.clear();
   }
 
   /**
@@ -51,11 +57,14 @@ export class QuestionManager {
 
   public generateQuestion(): TimeTarget {
     let candidate = this.buildCandidate();
-    for (let attempt = 0; attempt < 6; attempt++) {
-      if (candidate.text !== this.lastQuestionText) break;
+    for (let attempt = 0; attempt < 24; attempt++) {
+      if (candidate.text !== this.lastQuestionText && !this.usedQuestions.has(candidate.text)) {
+        break;
+      }
       candidate = this.buildCandidate();
     }
     this.lastQuestionText = candidate.text;
+    this.usedQuestions.add(candidate.text);
     return candidate;
   }
 
@@ -87,8 +96,6 @@ export class QuestionManager {
         minutes = (minutes + Math.floor(Math.random() * 4) + 1) % 60;
       }
     } else if (this.level >= 7) {
-      // Niveau 7 (Horloge des Grands : 12, 3, 6, 9 uniquement) :
-      // privilégie les heures hors 12/3/6/9 (1, 2, 4, 5, 7, 8, 10, 11) pour exercer le repérage spatial !
       const nonCardinalHours24 = [1, 2, 4, 5, 7, 8, 10, 11, 13, 14, 16, 17, 19, 20, 22, 23];
       if (Math.random() < 0.8) {
         hours = nonCardinalHours24[Math.floor(Math.random() * nonCardinalHours24.length)];
@@ -119,6 +126,12 @@ export class QuestionManager {
     };
   }
 
+  /**
+   * Génère 3 choix équilibrés :
+   * - Au Niveau 1 : la bonne réponse + 2 leurres d'heures.
+   * - Aux Niveaux 2 à 7 : la bonne réponse + 1 leurre sur l'HEURE (même minute) + 1 leurre sur la MINUTE (même heure),
+   *   afin que l'enfant soit toujours obligé de lire les deux aiguilles !
+   */
   public generateChoices(correct: TimeTarget): TimeTarget[] {
     const choices: TimeTarget[] = [correct];
 
@@ -130,21 +143,20 @@ export class QuestionManager {
       );
     };
 
+    // 1. LEURRE SUR L'HEURE (même minute)
     if (correct.minutes >= 35) {
       const trapNextHour = this.createTargetFrom(correct.hours + 1, correct.minutes);
       if (isDistinctAndUnambiguous(trapNextHour)) {
         choices.push(trapNextHour);
       }
     }
-
-    if (this.level >= 5 && choices.length < 3) {
+    if (choices.length < 2 && this.level >= 5) {
       const amPmDecoy = this.createTargetFrom((correct.hours + 12) % 24, correct.minutes);
       if (isDistinctAndUnambiguous(amPmDecoy)) {
         choices.push(amPmDecoy);
       }
     }
-
-    if (choices.length < 3) {
+    if (choices.length < 2) {
       const deltaH = Math.random() < 0.5 ? 1 : -1;
       const hourDecoy = this.createTargetFrom(correct.hours + deltaH, correct.minutes);
       if (isDistinctAndUnambiguous(hourDecoy)) {
@@ -152,15 +164,30 @@ export class QuestionManager {
       }
     }
 
-    if (choices.length < 3 && this.level >= 2) {
+    // 2. LEURRE SUR LES MINUTES (même heure, minute différente) aux Niveaux 2 à 7
+    if (this.level >= 2 && choices.length < 3) {
       let altMin = (correct.minutes + 30) % 60;
-      if (this.level === 3) altMin = (correct.minutes + 15) % 60;
-      else if (this.level === 4 || this.level === 5) altMin = (correct.minutes + 5) % 60;
-      else if (this.level >= 6) altMin = (correct.minutes + 2) % 60;
+      if (this.level === 3) {
+        altMin = correct.minutes === 15 ? 45 : correct.minutes === 45 ? 15 : 15;
+      } else if (this.level === 4 || this.level === 5) {
+        const step5 = Math.random() < 0.5 ? 5 : -5;
+        altMin = (correct.minutes + step5 + 60) % 60;
+      } else if (this.level >= 6) {
+        const deltaM = Math.random() < 0.5 ? 1 : -1;
+        altMin = (correct.minutes + deltaM + 60) % 60;
+      }
 
       const minDecoy = this.createTargetFrom(correct.hours, altMin);
       if (isDistinctAndUnambiguous(minDecoy)) {
         choices.push(minDecoy);
+      }
+    }
+
+    // 3. Complément éventuel (Niveau 1 ou sécurité)
+    if (choices.length < 3) {
+      const secondHourDecoy = this.createTargetFrom(correct.hours + 2, correct.minutes);
+      if (isDistinctAndUnambiguous(secondHourDecoy)) {
+        choices.push(secondHourDecoy);
       }
     }
 
