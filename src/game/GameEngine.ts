@@ -30,7 +30,7 @@ const ORGAN_EXPLANATIONS: Record<WorkshopOrgan, string> = {
   minutes:
     '🔵 <strong>Train des Minutes :</strong> en haut, la double roue relais démultiplie le mouvement pour que la grande aiguille bleue fasse 1 tour en 60 minutes !',
   seconds:
-    '🔴 <strong>Secondes & Tic-Tac :</strong> à gauche, la double roue entraîne la trotteuse rouge par saccades d’une seconde au rythme de l’ancre du Tic-Tac !'
+    '🔴 <strong>Train des Secondes :</strong> à gauche, la double roue accélère le mouvement pour faire avancer la <strong>trotteuse rouge des secondes</strong> par saccades d’une seconde !'
 };
 
 export class GameEngine {
@@ -156,7 +156,7 @@ export class GameEngine {
 
     if (this.watchMechanism) {
       this.watchMechanism.resetCamera();
-      this.watchMechanism.realTimeMode = false;
+      this.watchMechanism.realTimeMode = true;
     }
 
     this.renderWorkshopUI();

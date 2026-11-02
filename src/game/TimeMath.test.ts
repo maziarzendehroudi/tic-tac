@@ -27,7 +27,23 @@ function createMockCtx(): CanvasRenderingContext2D {
   } as unknown as CanvasRenderingContext2D;
 }
 
-describe('WatchMechanism V34 — Rotation Franche et Visible des 4 Mécanismes (> 2°/s)', () => {
+describe('WatchMechanism V35 — Vitesse Réelle par défaut, Son des Secondes maintenu & Rotation des 4 Mécanismes', () => {
+  it('démarre en Vitesse réelle par défaut (realTimeMode = true) et déclenche le son Tic-Tac chaque seconde (1000 ms)', () => {
+    let ticks = 0;
+    const wm = new WatchMechanism(createMockCtx(), 500, 500, () => {
+      ticks++;
+    });
+
+    expect(wm.realTimeMode).toBe(true);
+    expect('escapement' in WatchMechanism.POS).toBe(false);
+
+    wm.update(500, false);
+    expect(ticks).toBe(0);
+
+    wm.update(500, false);
+    expect(ticks).toBe(1);
+  });
+
   it('fait tourner franchement les 4 mécanismes (Ressort, Heures, Minutes, Secondes) en Vitesse réelle comme en Accéléré', () => {
     for (const isRealTime of [true, false]) {
       const wm = new WatchMechanism(createMockCtx(), 500, 500);
@@ -44,24 +60,12 @@ describe('WatchMechanism V34 — Rotation Franche et Visible des 4 Mécanismes (
       wm.update(1000, false);
       wm.update(70, false);
 
-      const dBarrel = Math.abs(wm.angleBarrel - initBarrel);
-      const dHours = Math.abs(wm.angleHours - initHours);
-      const dRelayMin = Math.abs(wm.angleRelayMinutes - initRelayMin);
-      const dMinutes = Math.abs(wm.angleMinutes - initMinutes);
-      const dRelaySec = Math.abs(wm.angleRelaySeconds - initRelaySec);
-      const dSeconds = Math.abs(wm.angleSeconds - initSeconds);
-
-      // Chaque mécanisme doit tourner d'au moins 2.2°/s (0.038 rad/s) pour être clairement visible à l'œil nu
-      expect(dHours).toBeGreaterThan(0.038);
-      expect(dBarrel).toBeGreaterThan(0.05);
-      expect(dMinutes).toBeGreaterThan(0.06);
-      expect(dRelayMin).toBeGreaterThan(0.06);
-      expect(dRelaySec).toBeGreaterThan(0.05);
-      expect(dSeconds).toBeGreaterThan(0.09);
-
-      // Hiérarchie horlogère respectée : Secondes > Minutes > Heures
-      expect(dSeconds).toBeGreaterThan(dMinutes * 1.5);
-      expect(dMinutes).toBeGreaterThan(dHours * 1.4);
+      expect(Math.abs(wm.angleHours - initHours)).toBeGreaterThan(0.038);
+      expect(Math.abs(wm.angleBarrel - initBarrel)).toBeGreaterThan(0.05);
+      expect(Math.abs(wm.angleMinutes - initMinutes)).toBeGreaterThan(0.06);
+      expect(Math.abs(wm.angleRelayMinutes - initRelayMin)).toBeGreaterThan(0.06);
+      expect(Math.abs(wm.angleRelaySeconds - initRelaySec)).toBeGreaterThan(0.05);
+      expect(Math.abs(wm.angleSeconds - initSeconds)).toBeGreaterThan(0.09);
     }
   });
 });

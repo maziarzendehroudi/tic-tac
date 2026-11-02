@@ -6,7 +6,7 @@ export class WatchMechanism {
   private height: number;
 
   public power: number = 80;
-  public realTimeMode: boolean = false;
+  public realTimeMode: boolean = true;
   public selectedOrgan: WorkshopOrgan = 'overview';
 
   public static readonly DEFAULT_SCALE = 1.44;
@@ -52,8 +52,7 @@ export class WatchMechanism {
     relayMinutes: { x: 0, y: -76, rPinion: 20, teethPinion: 8, rWheel: 36, teethWheel: 12 },
     minutes: { x: 0, y: 0, r: 40, teeth: 12 },
     relaySeconds: { x: -68, y: 0, rPinion: 28, teethPinion: 10, rWheel: 44, teethWheel: 14 },
-    seconds: { x: 0, y: 0, r: 24, teeth: 8 },
-    escapement: { x: 0, y: 44 }
+    seconds: { x: 0, y: 0, r: 24, teeth: 8 }
   };
 
   constructor(
@@ -195,7 +194,7 @@ export class WatchMechanism {
   private detectOrganAtWorldPoint(wx: number, wy: number): WorkshopOrgan {
     if (wx > 42 && wy < 25) return 'spring';
     if (wy < -34 && Math.abs(wx) <= 48) return 'minutes';
-    if (wx < -24 || wy > 24) return 'seconds';
+    if (wx < -24) return 'seconds';
     return 'hours';
   }
 
@@ -241,8 +240,8 @@ export class WatchMechanism {
     }
 
     // 3. Marche simultanée et visible des 4 mécanismes (Secondes, Minutes, Heures, Ressort) :
-    // - Vitesse réelle : 1 battement par seconde (1000 ms, Secondes = 6.0°/s, Minutes = 3.6°/s, Heures = 2.2°/s, Ressort = 2.93°/s)
-    // - Mode accéléré  : 5 battements par seconde (200 ms, Secondes = 30.0°/s, Minutes = 7.2°/s, Heures = 3.8°/s, Ressort = 5.07°/s)
+    // - Vitesse réelle (par défaut) : 1 battement par seconde (1000 ms, Secondes = 6.0°/s, Minutes = 3.6°/s, Heures = 2.2°/s)
+    // - Mode accéléré               : 5 battements par seconde (200 ms, Secondes = 30.0°/s, Minutes = 7.2°/s, Heures = 3.8°/s)
     if (this.power > 0 && !isWinding) {
       const dischargeRate = this.realTimeMode ? 0.00025 : 0.0012;
       this.power = Math.max(0, this.power - deltaTime * dischargeRate);
@@ -253,15 +252,13 @@ export class WatchMechanism {
       const degToRad = Math.PI / 180;
       const dtSec = deltaTime / 1000;
 
-      // Vitesses angulaires franches garantissant que les 4 mécanismes tournent visiblement à l'œil nu
-      // tout en respectant la hiérarchie horlogère (Secondes > Minutes > Heures)
       const minDegPerSec = this.realTimeMode ? 3.6 : 7.2;
       const hrDegPerSec = this.realTimeMode ? 2.2 : 3.8;
 
       this.baseAngleMinutes = (this.baseAngleMinutes + dtSec * minDegPerSec * degToRad) % (Math.PI * 2);
       this.baseAngleHours = (this.baseAngleHours + dtSec * hrDegPerSec * degToRad) % (Math.PI * 2);
 
-      // Avancée SACCADÉE de la roue des secondes et de l'échappement Tic-Tac
+      // Avancée SACCADÉE de la roue des secondes et déclenchement du son Tic-Tac des secondes
       this.stepTimerMs += deltaTime;
       while (this.stepTimerMs >= stepPeriodMs) {
         this.stepTimerMs -= stepPeriodMs;
@@ -282,12 +279,10 @@ export class WatchMechanism {
       if (deltaStep > Math.PI) deltaStep = 0;
       this.angleSeconds = (this.prevSecondsAngle + deltaStep * easedJump) % (Math.PI * 2);
 
-      // Légère impulsion mécanique lors du lâcher de dent de l'échappement + rotation continue
       const tickPulse = Math.sin(jumpProgress * Math.PI) * 0.008;
       this.angleMinutes = (this.baseAngleMinutes + tickPulse) % (Math.PI * 2);
       this.angleHours = (this.baseAngleHours + tickPulse * 0.6) % (Math.PI * 2);
 
-      // Synchronise le Barillet du Ressort, le Relais des Minutes et le Relais des Secondes
       this.syncMeshedGears();
     }
   }
@@ -299,7 +294,7 @@ export class WatchMechanism {
     this.ctx.scale(this.currentScale, this.currentScale);
     this.ctx.translate(-this.currentFocusX, -this.currentFocusY);
 
-    const { crown, spring, hours, relayMinutes, minutes, relaySeconds, seconds, escapement } = WatchMechanism.POS;
+    const { crown, spring, hours, relayMinutes, minutes, relaySeconds, seconds } = WatchMechanism.POS;
 
     // 1. Début de bracelet (haut/bas) + Platine squelette avec les 60 graduations
     this.drawChassisWithBraceletStubs();
@@ -326,7 +321,7 @@ export class WatchMechanism {
     );
     this.drawToyDiscGear(minutes.x, minutes.y, minutes.r, minutes.teeth, this.angleMinutes, '#38bdf8', '#0284c7', '#e0f2fe', 6);
 
-    // 5. Train des Secondes à gauche & Échappement Tic-Tac en bas (plan supérieur)
+    // 5. Train des Secondes à gauche & Roue centrale rouge (sans balancier inférieur)
     this.drawSteppedRelayGear(
       relaySeconds.x,
       relaySeconds.y,
@@ -340,7 +335,6 @@ export class WatchMechanism {
       '#f43f5e'
     );
     this.drawToyDiscGear(seconds.x, seconds.y, seconds.r, seconds.teeth, this.angleSeconds, '#f43f5e', '#be123c', '#ffe4e6', 4);
-    this.drawSimpleTicTacClicker(escapement.x, escapement.y, this.isTicPhase ? 1 : -1);
 
     // 6. Les 3 aiguilles
     this.drawHandsOnly();
@@ -383,6 +377,7 @@ export class WatchMechanism {
       this.ctx.stroke();
     }
 
+    // Ponts horlogers reliant uniquement les 3 axes périphériques (Ressort, Minutes, Secondes)
     this.ctx.beginPath();
     this.ctx.moveTo(0, 0);
     this.ctx.lineTo(82, -41);
@@ -390,8 +385,6 @@ export class WatchMechanism {
     this.ctx.lineTo(0, -76);
     this.ctx.moveTo(0, 0);
     this.ctx.lineTo(-68, 0);
-    this.ctx.moveTo(0, 0);
-    this.ctx.lineTo(0, 44);
     this.ctx.strokeStyle = 'rgba(148, 163, 184, 0.2)';
     this.ctx.lineWidth = 6;
     this.ctx.lineCap = 'round';
@@ -662,40 +655,6 @@ export class WatchMechanism {
         this.ctx.fill();
       }
     }
-
-    this.ctx.restore();
-  }
-
-  private drawSimpleTicTacClicker(x: number, y: number, rockDir: 1 | -1): void {
-    const bounce = rockDir * 0.22;
-    this.ctx.save();
-    this.ctx.translate(x, y);
-    this.ctx.rotate(bounce);
-
-    this.ctx.beginPath();
-    this.ctx.arc(0, 12, 14, 0, Math.PI * 2);
-    this.ctx.strokeStyle = '#fbbf24';
-    this.ctx.lineWidth = 3.2;
-    this.ctx.stroke();
-
-    this.ctx.beginPath();
-    this.ctx.moveTo(0, 10);
-    this.ctx.lineTo(-5.5, -16);
-    this.ctx.lineTo(5.5, -14);
-    this.ctx.closePath();
-    this.ctx.fillStyle = '#fbbf24';
-    this.ctx.fill();
-    this.ctx.strokeStyle = '#78350f';
-    this.ctx.lineWidth = 1.8;
-    this.ctx.stroke();
-
-    this.ctx.beginPath();
-    this.ctx.arc(0, 0, 4.5, 0, Math.PI * 2);
-    this.ctx.fillStyle = '#e11d48';
-    this.ctx.fill();
-    this.ctx.strokeStyle = '#ffffff';
-    this.ctx.lineWidth = 1.5;
-    this.ctx.stroke();
 
     this.ctx.restore();
   }
