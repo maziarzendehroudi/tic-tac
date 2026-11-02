@@ -176,9 +176,15 @@ export class GameEngine {
   private updatePowerMeterUI(power: number): void {
     const fillEl = document.getElementById('power-bar-fill');
     const textEl = document.getElementById('power-bar-text');
+    const windBtn = document.getElementById('wind-crown-btn');
     const pct = Math.round(power);
     if (fillEl) fillEl.style.width = `${pct}%`;
-    if (textEl) textEl.textContent = `🔋 Ressort : ${pct}%`;
+    if (textEl) {
+      textEl.textContent = pct >= 100 ? '🔋 Ressort : 100% (Max)' : `🔋 Ressort : ${pct}%`;
+    }
+    if (windBtn) {
+      windBtn.textContent = pct >= 100 ? '🛑 Ressort remonté à fond' : '🔄 Maintenir pour remonter';
+    }
   }
 
   private renderWorkshopUI(): void {

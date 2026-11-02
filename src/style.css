@@ -1137,3 +1137,22 @@ body.theme-night #instruction {
   min-height: 0 !important;
   aspect-ratio: 460 / 380 !important;
 }
+
+/* ============================================================================
+   10. CORRECTIF V30 : RATIO STRICTEMENT CARRÉ 1:1 (ZÉRO DÉFORMATION) & TEXTE FLUIDE
+   ============================================================================ */
+#workshop-canvas-wrap {
+  width: min(92vw, 345px, 43dvh) !important;
+  height: auto !important;
+  aspect-ratio: 1 / 1 !important;
+  flex: 0 0 auto !important;
+  margin: auto 0 !important;
+  border-radius: 50% !important;
+}
+
+#workshop-instruction {
+  display: block !important;
+  text-align: center !important;
+  line-height: 1.35 !important;
+  padding: 10px 14px !important;
+}

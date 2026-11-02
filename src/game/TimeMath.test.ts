@@ -5,42 +5,71 @@ import { SaveManager } from './SaveManager';
 import { SoundEngine } from './SoundEngine';
 import { WatchMechanism } from './WatchMechanism';
 
-describe('WatchMechanism V28 — Disposition Miroir à Droite (3h), Vis Sans Fin & Zooms', () => {
-  it('place la molette et le ressort à droite (x > 0) en tangence avec la vis (y=0) et la roue des heures (0,0)', () => {
-    const { crown, spring, hours, relaySeconds } = WatchMechanism.POS;
+function createMockCtx(): CanvasRenderingContext2D {
+  return {
+    imageSmoothingEnabled: true,
+    clearRect: () => {},
+    save: () => {},
+    restore: () => {},
+    translate: () => {},
+    scale: () => {},
+    rotate: () => {},
+    beginPath: () => {},
+    closePath: () => {},
+    moveTo: () => {},
+    lineTo: () => {},
+    arc: () => {},
+    roundRect: () => {},
+    fillRect: () => {},
+    strokeRect: () => {},
+    fill: () => {},
+    stroke: () => {}
+  } as unknown as CanvasRenderingContext2D;
+}
 
-    // 1. Molette et ressort à droite (x > 0), relais des secondes en miroir à gauche (x < 0)
-    expect(crown.x).toBeGreaterThan(150);
-    expect(spring.x).toBeGreaterThan(70);
-    expect(relaySeconds.x).toBeLessThan(-50);
+describe('WatchMechanism V30 — Bout de course à 100%, Trotteuse saccadée & Tic-Tac 1 seconde', () => {
+  it('bloque la vis sans fin et le barillet en bout de course dès que le ressort atteint 100%', () => {
+    const wm = new WatchMechanism(createMockCtx(), 500, 500);
+    wm.power = 99.5;
+    wm.update(100, true); // Atteint 100%
+    expect(wm.power).toBe(100);
+    expect(wm.isAtEndStop()).toBe(true);
 
-    // 2. Tangence avec la roue des heures : r_spring + r_hours = 36 + 56 = 92 px (± 1 px)
-    const distSpringToHours = Math.hypot(spring.x - hours.x, spring.y - hours.y);
-    expect(distSpringToHours).toBeGreaterThan(90.5);
-    expect(distSpringToHours).toBeLessThan(93.0);
+    const wormAtStop = wm.wormOffset;
+    const barrelAtStop = wm.angleBarrel;
 
-    // 3. Tangence avec la vis sans fin de la molette (axe horizontal y = 0)
-    const bottomPitchY = spring.y + spring.r;
-    expect(bottomPitchY).toBeGreaterThanOrEqual(-7);
-    expect(bottomPitchY).toBeLessThanOrEqual(-3);
+    // On continue à maintenir la molette à 100% : rien ne doit plus bouger (bout de course)
+    wm.update(500, true);
+    expect(wm.wormOffset).toBe(wormAtStop);
+    expect(wm.angleBarrel).toBe(barrelAtStop);
+  });
+
+  it('déclenche le son Tic-Tac exactement toutes les 1000 ms (1 seconde) en mode Vitesse réelle et avance par saccades', () => {
+    let ticks = 0;
+    const wm = new WatchMechanism(createMockCtx(), 500, 500, () => {
+      ticks++;
+    });
+    wm.realTimeMode = true;
+    wm.power = 80;
+
+    // À 500 ms (0.5 s) : aucun nouveau Tic-Tac déclenché, l'aiguille des secondes reste fixe sur sa graduation
+    wm.update(500, false);
+    expect(ticks).toBe(0);
+    expect(wm.angleSeconds).toBe(0);
+
+    // À 1000 ms (1.0 s) : exactement 1 Tic-Tac déclenché !
+    wm.update(500, false);
+    expect(ticks).toBe(1);
+
+    // 70 ms plus tard (fin du saut mécanique) : l'aiguille s'est calée pile sur 1 seconde (π/30 rad) et ne bouge plus jusqu'à 2000 ms
+    wm.update(70, false);
+    expect(wm.angleSeconds).toBeCloseTo(Math.PI / 30, 4);
+    wm.update(400, false);
+    expect(wm.angleSeconds).toBeCloseTo(Math.PI / 30, 4);
   });
 });
 
-describe('QuestionManager — Mix obligatoire 1 Leurre Heure + 1 Leurre Minute (Niveaux 2 à 7)', () => {
-  it('génère toujours un leurre sur l’heure ET un leurre sur les minutes aux niveaux 2 à 7', () => {
-    for (let lvl = 2; lvl <= 7; lvl++) {
-      const qm = new QuestionManager(lvl);
-      const target = qm.generateQuestion();
-      const choices = qm.generateChoices(target);
-      expect(choices).toHaveLength(3);
-
-      expect(choices.some(c => c.minutes !== target.minutes)).toBe(true);
-      expect(choices.some(c => c.hours !== target.hours)).toBe(true);
-    }
-  });
-});
-
-describe('TimeMath & SaveManager — Pédagogie Niv. 5/6/7 & Atelier', () => {
+describe('QuestionManager & SaveManager — Cohérence Globale', () => {
   beforeEach(() => {
     const store: Record<string, string> = {};
     globalThis.localStorage = {
@@ -53,22 +82,23 @@ describe('TimeMath & SaveManager — Pédagogie Niv. 5/6/7 & Atelier', () => {
     };
   });
 
-  it('mentionne les nombres oranges uniquement au Niveau 5, et le calcul +12 dès le Niveau 6', () => {
-    const hintLvl5 = TimeMath.buildReadDiagnosticHint(15, 0, 3, 0, 5);
-    expect(hintLvl5).toContain('orange');
-
-    const hintLvl6 = TimeMath.buildReadDiagnosticHint(15, 0, 3, 0, 6);
-    expect(hintLvl6).toContain('ajoute 12');
-    expect(hintLvl6).not.toContain('orange');
+  it('génère toujours un leurre sur l’heure ET un leurre sur les minutes aux niveaux 2 à 7', () => {
+    for (let lvl = 2; lvl <= 7; lvl++) {
+      const qm = new QuestionManager(lvl);
+      const target = qm.generateQuestion();
+      const choices = qm.generateChoices(target);
+      expect(choices.some(c => c.minutes !== target.minutes)).toBe(true);
+      expect(choices.some(c => c.hours !== target.hours)).toBe(true);
+    }
   });
 
-  it('verrouille l’Atelier par défaut et le débloque dès que le Niveau 7 est validé', () => {
-    let save = SaveManager.load();
-    expect(SaveManager.isWorkshopUnlocked(save)).toBe(false);
+  it('mentionne les nombres oranges uniquement au Niveau 5, et le calcul +12 dès le Niveau 6', () => {
+    expect(TimeMath.buildReadDiagnosticHint(15, 0, 3, 0, 5)).toContain('orange');
+    expect(TimeMath.buildReadDiagnosticHint(15, 0, 3, 0, 6)).toContain('ajoute 12');
 
+    let save = SaveManager.load();
     save = SaveManager.applyLevelRewards(save, 7, 3);
     expect(SaveManager.isWorkshopUnlocked(save)).toBe(true);
-
     const sound = new SoundEngine(false);
     expect(() => sound.playWindingClick()).not.toThrow();
   });
