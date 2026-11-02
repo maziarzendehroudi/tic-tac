@@ -1,7 +1,18 @@
+export const ALL_PARTS = [
+  'crown',
+  'spring',
+  'hours',
+  'minutes',
+  'seconds',
+  'escapement'
+] as const;
+
 export interface GameSave {
   maxUnlockedLevel: number;
   completedLevels: number[];
   levelStars: Record<number, number>;
+  unlockedParts: string[];
+  placedParts: string[];
   muted: boolean;
 }
 
@@ -28,6 +39,8 @@ export class SaveManager {
         maxUnlockedLevel: 7,
         completedLevels: [1, 2, 3, 4, 5, 6, 7],
         levelStars: { 1: 3, 2: 3, 3: 3, 4: 3, 5: 3, 6: 3, 7: 3 },
+        unlockedParts: [...ALL_PARTS],
+        placedParts: [...ALL_PARTS],
         muted: false
       };
     }
@@ -35,6 +48,8 @@ export class SaveManager {
       maxUnlockedLevel: 1,
       completedLevels: [],
       levelStars: {},
+      unlockedParts: [],
+      placedParts: [],
       muted: false
     };
   }
@@ -72,10 +87,23 @@ export class SaveManager {
     const adjustedMax =
       completedLevels.includes(6) && maxUnlockedLevel === 6 ? 7 : maxUnlockedLevel;
 
+    const isLvl7Done = completedLevels.includes(7);
+    const unlockedParts = Array.isArray(raw.unlockedParts)
+      ? raw.unlockedParts.filter((p): p is string => typeof p === 'string')
+      : isLvl7Done
+        ? [...ALL_PARTS]
+        : [];
+
+    const placedParts = Array.isArray(raw.placedParts)
+      ? raw.placedParts.filter((p): p is string => typeof p === 'string')
+      : [];
+
     return {
       maxUnlockedLevel: adjustedMax,
       completedLevels,
       levelStars,
+      unlockedParts: isLvl7Done ? [...ALL_PARTS] : unlockedParts,
+      placedParts,
       muted: Boolean(raw.muted)
     };
   }
@@ -91,7 +119,7 @@ export class SaveManager {
             name: typeof p.name === 'string' && p.name.trim() ? p.name.trim().slice(0, 18) : `Joueur ${idx + 1}`,
             save: this.sanitizeSave(p.save)
           }));
-          const activeId = profiles.some(p => p.id === storeActiveId(parsed))
+          const activeId = profiles.some(p => p.id === parsed.activeProfileId)
             ? (parsed.activeProfileId as string)
             : profiles[0].id;
           return { activeProfileId: activeId, profiles };
@@ -194,9 +222,6 @@ export class SaveManager {
     return save.maxUnlockedLevel >= this.MAX_LEVEL && save.completedLevels.length >= this.MAX_LEVEL;
   }
 
-  /**
-   * L'Atelier de l'Horloger est la récompense suprême débloquée dès que le Niveau 7 est validé !
-   */
   public static isWorkshopUnlocked(save: GameSave): boolean {
     return save.completedLevels.includes(this.MAX_LEVEL) || this.isFullyUnlocked(save);
   }
@@ -236,6 +261,11 @@ export class SaveManager {
     if (completedLevel === save.maxUnlockedLevel && completedLevel < this.MAX_LEVEL) {
       save.maxUnlockedLevel = completedLevel + 1;
     }
+
+    // Lorsque le Niveau 7 est terminé, toutes les pièces de l'Atelier sont débloquées !
+    if (completedLevel === this.MAX_LEVEL) {
+      save.unlockedParts = [...ALL_PARTS];
+    }
     return save;
   }
 
@@ -265,8 +295,4 @@ export class SaveManager {
     this.save(fresh);
     return fresh;
   }
-}
-
-function storeActiveId(parsed: Partial<ProfilesStore>): string {
-  return typeof parsed.activeProfileId === 'string' ? parsed.activeProfileId : '';
 }

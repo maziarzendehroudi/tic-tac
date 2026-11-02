@@ -2,7 +2,7 @@ import { Clock } from './Clock';
 import { Hands } from './Hands';
 import { QuestionManager } from './QuestionManager';
 import type { TimeTarget } from './QuestionManager';
-import { SaveManager } from './SaveManager';
+import { SaveManager, ALL_PARTS } from './SaveManager';
 import type { GameSave } from './SaveManager';
 import { SoundEngine } from './SoundEngine';
 import { TimeMath } from './TimeMath';
@@ -19,6 +19,33 @@ interface CelebrationParticle {
   vRot: number;
 }
 
+const PART_INFO: Record<string, { label: string; desc: string }> = {
+  crown: {
+    label: '1. Molette',
+    desc: 'La molette et sa tige filetée permettent de remonter la montre !'
+  },
+  spring: {
+    label: '2. Ressort',
+    desc: 'Le ressort de barillet stocke l’énergie quand tu tournes la molette !'
+  },
+  hours: {
+    label: '3. Heures',
+    desc: 'La roue dorée des heures fait tourner la petite aiguille !'
+  },
+  minutes: {
+    label: '4. Minutes',
+    desc: 'L’engrenage bleu démultiplie le mouvement pour la grande aiguille des minutes !'
+  },
+  seconds: {
+    label: '5. Secondes',
+    desc: 'L’engrenage rouge rapide entraîne la trotteuse des secondes !'
+  },
+  escapement: {
+    label: '6. Tic-Tac',
+    desc: 'L’échappement à ancre régule les engrenages dent par dent en faisant Tic-Tac !'
+  }
+};
+
 export class GameEngine {
   private canvas: HTMLCanvasElement;
   private ctx: CanvasRenderingContext2D;
@@ -26,7 +53,12 @@ export class GameEngine {
   private hands: Hands;
   private questionManager: QuestionManager;
   private soundEngine: SoundEngine;
+
+  private workshopCanvas: HTMLCanvasElement | null = null;
   private watchMechanism: WatchMechanism | null = null;
+  private workshopAnimId: number = 0;
+  private lastWorkshopTime: number = 0;
+  private isWinding: boolean = false;
 
   private currentHours: number = 12;
   private currentMinutes: number = 0;
@@ -67,21 +99,16 @@ export class GameEngine {
     this.hands = new Hands(this.ctx, radius);
     this.questionManager = new QuestionManager(1);
 
-    const workshopCanvas = document.getElementById('workshopCanvas') as HTMLCanvasElement | null;
-    if (workshopCanvas) {
-      this.watchMechanism = new WatchMechanism(workshopCanvas, (part, count, total) => {
-        const badge = document.getElementById('workshop-progress-badge');
-        const instr = document.getElementById('workshop-instruction');
-        if (badge) badge.textContent = `${count} / ${total} pièces`;
-        if (instr) {
-          if (count >= total) {
-            instr.innerHTML = `👑 <strong>Bravo Maître Horloger !</strong> Ton mouvement mécanique bat et entraîne les aiguilles !`;
-          } else {
-            instr.innerHTML = `✨ <strong>${part.name}</strong> : ${part.role}`;
-          }
-        }
-        this.renderWorkshopTray();
-      });
+    this.workshopCanvas = document.getElementById('workshopCanvas') as HTMLCanvasElement | null;
+    if (this.workshopCanvas) {
+      const wCtx = this.workshopCanvas.getContext('2d')!;
+      this.watchMechanism = new WatchMechanism(
+        wCtx,
+        this.workshopCanvas.width,
+        this.workshopCanvas.height,
+        (isTic) => this.soundEngine.playTick(isTic),
+        () => this.soundEngine.playSnap()
+      );
     }
 
     this.initEvents();
@@ -93,13 +120,14 @@ export class GameEngine {
 
   private clearPendingAnimations(): void {
     cancelAnimationFrame(this.celebrationAnimId);
+    cancelAnimationFrame(this.workshopAnimId);
+    this.isWinding = false;
     this.isWaitingNext = false;
     this.nextActionCallback = null;
   }
 
   public startLevel(level: number): void {
     this.clearPendingAnimations();
-    this.watchMechanism?.stop();
     this.currentLevel = level;
     this.currentPhase = 1;
     this.phaseSuccessCount = 0;
@@ -125,59 +153,83 @@ export class GameEngine {
     document.getElementById('workshop-screen')?.classList.remove('hidden');
     this.applySkyTheme(false);
 
-    if (this.watchMechanism) {
-      this.watchMechanism.resetAssembly();
-      const badge = document.getElementById('workshop-progress-badge');
-      const instr = document.getElementById('workshop-instruction');
-      if (badge) badge.textContent = `0 / ${this.watchMechanism.parts.length} pièces`;
-      if (instr) {
-        instr.textContent = `Touche chaque pièce dorée en bas pour assembler le cœur de ta montre !`;
-      }
-      this.renderWorkshopTray();
-      this.watchMechanism.start();
+    if (this.saveData.unlockedParts.length < ALL_PARTS.length) {
+      this.saveData.unlockedParts = [...ALL_PARTS];
+      SaveManager.save(this.saveData);
     }
+
+    this.renderWorkshopUI();
+    this.lastWorkshopTime = performance.now();
+    const loop = (now: number) => {
+      const dt = Math.min(50, now - this.lastWorkshopTime);
+      this.lastWorkshopTime = now;
+      if (this.watchMechanism) {
+        this.watchMechanism.update(dt, this.saveData.placedParts, this.isWinding);
+        this.watchMechanism.draw(
+          this.saveData.placedParts,
+          this.saveData.unlockedParts,
+          this.isWinding
+        );
+        this.updatePowerMeterUI(this.watchMechanism.power);
+      }
+      this.workshopAnimId = requestAnimationFrame(loop);
+    };
+    this.workshopAnimId = requestAnimationFrame(loop);
   }
 
-  private renderWorkshopTray(): void {
-    const tray = document.getElementById('workshop-parts-tray');
-    if (!tray || !this.watchMechanism) return;
-    tray.innerHTML = '';
+  private updatePowerMeterUI(power: number): void {
+    const fillEl = document.getElementById('power-bar-fill');
+    const textEl = document.getElementById('power-bar-text');
+    const pct = Math.round(power);
+    if (fillEl) fillEl.style.width = `${pct}%`;
+    if (textEl) textEl.textContent = `🔋 Énergie : ${pct}%`;
+  }
 
-    if (this.watchMechanism.isComplete()) {
-      const replayBtn = document.createElement('button');
-      replayBtn.type = 'button';
-      replayBtn.className = 'workshop-part-btn complete-btn';
-      replayBtn.textContent = '🔄 Démonter et réassembler le calibre';
-      replayBtn.addEventListener('click', () => {
-        this.soundEngine.playSnap();
-        this.openWorkshop();
-      });
-      tray.appendChild(replayBtn);
-      return;
+  private renderWorkshopUI(): void {
+    const tray = document.getElementById('workshop-parts-tray');
+    const instr = document.getElementById('workshop-instruction');
+    const dialBtn = document.getElementById('toggle-dial-btn');
+    if (!tray || !this.watchMechanism) return;
+
+    if (dialBtn) {
+      dialBtn.textContent = this.watchMechanism.showDial ? '👁️ Cadran : Oui' : '👁️ Cadran : Non';
     }
 
-    this.watchMechanism.parts.forEach(part => {
+    tray.innerHTML = '';
+    ALL_PARTS.forEach(partId => {
+      const info = PART_INFO[partId];
+      const isPlaced = this.saveData.placedParts.includes(partId);
       const btn = document.createElement('button');
       btn.type = 'button';
-      btn.className = `workshop-part-btn${part.placed ? ' placed' : ''}`;
-      btn.disabled = part.placed;
-      btn.textContent = part.placed ? `✓ ${part.name}` : `⚙️ ${part.name}`;
+      btn.className = `workshop-part-btn${isPlaced ? ' placed' : ''}`;
+      btn.textContent = isPlaced ? `✓ ${info.label}` : `+ ${info.label}`;
       btn.addEventListener('click', () => {
-        if (!this.watchMechanism || part.placed) return;
-        this.watchMechanism.placeNextPart(part.id);
-        if (this.watchMechanism.isComplete()) {
-          this.soundEngine.playLevelComplete();
-        } else {
+        const idx = this.saveData.placedParts.indexOf(partId);
+        if (idx === -1) {
+          this.saveData.placedParts.push(partId);
           this.soundEngine.playSuccess();
+          if (instr) instr.innerHTML = `✨ <strong>${info.label}</strong> : ${info.desc}`;
+        } else {
+          this.saveData.placedParts.splice(idx, 1);
+          this.soundEngine.playSnap();
+          if (instr) instr.textContent = `${info.label} retirée du mécanisme.`;
         }
+        SaveManager.save(this.saveData);
+        this.renderWorkshopUI();
       });
       tray.appendChild(btn);
     });
+
+    if (instr && !instr.innerHTML) {
+      instr.textContent =
+        this.saveData.placedParts.length === ALL_PARTS.length
+          ? '👑 Toutes les pièces sont en place ! Maintiens la molette à gauche pour remonter le ressort !'
+          : 'Touche les 6 pièces en bas pour assembler le mécanisme de ta montre !';
+    }
   }
 
   private returnToMenu(): void {
     this.clearPendingAnimations();
-    this.watchMechanism?.stop();
     document.getElementById('game-screen')?.classList.add('hidden');
     document.getElementById('workshop-screen')?.classList.add('hidden');
     document.getElementById('main-menu')?.classList.remove('hidden');
@@ -254,15 +306,43 @@ export class GameEngine {
       this.returnToMenu();
     });
 
-    document.getElementById('workshopCanvas')?.addEventListener('click', () => {
-      if (!this.watchMechanism || this.watchMechanism.isComplete()) return;
-      this.watchMechanism.placeNextPart();
-      if (this.watchMechanism.isComplete()) {
-        this.soundEngine.playLevelComplete();
-      } else {
-        this.soundEngine.playSuccess();
-      }
+    document.getElementById('toggle-dial-btn')?.addEventListener('click', () => {
+      if (!this.watchMechanism) return;
+      this.watchMechanism.showDial = !this.watchMechanism.showDial;
+      this.soundEngine.playSnap();
+      this.renderWorkshopUI();
     });
+
+    // Remontage par le bouton "🔄 Remonter" ou directement sur la molette (crown) du Canvas
+    const windBtn = document.getElementById('wind-crown-btn');
+    const startWinding = (e: Event) => {
+      e.preventDefault();
+      this.isWinding = true;
+    };
+    const stopWinding = () => {
+      this.isWinding = false;
+    };
+    windBtn?.addEventListener('mousedown', startWinding);
+    windBtn?.addEventListener('touchstart', startWinding, { passive: false });
+    window.addEventListener('mouseup', stopWinding);
+    window.addEventListener('touchend', stopWinding);
+
+    if (this.workshopCanvas) {
+      const onWorkshopPointerDown = (e: MouseEvent | TouchEvent) => {
+        if (!this.watchMechanism || !this.workshopCanvas) return;
+        const rect = this.workshopCanvas.getBoundingClientRect();
+        const clientX = 'touches' in e ? e.touches[0].clientX : (e as MouseEvent).clientX;
+        const clientY = 'touches' in e ? e.touches[0].clientY : (e as MouseEvent).clientY;
+        const canvasX = (clientX - rect.left) * (this.workshopCanvas.width / rect.width);
+        const canvasY = (clientY - rect.top) * (this.workshopCanvas.height / rect.height);
+        if (this.watchMechanism.isPointInCrown(canvasX, canvasY)) {
+          e.preventDefault();
+          this.isWinding = true;
+        }
+      };
+      this.workshopCanvas.addEventListener('mousedown', onWorkshopPointerDown);
+      this.workshopCanvas.addEventListener('touchstart', onWorkshopPointerDown, { passive: false });
+    }
 
     document.getElementById('back-menu-btn')?.addEventListener('click', () => {
       this.soundEngine.playSnap();
@@ -530,15 +610,14 @@ export class GameEngine {
       }
     });
 
-    // Mise à jour de la carte Récompense Finale : L'Atelier de l'Horloger
     const workshopBtn = document.getElementById('workshop-btn');
     const workshopStatus = document.getElementById('workshop-status');
     const workshopUnlocked = SaveManager.isWorkshopUnlocked(this.saveData);
     if (workshopBtn && workshopStatus) {
       if (workshopUnlocked) {
         workshopBtn.classList.remove('locked');
-        workshopStatus.textContent = '▶';
-        workshopStatus.className = 'lvl-status play';
+        workshopStatus.textContent = `${this.saveData.placedParts.length}/6 ⚙️`;
+        workshopStatus.className = 'lvl-status stars-badge';
       } else {
         workshopBtn.classList.add('locked');
         workshopStatus.textContent = '🔒';
@@ -901,7 +980,6 @@ export class GameEngine {
 
     this.updatePhaseStarsUI();
 
-    // Pilule Jour/Nuit affichée au-dessus de la question (emplacement fixe)
     if (periodChipEl) {
       if (this.currentLevel >= 5 && this.targetTime?.periodLabel) {
         periodChipEl.textContent = this.targetTime.periodLabel;
