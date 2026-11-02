@@ -1,4 +1,4 @@
-export type WorkshopZoom = 'overview' | 'spring' | 'minutes' | 'seconds';
+export type WorkshopZoom = 'overview' | 'spring' | 'hours' | 'minutes' | 'seconds';
 
 interface CameraTarget {
   scale: number;
@@ -50,13 +50,19 @@ export class WatchMechanism {
   };
 
   /**
-   * Cadrage 1:1 sans déformation dans un Canvas carré 500×500
+   * Cadrages des 5 vues de la Loupe d'Horloger dans le Canvas carré 500×500 :
+   * - 'overview' : Vue globale du mouvement
+   * - 'spring'   : 1. Molette, vis sans fin et ressort de barillet (à droite)
+   * - 'hours'    : 2. Engrènement direct du barillet sur la grande roue dorée des heures et sa petite aiguille
+   * - 'minutes'  : 3. Double roue relais supérieure et roue centrale bleue des minutes
+   * - 'seconds'  : 4. Double roue relais gauche, roue rouge des secondes et ancre Tic-Tac
    */
   private static readonly CAMERA_TARGETS: Record<WorkshopZoom, CameraTarget> = {
     overview: { scale: 1.42, x: 32, y: 0 },
-    spring: { scale: 2.55, x: 96, y: -18 },
-    minutes: { scale: 2.55, x: 0, y: -38 },
-    seconds: { scale: 2.55, x: -26, y: 12 }
+    spring: { scale: 2.5, x: 96, y: -18 },
+    hours: { scale: 2.35, x: 24, y: -12 },
+    minutes: { scale: 2.5, x: 0, y: -38 },
+    seconds: { scale: 2.5, x: -26, y: 12 }
   };
 
   constructor(
@@ -138,17 +144,19 @@ export class WatchMechanism {
     // 3. Marche du mouvement :
     // - En Vitesse réelle : 1 battement ("Tic" ou "Tac") toutes les 1000 ms (1 seconde exacte)
     // - En Mode accéléré : 1 battement toutes les 140 ms (~7x plus rapide)
+    // Dans les DEUX modes, le train de rouages conserve ses rapports cinématiques visuels (1 : 3.5 : 10.5)
+    // afin que l'enfant voie tourner les roues et aiguilles des Minutes et des Heures même en Vitesse réelle !
     if (this.power > 0 && !isWinding) {
-      const dischargeRate = this.realTimeMode ? 0.00015 : 0.0014;
+      const dischargeRate = this.realTimeMode ? 0.00035 : 0.0016;
       this.power = Math.max(0, this.power - deltaTime * dischargeRate);
 
       const stepPeriodMs = this.realTimeMode ? 1000 : 140;
       const stepAngleSec = Math.PI / 30; // 1 seconde = 6° (1/60e de tour)
 
-      // Avancée continue très douce des roues lentes (Minutes et Heures)
+      // Avancée synchronisée des roues et aiguilles des Minutes et des Heures
       const continuousSecEquivalent = (deltaTime / stepPeriodMs) * stepAngleSec;
-      const deltaMin = this.realTimeMode ? continuousSecEquivalent / 60 : continuousSecEquivalent / 3.5;
-      const deltaHr = this.realTimeMode ? deltaMin / 12 : continuousSecEquivalent / 10.5;
+      const deltaMin = continuousSecEquivalent / 3.5;
+      const deltaHr = continuousSecEquivalent / 10.5;
 
       this.angleHours = (this.angleHours + deltaHr) % (Math.PI * 2);
       this.syncBarrelPhaseWithHours();
@@ -170,10 +178,8 @@ export class WatchMechanism {
         this.isTicPhase = !this.isTicPhase;
       }
 
-      // Saut mécanique rapide sur les 65 premières millisecondes, puis arrêt franc (saccade)
       const jumpDurationMs = Math.min(65, stepPeriodMs * 0.45);
       const jumpProgress = Math.min(1, this.stepTimerMs / jumpDurationMs);
-      // Courbe de saut horloger franche
       const easedJump = 1 - Math.pow(1 - jumpProgress, 3);
 
       let deltaStep = this.targetSecondsAngle - this.prevSecondsAngle;
@@ -184,12 +190,6 @@ export class WatchMechanism {
     }
   }
 
-  private getGroupAlpha(group: 'spring' | 'minutes' | 'seconds'): number {
-    if (this.zoomMode === 'overview') return 1;
-    if (this.zoomMode === group) return 1;
-    return 0.22;
-  }
-
   public draw(isWinding: boolean): void {
     this.ctx.clearRect(0, 0, this.width, this.height);
     this.ctx.save();
@@ -198,29 +198,33 @@ export class WatchMechanism {
     this.ctx.translate(-this.currentFocusX, -this.currentFocusY);
 
     const { crown, spring, hours, relayMinutes, minutes, relaySeconds, seconds, escapement } = WatchMechanism.POS;
+    const z = this.zoomMode;
 
     // 1. Début de bracelet (haut/bas) + Platine squelette parfaitement ronde
     this.drawChassisWithBraceletStubs();
 
-    // 2. Roue des Heures
+    // 2. Roue dorée des Heures (mise en valeur dans Vue globale, Ressort, Heures et Minutes)
     this.ctx.save();
     this.ctx.globalAlpha =
-      this.zoomMode === 'overview' || this.zoomMode === 'spring' || this.zoomMode === 'minutes' ? 1 : 0.25;
+      z === 'overview' || z === 'hours' || z === 'spring' || z === 'minutes' ? 1 : 0.22;
     this.drawToyDiscGear(hours.x, hours.y, hours.r, hours.teeth, this.angleHours, '#fbbf24', '#b45309', '#fef3c7', 8);
     this.ctx.restore();
 
-    // 3. Barillet du Ressort et Molette à droite (Zoom 1 : 'spring')
+    // 3. Barillet du Ressort et Molette à droite (mis en valeur dans Ressort et Heures)
     this.ctx.save();
-    this.ctx.globalAlpha = this.getGroupAlpha('spring');
+    this.ctx.globalAlpha = z === 'overview' || z === 'spring' ? 1 : z === 'hours' ? 0.85 : 0.2;
     this.drawToyBarrel(spring.x, spring.y, spring.r, spring.teeth, this.angleBarrel, this.power);
+    this.ctx.restore();
+
+    this.ctx.save();
+    this.ctx.globalAlpha = z === 'overview' || z === 'spring' ? 1 : 0.22;
     this.drawRightCrownAndWormStem(crown.x, crown.y, this.wormOffset, isWinding && this.power < 100);
     this.ctx.restore();
 
-    // 4. Train des Minutes à double roue (Zoom 2 : 'minutes')
+    // 4. Train des Minutes à double roue (mis en valeur dans Minutes)
     this.ctx.save();
     this.ctx.globalAlpha =
-      this.zoomMode === 'overview' || this.zoomMode === 'minutes' || this.zoomMode === 'seconds' ? 1 : 0.22;
-    if (this.zoomMode === 'seconds') this.ctx.globalAlpha = 0.45;
+      z === 'overview' || z === 'minutes' ? 1 : z === 'seconds' ? 0.42 : 0.18;
     this.drawSteppedRelayGear(
       relayMinutes.x,
       relayMinutes.y,
@@ -236,9 +240,9 @@ export class WatchMechanism {
     this.drawToyDiscGear(minutes.x, minutes.y, minutes.r, minutes.teeth, this.angleMinutes, '#38bdf8', '#0284c7', '#e0f2fe', 6);
     this.ctx.restore();
 
-    // 5. Train des Secondes à gauche & Échappement Tic-Tac en bas (Zoom 3 : 'seconds')
+    // 5. Train des Secondes à gauche & Échappement Tic-Tac en bas (mis en valeur dans Secondes)
     this.ctx.save();
-    this.ctx.globalAlpha = this.getGroupAlpha('seconds');
+    this.ctx.globalAlpha = z === 'overview' || z === 'seconds' ? 1 : 0.18;
     this.drawSteppedRelayGear(
       relaySeconds.x,
       relaySeconds.y,
@@ -255,7 +259,7 @@ export class WatchMechanism {
     this.drawSimpleTicTacClicker(escapement.x, escapement.y, this.isTicPhase ? 1 : -1);
     this.ctx.restore();
 
-    // 6. Aiguilles seules (sans cadran)
+    // 6. Aiguilles avec mise en valeur selon le zoom actif
     this.drawHandsOnly();
 
     this.ctx.restore();
@@ -297,10 +301,6 @@ export class WatchMechanism {
     this.ctx.stroke();
   }
 
-  /**
-   * Dessine la molette à droite, sa vis sans fin et un écrou de butée doré
-   * qui avance le long de la tige et se bloque en bout de course à 100% !
-   */
   private drawRightCrownAndWormStem(x: number, y: number, offset: number, isActivelyWinding: boolean): void {
     this.ctx.save();
     this.ctx.translate(x, y);
@@ -313,14 +313,12 @@ export class WatchMechanism {
     const pitch = 12;
     const atMaxStop = this.power >= 100;
 
-    // 1. Arbre métallique principal
     this.ctx.fillStyle = '#94a3b8';
     this.ctx.fillRect(stemLeft, -5, stemLength, 10);
     this.ctx.strokeStyle = '#334155';
     this.ctx.lineWidth = 2;
     this.ctx.strokeRect(stemLeft, -5, stemLength, 10);
 
-    // 2. Filets trapézoïdaux de la vis sans fin
     this.ctx.fillStyle = isActivelyWinding ? '#fde047' : '#e2e8f0';
     this.ctx.strokeStyle = '#334155';
     this.ctx.lineWidth = 1.6;
@@ -346,7 +344,6 @@ export class WatchMechanism {
       this.ctx.stroke();
     }
 
-    // 3. Butée gauche fixe en laiton (x = stemLeft - 6)
     this.ctx.fillStyle = '#d97706';
     this.ctx.strokeStyle = '#78350f';
     this.ctx.lineWidth = 2;
@@ -355,8 +352,6 @@ export class WatchMechanism {
     this.ctx.fill();
     this.ctx.stroke();
 
-    // 4. Bague d'arrêt mobile (curseurs de course sur la tige entre la molette et la vis) :
-    // glisse vers la butée gauche au fur et à mesure que power approche 100% (bout de course)
     const travelStart = -26;
     const travelEnd = -60;
     const nutX = travelStart + (travelEnd - travelStart) * (this.power / 100);
@@ -368,11 +363,9 @@ export class WatchMechanism {
     this.ctx.fill();
     this.ctx.stroke();
 
-    // Butée d'arrêt de fin de course à x = -64
     this.ctx.fillStyle = '#475569';
     this.ctx.fillRect(-64, -8, 4, 16);
 
-    // 5. Molette extérieure crantée à droite
     if (isActivelyWinding) {
       this.ctx.shadowColor = '#fbbf24';
       this.ctx.shadowBlur = 18;
@@ -576,7 +569,7 @@ export class WatchMechanism {
     this.ctx.restore();
   }
 
-  private drawSimpleTicTacClicker(x: number, y: number,rockDir: 1 | -1): void {
+  private drawSimpleTicTacClicker(x: number, y: number, rockDir: 1 | -1): void {
     const bounce = rockDir * 0.24;
     this.ctx.save();
     this.ctx.translate(x, y);
@@ -611,9 +604,11 @@ export class WatchMechanism {
   }
 
   private drawHandsOnly(): void {
-    // Petite aiguille des Heures
+    const z = this.zoomMode;
+
+    // Petite aiguille des Heures (mise en valeur dans Vue globale et 2. Roue des Heures)
     this.ctx.save();
-    this.ctx.globalAlpha = this.zoomMode === 'seconds' ? 0.25 : 1;
+    this.ctx.globalAlpha = z === 'overview' || z === 'hours' ? 1 : 0.22;
     this.ctx.rotate(this.angleHours);
     this.ctx.shadowColor = 'rgba(0, 0, 0, 0.65)';
     this.ctx.shadowBlur = 5;
@@ -629,9 +624,9 @@ export class WatchMechanism {
     this.ctx.stroke();
     this.ctx.restore();
 
-    // Grande aiguille des Minutes
+    // Grande aiguille des Minutes (mise en valeur dans Vue globale et 3. Train des Minutes)
     this.ctx.save();
-    this.ctx.globalAlpha = this.zoomMode === 'spring' || this.zoomMode === 'seconds' ? 0.25 : 1;
+    this.ctx.globalAlpha = z === 'overview' || z === 'minutes' ? 1 : 0.22;
     this.ctx.rotate(this.angleMinutes);
     this.ctx.shadowColor = 'rgba(0, 0, 0, 0.65)';
     this.ctx.shadowBlur = 5;
@@ -644,9 +639,9 @@ export class WatchMechanism {
     this.ctx.stroke();
     this.ctx.restore();
 
-    // Trotteuse rouge des Secondes (avance de manière saccadée)
+    // Trotteuse rouge des Secondes (mise en valeur dans Vue globale et 4. Secondes & Tic-Tac)
     this.ctx.save();
-    this.ctx.globalAlpha = this.zoomMode === 'spring' || this.zoomMode === 'minutes' ? 0.25 : 1;
+    this.ctx.globalAlpha = z === 'overview' || z === 'seconds' ? 1 : 0.22;
     this.ctx.rotate(this.angleSeconds);
     this.ctx.shadowColor = 'rgba(0, 0, 0, 0.5)';
     this.ctx.shadowBlur = 4;

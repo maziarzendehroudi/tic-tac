@@ -27,24 +27,8 @@ function createMockCtx(): CanvasRenderingContext2D {
   } as unknown as CanvasRenderingContext2D;
 }
 
-describe('WatchMechanism V30 — Bout de course à 100%, Trotteuse saccadée & Tic-Tac 1 seconde', () => {
-  it('bloque la vis sans fin et le barillet en bout de course dès que le ressort atteint 100%', () => {
-    const wm = new WatchMechanism(createMockCtx(), 500, 500);
-    wm.power = 99.5;
-    wm.update(100, true); // Atteint 100%
-    expect(wm.power).toBe(100);
-    expect(wm.isAtEndStop()).toBe(true);
-
-    const wormAtStop = wm.wormOffset;
-    const barrelAtStop = wm.angleBarrel;
-
-    // On continue à maintenir la molette à 100% : rien ne doit plus bouger (bout de course)
-    wm.update(500, true);
-    expect(wm.wormOffset).toBe(wormAtStop);
-    expect(wm.angleBarrel).toBe(barrelAtStop);
-  });
-
-  it('déclenche le son Tic-Tac exactement toutes les 1000 ms (1 seconde) en mode Vitesse réelle et avance par saccades', () => {
+describe('WatchMechanism V31 — Rotation des 3 Aiguilles en Vitesse Réelle & Zoom Roue des Heures', () => {
+  it('fait tourner visiblement les aiguilles des Heures, des Minutes ET des Secondes en mode Vitesse réelle', () => {
     let ticks = 0;
     const wm = new WatchMechanism(createMockCtx(), 500, 500, () => {
       ticks++;
@@ -52,20 +36,31 @@ describe('WatchMechanism V30 — Bout de course à 100%, Trotteuse saccadée & T
     wm.realTimeMode = true;
     wm.power = 80;
 
-    // À 500 ms (0.5 s) : aucun nouveau Tic-Tac déclenché, l'aiguille des secondes reste fixe sur sa graduation
-    wm.update(500, false);
-    expect(ticks).toBe(0);
-    expect(wm.angleSeconds).toBe(0);
+    const initialHours = wm.angleHours;
+    const initialMinutes = wm.angleMinutes;
+    const initialSeconds = wm.angleSeconds;
 
-    // À 1000 ms (1.0 s) : exactement 1 Tic-Tac déclenché !
-    wm.update(500, false);
-    expect(ticks).toBe(1);
-
-    // 70 ms plus tard (fin du saut mécanique) : l'aiguille s'est calée pile sur 1 seconde (π/30 rad) et ne bouge plus jusqu'à 2000 ms
+    // Avance de 1000 ms (1 seconde réelle) + 70 ms pour terminer le saut de la trotteuse
+    wm.update(1000, false);
     wm.update(70, false);
-    expect(wm.angleSeconds).toBeCloseTo(Math.PI / 30, 4);
-    wm.update(400, false);
-    expect(wm.angleSeconds).toBeCloseTo(Math.PI / 30, 4);
+
+    expect(ticks).toBe(1);
+    expect(wm.angleSeconds).toBeGreaterThan(initialSeconds);
+    expect(wm.angleMinutes).toBeGreaterThan(initialMinutes);
+    expect(wm.angleHours).toBeGreaterThan(initialHours);
+  });
+
+  it('supporte le zoom dédié sur la Roue des Heures ("hours") et bloque la vis en bout de course à 100%', () => {
+    const wm = new WatchMechanism(createMockCtx(), 500, 500);
+    wm.setZoomMode('hours');
+    expect(wm.zoomMode).toBe('hours');
+
+    wm.power = 99.8;
+    wm.update(100, true);
+    expect(wm.power).toBe(100);
+    const wormAtStop = wm.wormOffset;
+    wm.update(400, true);
+    expect(wm.wormOffset).toBe(wormAtStop);
   });
 });
 

@@ -22,20 +22,24 @@ interface CelebrationParticle {
 
 const ZOOM_EXPLANATIONS: Record<WorkshopZoom, { label: string; desc: string }> = {
   overview: {
-    label: '🔍 Vue globale',
-    desc: 'Voici le mouvement complet ! Utilise les <strong>loupes en bas</strong> pour explorer chaque engrenage de près.'
+    label: '🔍 Vue globale du mouvement',
+    desc: 'Voici le mouvement complet ! Touche les <strong>4 loupes numérotées</strong> en bas pour voir comment chaque aiguille est entraînée.'
   },
   spring: {
     label: '⚙️ 1. Molette & Ressort',
-    desc: 'À droite, la <strong>vis sans fin</strong> de la molette pousse les dents du barillet : le <strong>ressort orange</strong> se serre quand tu remontes et se détend pour faire tourner la roue des heures !'
+    desc: 'À droite, la <strong>vis sans fin</strong> de la molette pousse les dents du barillet : le <strong>ressort orange</strong> se serre quand tu remontes et libère son énergie en se détendant !'
+  },
+  hours: {
+    label: '🟠 2. Roue des Heures',
+    desc: 'En se déroulant, le barillet du ressort entraîne directement la <strong>grande roue dorée centrale</strong> qui fait tourner la <strong>petite aiguille des heures</strong> !'
   },
   minutes: {
-    label: '🔵 2. Train des Minutes',
-    desc: 'En haut, la <strong>double roue relais</strong> (petit pignon doré + grande roue bleue) démultiplie la vitesse pour entraîner la <strong>grande aiguille des minutes</strong> au centre !'
+    label: '🔵 3. Train des Minutes',
+    desc: 'En haut, la <strong>double roue relais</strong> (petit pignon doré + grande roue bleue) multiplie la vitesse de la roue des heures pour entraîner la <strong>grande aiguille des minutes</strong> !'
   },
   seconds: {
-    label: '🔴 3. Secondes & Tic-Tac',
-    desc: 'À gauche, la double roue accélère la <strong>roue rouge des secondes</strong>, tandis qu’en bas l’ancre dorée du <strong>Tic-Tac</strong> bloque et libère une dent à chaque battement !'
+    label: '🔴 4. Secondes & Tic-Tac',
+    desc: 'À gauche, la double roue entraîne la <strong>trotteuse rouge des secondes</strong> par saccades au rythme de l’ancre dorée du <strong>Tic-Tac</strong> en bas !'
   }
 };
 
@@ -203,7 +207,7 @@ export class GameEngine {
       instr.innerHTML = ZOOM_EXPLANATIONS[activeZoom].desc;
     }
 
-    const zoomModes: WorkshopZoom[] = ['overview', 'spring', 'minutes', 'seconds'];
+    const zoomModes: WorkshopZoom[] = ['overview', 'spring', 'hours', 'minutes', 'seconds'];
     tray.innerHTML = '';
     zoomModes.forEach(mode => {
       const info = ZOOM_EXPLANATIONS[mode];
