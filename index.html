@@ -13,8 +13,8 @@
     <link href="https://fonts.googleapis.com/css2?family=Fredoka:wght@400;600;700&display=swap" rel="stylesheet">
     <link rel="manifest" href="./manifest.json">
     <meta name="theme-color" content="#38bdf8">
-    <script type="module" crossorigin src="/tic-tac/assets/index-DLhnnUPV.js"></script>
-    <link rel="stylesheet" crossorigin href="/tic-tac/assets/index-CljY2VY8.css">
+    <script type="module" crossorigin src="/tic-tac/assets/index-2JbTurcz.js"></script>
+    <link rel="stylesheet" crossorigin href="/tic-tac/assets/index-CPOnBACZ.css">
   </head>
   <body class="theme-day">
     <div id="sky-backdrop" aria-hidden="true">
@@ -28,8 +28,20 @@
       <!-- VUE 1 : MENU PRINCIPAL -->
       <div id="main-menu" class="view">
         <div id="global-top-bar">
-          <button id="dev-unlock-btn" type="button" title="Bouton provisoire de test">🔓 Mode Test</button>
-          <button id="sound-toggle-btn" type="button" aria-pressed="true" aria-label="Activer ou couper le son" title="Son">🔊</button>
+          <div class="top-left-actions">
+            <button id="profile-btn" type="button" title="Changer de joueur">
+              👤 <span id="current-profile-name">Joueur 1</span> ▾
+            </button>
+            <button id="dev-unlock-btn" type="button" title="Bouton provisoire de test">🔓 Mode Test</button>
+          </div>
+          <button id="sound-toggle-btn" type="button" aria-pressed="true" aria-label="Activer ou couper le son" title="Son actif">
+            <svg viewBox="0 0 24 24" width="26" height="26" fill="none" stroke="currentColor" stroke-width="2.3" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+              <polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5" fill="currentColor" fill-opacity="0.2"></polygon>
+              <path class="sound-wave" d="M15.54 8.46a5 5 0 0 1 0 7.07"></path>
+              <path class="sound-wave" d="M19.07 4.93a10 10 0 0 1 0 14.14"></path>
+              <line class="mute-slash" x1="3" y1="3" x2="21" y2="21"></line>
+            </svg>
+          </button>
         </div>
 
         <div id="main-title-box">
@@ -37,7 +49,7 @@
           <p>Apprends à lire l'heure pas à pas !</p>
           <div id="player-progress-bar">
             <span id="player-rank-title">⏱️ Apprenti du Temps</span>
-            <span id="player-stars-count">⭐ 0 / 18</span>
+            <span id="player-stars-count">⭐ 0 / 21</span>
           </div>
         </div>
 
@@ -85,7 +97,15 @@
           <button class="level-rect lvl-6 locked" data-level="6">
             <span class="lvl-badge">6</span>
             <div class="lvl-content">
-              <span class="lvl-title">Maître du Temps</span>
+              <span class="lvl-title">À la Minute près</span>
+            </div>
+            <span class="lvl-status locked-icon">🔒</span>
+          </button>
+
+          <button class="level-rect lvl-7 locked" data-level="7">
+            <span class="lvl-badge">7</span>
+            <div class="lvl-content">
+              <span class="lvl-title">L'Horloge des Grands</span>
             </div>
             <span class="lvl-status locked-icon">🔒</span>
           </button>
@@ -118,26 +138,29 @@
             </div>
 
             <div id="placement-tools" class="hidden">
-              <div class="hand-selector-group">
-                <button id="select-hour-btn" type="button" class="hand-select-btn hour-mode active-hand-btn">
-                  <span class="dot-indicator dot-hour"></span> Aiguille Heures
-                </button>
-                <button id="select-minute-btn" type="button" class="hand-select-btn minute-mode">
-                  <span class="dot-indicator dot-minute"></span> Aiguille Minutes
-                </button>
-              </div>
-              <div class="verify-row">
-                <button id="step-minus-btn" type="button" class="nudge-btn" aria-label="Reculer l'aiguille">−</button>
-                <button id="check-btn" type="button">✓ Vérifier</button>
-                <button id="step-plus-btn" type="button" class="nudge-btn" aria-label="Avancer l'aiguille">+</button>
-              </div>
+              <button id="check-btn" type="button">✓ Vérifier</button>
             </div>
           </div>
 
-          <!-- 3. COMMENTAIRES TOUJOURS EN DESSOUS -->
+          <!-- 3. COMMENTAIRES + BOUTON "SUIVANT ➔" TOUJOURS EN DESSOUS -->
           <div id="help-box" class="invisible-feedback">
             <span id="help-text"></span>
+            <button id="next-question-btn" type="button" class="hidden">Suivant ➔</button>
           </div>
+        </div>
+      </div>
+
+      <!-- MODALE MULTI-PROFILS (FRATRIE) -->
+      <div id="profile-modal" class="modal hidden">
+        <div class="modal-content profile-modal-content">
+          <h2>Qui joue ?</h2>
+          <p class="profile-subtitle">Chaque joueur garde ses niveaux et ses étoiles !</p>
+          <div id="profiles-list"></div>
+          <form id="add-profile-form">
+            <input id="new-profile-input" type="text" maxlength="16" placeholder="Prénom du nouveau joueur..." autocomplete="off" />
+            <button type="submit" id="add-profile-submit">+ Créer</button>
+          </form>
+          <button id="profile-close-btn" type="button">Fermer</button>
         </div>
       </div>
 
