@@ -7,6 +7,17 @@ import type { GameSave } from './SaveManager';
 import { SoundEngine } from './SoundEngine';
 import { TimeMath } from './TimeMath';
 
+interface CelebrationParticle {
+  x: number;
+  y: number;
+  vx: number;
+  vy: number;
+  size: number;
+  color: string;
+  rotation: number;
+  vRot: number;
+}
+
 export class GameEngine {
   private canvas: HTMLCanvasElement;
   private ctx: CanvasRenderingContext2D;
@@ -22,12 +33,17 @@ export class GameEngine {
   private currentChoices: TimeTarget[] = [];
   private saveData: GameSave;
   private errorsCount: number = 0;
+  private levelTotalErrors: number = 0;
+  private currentQuestionAssisted: boolean = false;
+  private highlightHourSector: number | undefined = undefined;
+
   private currentLevel: number = 1;
   private currentPhase: 1 | 2 = 1;
   private phaseSuccessCount: number = 0;
 
   private isDragging: boolean = false;
   private isTransitioning: boolean = false;
+  private celebrationAnimId: number = 0;
   private activeHand: 'hour' | 'minute' = 'hour';
 
   constructor(canvas: HTMLCanvasElement) {
@@ -56,9 +72,11 @@ export class GameEngine {
   }
 
   public startLevel(level: number): void {
+    cancelAnimationFrame(this.celebrationAnimId);
     this.currentLevel = level;
     this.currentPhase = 1;
     this.phaseSuccessCount = 0;
+    this.levelTotalErrors = 0;
     this.isTransitioning = false;
     this.questionManager.setLevel(level);
 
@@ -74,6 +92,7 @@ export class GameEngine {
   }
 
   private returnToMenu(): void {
+    cancelAnimationFrame(this.celebrationAnimId);
     this.isTransitioning = false;
     document.getElementById('game-screen')?.classList.add('hidden');
     document.getElementById('main-menu')?.classList.remove('hidden');
@@ -97,6 +116,8 @@ export class GameEngine {
   private initNewQuestion(): void {
     this.targetTime = this.questionManager.generateQuestion();
     this.errorsCount = 0;
+    this.currentQuestionAssisted = false;
+    this.highlightHourSector = undefined;
     this.isTransitioning = false;
     this.hideHelp();
     this.resetButtonsState();
@@ -290,7 +311,6 @@ export class GameEngine {
     const hrBtn = document.getElementById('select-hour-btn');
     const minBtn = document.getElementById('select-minute-btn');
 
-    // Au Niveau 1 (Heures piles), on masque le bouton "Minutes" superflu pour simplifier l'interface
     if (minBtn) {
       minBtn.style.display = this.currentLevel === 1 ? 'none' : '';
     }
@@ -324,21 +344,34 @@ export class GameEngine {
     }
   }
 
+  /**
+   * Chantier B : Met à jour la barre de grade (/ 18 ⭐) et les 3 étoiles de maîtrise sur chaque niveau
+   */
   private updateMenuUI(): void {
     const levelRects = document.querySelectorAll('.level-rect');
     const maxUnlocked = this.saveData.maxUnlockedLevel || 1;
 
+    const totalStars = SaveManager.getTotalStars(this.saveData);
+    const rankTitle = SaveManager.getRankTitle(totalStars);
+    const rankEl = document.getElementById('player-rank-title');
+    const starsCountEl = document.getElementById('player-stars-count');
+    if (rankEl) rankEl.textContent = rankTitle;
+    if (starsCountEl) starsCountEl.textContent = `⭐ ${totalStars} / 18`;
+
     levelRects.forEach(rect => {
       const level = parseInt(rect.getAttribute('data-level') || '1', 10);
       const statusEl = rect.querySelector('.lvl-status');
-      const isCompleted = this.saveData.completedLevels.includes(level);
+      const starsEarned = this.saveData.levelStars[level] || 0;
 
       if (level <= maxUnlocked) {
         rect.classList.remove('locked');
         if (statusEl) {
-          if (isCompleted || level < maxUnlocked) {
-            statusEl.textContent = '✓';
-            statusEl.className = 'lvl-status done';
+          if (starsEarned > 0) {
+            const starsHtml = [1, 2, 3]
+              .map(s => (s <= starsEarned ? '<span class="lvl-star-on">★</span>' : '<span class="lvl-star-off">☆</span>'))
+              .join('');
+            statusEl.innerHTML = starsHtml;
+            statusEl.className = 'lvl-status stars-badge';
           } else {
             statusEl.textContent = '▶';
             statusEl.className = 'lvl-status play';
@@ -371,18 +404,38 @@ export class GameEngine {
     helpBox.classList.remove('feedback-success', 'feedback-error');
   }
 
+  /**
+   * Chantier A (Maîtrise Active) & Chantier B (Notation 1..3 étoiles + Pluie d'étoiles en fin de niveau)
+   */
   private handleSuccessfulAnswer(): void {
     this.isTransitioning = true;
+    this.triggerSuccessEffect();
+
+    // Chantier A : Si la réponse finale avait été dévoilée après >= 2 erreurs,
+    // on félicite l'enfant d'avoir appliqué l'aide, mais il doit réussir une nouvelle question seul pour gagner l'étoile !
+    if (this.currentQuestionAssisted) {
+      this.soundEngine.playSuccess();
+      this.showFeedback(
+        `👍 <strong>Bien vu avec l'indice !</strong> Essaie la suivante tout seul pour gagner ton étoile ★`,
+        'success'
+      );
+      setTimeout(() => {
+        this.initNewQuestion();
+        this.updateUI();
+        this.render();
+      }, 1500);
+      return;
+    }
+
     this.phaseSuccessCount++;
     this.updatePhaseStarsUI();
-    this.triggerSuccessEffect();
 
     if (this.phaseSuccessCount >= 3) {
       if (this.currentPhase === 1) {
         this.soundEngine.playSuccess();
         this.currentPhase = 2;
         this.phaseSuccessCount = 0;
-        this.showFeedback('🎉 <strong>Bravo !</strong> Maintenant, à toi de placer les aiguilles !', 'success');
+        this.showFeedback('🎉 <strong>Bravo !</strong> Étape 2 : à toi de placer les aiguilles !', 'success');
         setTimeout(() => {
           this.initNewQuestion();
           this.updateUI();
@@ -391,39 +444,112 @@ export class GameEngine {
         return;
       } else {
         this.soundEngine.playLevelComplete();
-        SaveManager.applyLevelRewards(this.saveData, this.currentLevel);
+        const earnedStars = SaveManager.computeStarsForErrors(this.levelTotalErrors);
+        SaveManager.applyLevelRewards(this.saveData, this.currentLevel, earnedStars);
         SaveManager.save(this.saveData);
         this.updateDevButtonUI();
         this.updateMenuUI();
 
-        const levelBadges: Record<number, string> = {
-          1: '🥉 Niveau 1 validé !',
-          2: '🥈 Niveau 2 validé !',
-          3: '🥇 Niveau 3 validé !',
-          4: '🏅 Niveau 4 validé !',
-          5: '🌟 Niveau 5 validé !',
-          6: '👑 Bravo ! Tu es Maître du Temps !'
-        };
+        const starsStr = '★'.repeat(earnedStars) + '☆'.repeat(3 - earnedStars);
+        const msg =
+          earnedStars === 3
+            ? `🏆 <strong>Niveau ${this.currentLevel} parfait (${starsStr}) !</strong> Aucun piège ne te résiste !`
+            : `🏆 <strong>Niveau ${this.currentLevel} validé (${starsStr}) !</strong> Rejoue-le pour viser les 3 étoiles !`;
 
-        this.showFeedback(`🏆 <strong>${levelBadges[this.currentLevel] || 'Niveau terminé !'}</strong>`, 'success');
-        setTimeout(() => { this.returnToMenu(); }, 2000);
+        this.showFeedback(msg, 'success');
+        this.playCelebrationAnimation(earnedStars);
+        setTimeout(() => { this.returnToMenu(); }, 2300);
         return;
       }
     }
 
     this.soundEngine.playSuccess();
-    this.showFeedback(`✨ <strong>Bravo ! Il est bien ${this.targetTime.text} !</strong>`, 'success');
+    const spokenSuffix = this.targetTime.spokenText ? ` (<em>${this.targetTime.spokenText}</em>)` : '';
+    this.showFeedback(`✨ <strong>Bravo ! Il est bien ${this.targetTime.text}${spokenSuffix} !</strong>`, 'success');
     setTimeout(() => {
       this.initNewQuestion();
       this.updateUI();
       this.render();
-    }, 1200);
+    }, 1250);
+  }
+
+  /**
+   * Chantier B : Pluie d'étoiles et de confettis dorés sur le Canvas en fin de niveau
+   */
+  private playCelebrationAnimation(earnedStars: 1 | 2 | 3): void {
+    const colors = ['#fbbf24', '#38bdf8', '#34d399', '#f43f5e', '#a855f7'];
+    const particles: CelebrationParticle[] = [];
+    for (let i = 0; i < 42; i++) {
+      const angle = (Math.random() * Math.PI * 2);
+      const speed = 2.5 + Math.random() * 5.5;
+      particles.push({
+        x: 0,
+        y: 0,
+        vx: Math.cos(angle) * speed,
+        vy: Math.sin(angle) * speed - 2,
+        size: 6 + Math.random() * 7,
+        color: colors[i % colors.length],
+        rotation: Math.random() * Math.PI,
+        vRot: (Math.random() - 0.5) * 0.2
+      });
+    }
+
+    const animate = () => {
+      this.render();
+      const ctx = this.ctx;
+      ctx.save();
+
+      particles.forEach(p => {
+        p.x += p.vx;
+        p.y += p.vy;
+        p.vy += 0.16; // Gravité douce
+        p.rotation += p.vRot;
+
+        ctx.save();
+        ctx.translate(p.x, p.y);
+        ctx.rotate(p.rotation);
+        ctx.fillStyle = p.color;
+        ctx.fillRect(-p.size / 2, -p.size / 2, p.size, p.size * 0.65);
+        ctx.restore();
+      });
+
+      // Badge central des étoiles gagnées
+      ctx.beginPath();
+      ctx.roundRect(-115, -34, 230, 68, 22);
+      ctx.fillStyle = 'rgba(15, 23, 42, 0.92)';
+      ctx.fill();
+      ctx.lineWidth = 3;
+      ctx.strokeStyle = '#fbbf24';
+      ctx.stroke();
+
+      ctx.font = '700 36px "Fredoka", sans-serif';
+      ctx.fillStyle = '#fbbf24';
+      ctx.textAlign = 'center';
+      ctx.textBaseline = 'middle';
+      const starsDisplay = '★ '.repeat(earnedStars) + '☆ '.repeat(3 - earnedStars);
+      ctx.fillText(starsDisplay.trim(), 0, 2);
+
+      ctx.restore();
+      this.celebrationAnimId = requestAnimationFrame(animate);
+    };
+
+    this.celebrationAnimId = requestAnimationFrame(animate);
   }
 
   private handleFailedAttempt(): void {
     this.errorsCount++;
+    this.levelTotalErrors++;
+    // Chantier C : Affichage immédiat du secteur "Territoire de l'Heure" sur le cadran !
+    this.highlightHourSector = this.targetTime.hours;
+
+    // Chantier A : Si l'enfant fait une 2e erreur sur la même question, la solution est révélée (question assistée)
+    if (this.errorsCount >= 2) {
+      this.currentQuestionAssisted = true;
+    }
+
     this.soundEngine.playError();
     this.triggerShakeEffect();
+    this.render();
     this.showDiagnosticHelp();
   }
 
@@ -438,7 +564,7 @@ export class GameEngine {
       if (this.errorsCount === 1) {
         this.showFeedback(`💡 ${baseExplanation}`, 'error');
       } else {
-        this.showFeedback(`💡 ${baseExplanation} ➔ Il est <strong>${this.targetTime.text}</strong>.`, 'error');
+        this.showFeedback(`💡 ${baseExplanation} ➔ Clique sur <strong>${this.targetTime.text}</strong>.`, 'error');
       }
     } else {
       const isHourCorrect = (this.currentHours % 12) === (this.targetTime.hours % 12);
@@ -464,7 +590,7 @@ export class GameEngine {
         this.activeHand = 'hour';
         this.updateHandSelectorUI();
         this.render();
-        this.showFeedback(`💡 Les minutes sont justes ! Place la petite aiguille orange sur le <strong>${targetDialHour}</strong>.`, 'error');
+        this.showFeedback(`💡 Les minutes sont justes ! Place la petite aiguille orange dans la zone dorée du <strong>${targetDialHour}</strong>.`, 'error');
       } else {
         const minStr = this.targetTime.minutes < 10 ? `0${this.targetTime.minutes}` : `${this.targetTime.minutes}`;
         this.showFeedback(`💡 Place la petite aiguille orange sur le <strong>${targetDialHour}</strong> et la grande aiguille bleue sur <strong>${minStr}</strong>.`, 'error');
@@ -570,13 +696,10 @@ export class GameEngine {
 
   private formatColoredTargetHTML(target: TimeTarget): string {
     const [hPart, mPart] = target.text.split('h');
-    return `<span class="hr-badge" title="Toucher pour régler les heures">${hPart}h</span><span class="min-badge" title="Toucher pour régler les minutes">${mPart}</span>`;
+    const spokenChip = target.spokenText ? `<span class="spoken-chip">« ${target.spokenText} »</span>` : '';
+    return `<span class="hr-badge" title="Toucher pour régler les heures">${hPart}h</span><span class="min-badge" title="Toucher pour régler les minutes">${mPart}</span>${spokenChip}`;
   }
 
-  /**
-   * Affiche les 6 étoiles de progression du niveau (3 en Lecture + 3 en Placement)
-   * sans remise à zéro frustrante au milieu du niveau !
-   */
   private updatePhaseStarsUI(): void {
     const phaseBadge = document.getElementById('phase-badge');
     if (!phaseBadge) return;
@@ -618,7 +741,7 @@ export class GameEngine {
       choicesContainer?.classList.add('hidden');
       this.updateHandSelectorUI();
       if (instructionEl) {
-        instructionEl.innerHTML = `${periodChip}<span>Place sur</span> ${this.formatColoredTargetHTML(this.targetTime)}`;
+        instructionEl.innerHTML = `${periodChip}<span>Place</span> ${this.formatColoredTargetHTML(this.targetTime)}`;
       }
     }
   }
@@ -630,7 +753,7 @@ export class GameEngine {
   public render(): void {
     const isDay = this.currentLevel < 5 ? true : (this.targetTime ? this.targetTime.isDay : true);
     const is24HourTarget = this.targetTime ? TimeMath.is24HourRingTarget(this.targetTime.hours) : false;
-    this.clock.draw(this.currentLevel, isDay, is24HourTarget);
+    this.clock.draw(this.currentLevel, isDay, is24HourTarget, this.highlightHourSector);
     this.hands.draw(
       this.currentHours,
       this.currentMinutes,

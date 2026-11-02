@@ -878,3 +878,74 @@ body.theme-night .sun-orb {
   height: 44px !important;
   font-size: 1.55rem !important;
 }
+
+/* ============================================================================
+   6. CHANTIERS A, B, C, D : BARRE DE GRADE / 18 ⭐, BADGES ★★★ & HEURE PARLÉE
+   ============================================================================ */
+#player-progress-bar {
+  margin-top: 8px;
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+  background: rgba(15, 23, 42, 0.78);
+  backdrop-filter: blur(6px);
+  padding: 6px 14px;
+  border-radius: 20px;
+  border: 1.5px solid rgba(255, 255, 255, 0.3);
+  box-shadow: 0 4px 12px rgba(15, 23, 42, 0.16);
+}
+
+#player-rank-title {
+  font-size: 0.84rem;
+  font-weight: 700;
+  color: #f8fafc;
+}
+
+#player-stars-count {
+  font-size: 0.84rem;
+  font-weight: 700;
+  color: #fbbf24;
+  background: rgba(251, 191, 36, 0.16);
+  padding: 2px 8px;
+  border-radius: 12px;
+}
+
+/* Badge 3 étoiles sur chaque carte de niveau */
+.lvl-status.stars-badge {
+  width: auto !important;
+  min-width: 68px !important;
+  padding: 4px 10px;
+  border-radius: 14px;
+  background: rgba(15, 23, 42, 0.38);
+  border: 1.5px solid rgba(255, 255, 255, 0.35);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 2px;
+  font-size: 1.05rem;
+}
+
+.lvl-star-on {
+  color: #fde047;
+  text-shadow: 0 1px 3px rgba(0, 0, 0, 0.35);
+}
+
+.lvl-star-off {
+  color: rgba(255, 255, 255, 0.38);
+}
+
+/* Pastille d'expression naturelle (« 4 h et demie », « 8 h moins le quart ») */
+.spoken-chip {
+  font-size: 0.82rem;
+  font-weight: 600;
+  color: #0369a1;
+  background: rgba(255, 255, 255, 0.78);
+  padding: 2px 8px;
+  border-radius: 10px;
+  margin-left: 4px;
+  text-shadow: none;
+}
+body.theme-night .spoken-chip {
+  color: #fde68a;
+  background: rgba(15, 23, 42, 0.78);
+}

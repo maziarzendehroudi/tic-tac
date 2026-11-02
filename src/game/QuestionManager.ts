@@ -1,11 +1,12 @@
 import { TimeMath } from './TimeMath';
 
 export interface TimeTarget {
-  hours: number;       // Heure réelle sur 24h (0..23)
-  minutes: number;     // Minutes (0..59)
-  text: string;        // Texte affiché ("8h00" en Niv 1-4, "20h00" ou "08h00" en Niv 5-6)
-  isDay: boolean;      // true = Jour (06h..17h), false = Nuit (18h..05h)
-  periodLabel: string; // Ex: "☀️ Jour — Matin" ou "🌙 Nuit — Soir"
+  hours: number;
+  minutes: number;
+  text: string;
+  spokenText: string;
+  isDay: boolean;
+  periodLabel: string;
 }
 
 export class QuestionManager {
@@ -35,19 +36,19 @@ export class QuestionManager {
   }
 
   public static getPeriodLabel(hours24: number, level: number): string {
-    if (level < 5) return "";
+    if (level < 5) return '';
     const h = ((hours24 % 24) + 24) % 24;
-    if (h === 0) return "🌙 Minuit";
-    if (h >= 1 && h < 6) return "🌙 Nuit";
-    if (h >= 6 && h < 12) return "☀️ Matin";
-    if (h === 12) return "☀️ Midi";
-    if (h >= 13 && h < 18) return "🌤️ Après-midi";
-    return "🌆 Soir";
+    if (h === 0) return '🌙 Minuit';
+    if (h >= 1 && h < 6) return '🌙 Nuit';
+    if (h >= 6 && h < 12) return '☀️ Matin';
+    if (h === 12) return '☀️ Midi';
+    if (h >= 13 && h < 18) return '🌤️ Après-midi';
+    return '🌆 Soir';
   }
 
   public generateQuestion(): TimeTarget {
     let candidate = this.buildCandidate();
-    for (let attempt = 0; attempt < 5; attempt++) {
+    for (let attempt = 0; attempt < 6; attempt++) {
       if (candidate.text !== this.lastQuestionText) break;
       candidate = this.buildCandidate();
     }
@@ -56,25 +57,20 @@ export class QuestionManager {
   }
 
   private buildCandidate(): TimeTarget {
-    let hours = Math.floor(Math.random() * 24);
+    let hours = Math.floor(Math.random() * 12) + 1;
     let minutes = 0;
 
     if (this.level === 1) {
-      // Niveau 1 : Heures piles (alternance Jour ☀️ / Nuit 🌙 pour découvrir l'ambiance)
       minutes = 0;
     } else if (this.level === 2) {
-      // Niveau 2 : Demi-heures (:30 privilégié à 75%)
       minutes = Math.random() < 0.75 ? 30 : 0;
     } else if (this.level === 3) {
-      // Niveau 3 : Quarts d'heure (:15, :30, :45)
-      const quarters = [15, 30, 45, 15, 45, 0];
+      const quarters = [15, 30, 45, 15, 45, 45];
       minutes = quarters[Math.floor(Math.random() * quarters.length)];
     } else if (this.level === 4) {
-      // Niveau 4 : Toutes les 5 minutes
       minutes = Math.floor(Math.random() * 12) * 5;
     } else if (this.level === 5) {
-      // Niveau 5 : Les 24 heures (accent sur l'après-midi/soir 13h..23h et minuit 00h)
-      if (Math.random() < 0.75) {
+      if (Math.random() < 0.78) {
         const afternoonEvening = [0, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23];
         hours = afternoonEvening[Math.floor(Math.random() * afternoonEvening.length)];
       } else {
@@ -82,7 +78,6 @@ export class QuestionManager {
       }
       minutes = Math.floor(Math.random() * 12) * 5;
     } else if (this.level === 6) {
-      // Niveau 6 : Maître du Temps (24h + précision à la minute)
       hours = Math.floor(Math.random() * 24);
       minutes = Math.floor(Math.random() * 60);
       if (minutes % 5 === 0) {
@@ -92,9 +87,23 @@ export class QuestionManager {
 
     const isDay = TimeMath.isDayTime(hours);
     const text = QuestionManager.formatTimeText(hours, minutes, this.level);
+    const spokenText = TimeMath.formatSpokenTime(hours, minutes, this.level);
     const periodLabel = QuestionManager.getPeriodLabel(hours, this.level);
 
-    return { hours, minutes, text, isDay, periodLabel };
+    return { hours, minutes, text, spokenText, isDay, periodLabel };
+  }
+
+  private createTargetFrom(hours: number, minutes: number): TimeTarget {
+    const cleanH = this.level >= 5 ? (hours + 24) % 24 : ((hours - 1 + 12) % 12) + 1;
+    const cleanM = (minutes + 60) % 60;
+    return {
+      hours: cleanH,
+      minutes: cleanM,
+      text: QuestionManager.formatTimeText(cleanH, cleanM, this.level),
+      spokenText: TimeMath.formatSpokenTime(cleanH, cleanM, this.level),
+      isDay: TimeMath.isDayTime(cleanH),
+      periodLabel: QuestionManager.getPeriodLabel(cleanH, this.level)
+    };
   }
 
   public generateChoices(correct: TimeTarget): TimeTarget[] {
@@ -108,49 +117,40 @@ export class QuestionManager {
       );
     };
 
-    // Au Niveau 5 et 6 : on ajoute un leurre 12h/24h (ex: 08h15 vs 20h15) pour que l'enfant utilise le fond Jour/Nuit !
-    if (this.level >= 5) {
-      const oppositeHour = (correct.hours + 12) % 24;
-      const amPmDecoy: TimeTarget = {
-        hours: oppositeHour,
-        minutes: correct.minutes,
-        text: QuestionManager.formatTimeText(oppositeHour, correct.minutes, this.level),
-        isDay: TimeMath.isDayTime(oppositeHour),
-        periodLabel: QuestionManager.getPeriodLabel(oppositeHour, this.level)
-      };
+    // Chantier C : Lorsque minutes >= 35 (ex: 4h45 ou 8h50), la petite aiguille est proche de H+1.
+    // On inclut systématiquement le leurre H+1 (ex: 5h45 ou 9h50) pour entraîner l'enfant à éviter ce piège !
+    if (correct.minutes >= 35) {
+      const trapNextHour = this.createTargetFrom(correct.hours + 1, correct.minutes);
+      if (isDistinctAndUnambiguous(trapNextHour)) {
+        choices.push(trapNextHour);
+      }
+    }
+
+    // Aux niveaux 5 et 6 : leurre 12h/24h (ex: 08h20 vs 20h20)
+    if (this.level >= 5 && choices.length < 3) {
+      const amPmDecoy = this.createTargetFrom((correct.hours + 12) % 24, correct.minutes);
       if (isDistinctAndUnambiguous(amPmDecoy)) {
         choices.push(amPmDecoy);
       }
     }
 
-    // Leurre sur l'heure voisine (+1h ou -1h) avec la même minute
-    const deltaH = Math.random() < 0.5 ? 1 : -1;
-    const closeHour = (correct.hours + deltaH + 24) % 24;
-    const hourDecoy: TimeTarget = {
-      hours: closeHour,
-      minutes: correct.minutes,
-      text: QuestionManager.formatTimeText(closeHour, correct.minutes, this.level),
-      isDay: TimeMath.isDayTime(closeHour),
-      periodLabel: QuestionManager.getPeriodLabel(closeHour, this.level)
-    };
-    if (choices.length < 3 && isDistinctAndUnambiguous(hourDecoy)) {
-      choices.push(hourDecoy);
+    // Leurre sur l'heure voisine (+1h ou -1h)
+    if (choices.length < 3) {
+      const deltaH = Math.random() < 0.5 ? 1 : -1;
+      const hourDecoy = this.createTargetFrom(correct.hours + deltaH, correct.minutes);
+      if (isDistinctAndUnambiguous(hourDecoy)) {
+        choices.push(hourDecoy);
+      }
     }
 
-    // Leurre sur les minutes avec la même heure
+    // Leurre sur les minutes
     if (choices.length < 3 && this.level >= 2) {
       let altMin = (correct.minutes + 30) % 60;
       if (this.level === 3) altMin = (correct.minutes + 15) % 60;
       else if (this.level === 4 || this.level === 5) altMin = (correct.minutes + 5) % 60;
-      else if (this.level === 6) altMin = (correct.minutes + 5) % 60;
+      else if (this.level === 6) altMin = (correct.minutes + 2) % 60;
 
-      const minDecoy: TimeTarget = {
-        hours: correct.hours,
-        minutes: altMin,
-        text: QuestionManager.formatTimeText(correct.hours, altMin, this.level),
-        isDay: correct.isDay,
-        periodLabel: correct.periodLabel
-      };
+      const minDecoy = this.createTargetFrom(correct.hours, altMin);
       if (isDistinctAndUnambiguous(minDecoy)) {
         choices.push(minDecoy);
       }
