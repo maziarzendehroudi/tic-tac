@@ -1,10 +1,4 @@
-export type WorkshopZoom = 'overview' | 'spring' | 'hours' | 'minutes' | 'seconds';
-
-interface CameraTarget {
-  scale: number;
-  x: number;
-  y: number;
-}
+export type WorkshopOrgan = 'overview' | 'spring' | 'hours' | 'minutes' | 'seconds';
 
 export class WatchMechanism {
   private ctx: CanvasRenderingContext2D;
@@ -13,24 +7,40 @@ export class WatchMechanism {
 
   public power: number = 80;
   public realTimeMode: boolean = false;
-  public zoomMode: WorkshopZoom = 'overview';
+  public selectedOrgan: WorkshopOrgan = 'overview';
 
-  private currentScale: number = 1.42;
-  private currentFocusX: number = 32;
-  private currentFocusY: number = 0;
+  public static readonly DEFAULT_SCALE = 1.44;
+  public static readonly MIN_SCALE = 1.44;
+  public static readonly MAX_SCALE = 3.6;
+  public static readonly DEFAULT_FOCUS_X = 32;
+  public static readonly DEFAULT_FOCUS_Y = 0;
+
+  private currentScale: number = WatchMechanism.DEFAULT_SCALE;
+  private currentFocusX: number = WatchMechanism.DEFAULT_FOCUS_X;
+  private currentFocusY: number = WatchMechanism.DEFAULT_FOCUS_Y;
+
+  private targetScale: number = WatchMechanism.DEFAULT_SCALE;
+  private targetFocusX: number = WatchMechanism.DEFAULT_FOCUS_X;
+  private targetFocusY: number = WatchMechanism.DEFAULT_FOCUS_Y;
+
+  /**
+   * Temps horloger maître en secondes (initialisé à 10h09m55s = 36595s)
+   * Garantit le ratio mécanique exact 1 : 60 : 720 entre Secondes, Minutes et Heures !
+   */
+  public watchTimeSeconds: number = 10 * 3600 + 9 * 60 + 55;
 
   public wormOffset: number = 0;
   public angleBarrel: number = 0;
-  public angleHours: number = (10 * Math.PI) / 6;
+  public angleHours: number = 0;
   public angleRelayMinutes: number = 0;
-  public angleMinutes: number = (10 * Math.PI) / 30;
+  public angleMinutes: number = 0;
   public angleRelaySeconds: number = 0;
   public angleSeconds: number = 0;
 
   private stepTimerMs: number = 0;
-  private secondsStepIndex: number = 0;
-  private prevSecondsAngle: number = 0;
-  private targetSecondsAngle: number = 0;
+  private secondsStepIndex: number = 55;
+  private prevSecondsAngle: number = (55 * Math.PI) / 30;
+  private targetSecondsAngle: number = (55 * Math.PI) / 30;
 
   private windingStepAccumulator: number = 0;
   private isTicPhase: boolean = true;
@@ -38,6 +48,14 @@ export class WatchMechanism {
   private onTickCallback?: (isTic: boolean) => void;
   private onWindingClickCallback?: () => void;
 
+  /**
+   * Géométrie horlogère exacte :
+   * - Molette ('crown') à droite (x = +178, y = 0)
+   * - Ressort ('spring', r = 36, 12 dents) en (x = +82, y = -41) -> engrène avec la vis (y = 0) et la roue des heures (0,0, r = 56)
+   * - Relais des minutes ('relayMinutes', y = -76) -> pignon (r = 20, 8 dents) sur heures (r = 56) et roue (r = 36, 12 dents) sur minutes (r = 40)
+   * - Relais des secondes ('relaySeconds', x = -68, y = 0) -> pignon (r = 28, 10 dents) sur minutes (r = 40) et roue (r = 44, 14 dents) sur secondes (r = 24, 8 dents)
+   * - Échappement Tic-Tac ('escapement', x = 0, y = 44) -> son bec accroche le sommet des dents de la roue des secondes (rOuter = 27.2)
+   */
   public static readonly POS = {
     crown: { x: 178, y: 0 },
     spring: { x: 82, y: -41, r: 36, teeth: 12 },
@@ -46,23 +64,7 @@ export class WatchMechanism {
     minutes: { x: 0, y: 0, r: 40, teeth: 12 },
     relaySeconds: { x: -68, y: 0, rPinion: 28, teethPinion: 10, rWheel: 44, teethWheel: 14 },
     seconds: { x: 0, y: 0, r: 24, teeth: 8 },
-    escapement: { x: 0, y: 38 }
-  };
-
-  /**
-   * Cadrages des 5 vues de la Loupe d'Horloger dans le Canvas carré 500×500 :
-   * - 'overview' : Vue globale du mouvement
-   * - 'spring'   : 1. Molette, vis sans fin et ressort de barillet (à droite)
-   * - 'hours'    : 2. Engrènement direct du barillet sur la grande roue dorée des heures et sa petite aiguille
-   * - 'minutes'  : 3. Double roue relais supérieure et roue centrale bleue des minutes
-   * - 'seconds'  : 4. Double roue relais gauche, roue rouge des secondes et ancre Tic-Tac
-   */
-  private static readonly CAMERA_TARGETS: Record<WorkshopZoom, CameraTarget> = {
-    overview: { scale: 1.42, x: 32, y: 0 },
-    spring: { scale: 2.5, x: 96, y: -18 },
-    hours: { scale: 2.35, x: 24, y: -12 },
-    minutes: { scale: 2.5, x: 0, y: -38 },
-    seconds: { scale: 2.5, x: -26, y: 12 }
+    escapement: { x: 0, y: 44 }
   };
 
   constructor(
@@ -78,26 +80,156 @@ export class WatchMechanism {
     this.height = height;
     this.onTickCallback = onTick;
     this.onWindingClickCallback = onWindingClick;
-    this.syncBarrelPhaseWithHours();
+    this.syncAllGearsFromMasterTime(1);
   }
 
-  public setZoomMode(mode: WorkshopZoom): void {
-    this.zoomMode = mode;
+  /**
+   * Loi d'engrènement géométrique exacte entre deux roues dentées extérieures :
+   * Calcule l'angle de la roue menée (driven) pour que chacune de ses dents
+   * tombe pile au milieu du creux (valley) de la roue menante (driver), sans jamais se chevaucher.
+   */
+  public static computeDrivenGearAngle(
+    driverX: number,
+    driverY: number,
+    driverTeeth: number,
+    driverAngle: number,
+    drivenX: number,
+    drivenY: number,
+    drivenTeeth: number
+  ): number {
+    const angleDriverToDriven = Math.atan2(drivenY - driverY, drivenX - driverX);
+    const angleDrivenToDriver = Math.atan2(driverY - drivenY, driverX - drivenX);
+    const halfToothDriven = Math.PI / drivenTeeth;
+    return (
+      angleDrivenToDriver +
+      halfToothDriven -
+      (driverAngle - angleDriverToDriven) * (driverTeeth / drivenTeeth)
+    );
+  }
+
+  /**
+   * Synchronise les 3 aiguilles selon la loi horlogère exacte (1 : 60 : 720)
+   * et aligne toutes les dents des roues en prise.
+   */
+  private syncAllGearsFromMasterTime(saccadeProgress: number): void {
+    const { spring, hours, relayMinutes, minutes, relaySeconds, seconds } = WatchMechanism.POS;
+
+    // 1. Angle saccadé de la trotteuse des secondes (6° par seconde)
+    let deltaStep = this.targetSecondsAngle - this.prevSecondsAngle;
+    if (deltaStep < 0) deltaStep += Math.PI * 2;
+    if (deltaStep > Math.PI) deltaStep = 0;
+    this.angleSeconds = (this.prevSecondsAngle + deltaStep * saccadeProgress) % (Math.PI * 2);
+
+    // 2. Angle de la grande aiguille des minutes : exactement 1/60e des secondes (1 tour = 3600 s)
+    const exactMinutes = (this.watchTimeSeconds / 60) % 60;
+    this.angleMinutes = (exactMinutes / 60) * (Math.PI * 2);
+
+    // 3. Angle de la petite aiguille des heures : exactement 1/720e des secondes (1 tour = 43200 s = 12 h)
+    const exactHours = (this.watchTimeSeconds / 3600) % 12;
+    this.angleHours = (exactHours / 12) * (Math.PI * 2);
+
+    // 4. Synchronisation sans choc des dents sur tout le train de rouages :
+    this.angleBarrel = WatchMechanism.computeDrivenGearAngle(
+      hours.x, hours.y, hours.teeth, this.angleHours,
+      spring.x, spring.y, spring.teeth
+    );
+
+    this.angleRelayMinutes = WatchMechanism.computeDrivenGearAngle(
+      minutes.x, minutes.y, minutes.teeth, this.angleMinutes,
+      relayMinutes.x, relayMinutes.y, relayMinutes.teethWheel
+    );
+
+    this.angleRelaySeconds = WatchMechanism.computeDrivenGearAngle(
+      seconds.x, seconds.y, seconds.teeth, this.angleSeconds,
+      relaySeconds.x, relaySeconds.y, relaySeconds.teethWheel
+    );
   }
 
   public isAtEndStop(): boolean {
     return this.power >= 100;
   }
 
-  private syncBarrelPhaseWithHours(): void {
-    const { spring, hours } = WatchMechanism.POS;
-    const angleHtoS = Math.atan2(spring.y - hours.y, spring.x - hours.x);
-    const angleStoH = Math.atan2(hours.y - spring.y, hours.x - spring.x);
-    const halfToothSpring = Math.PI / spring.teeth;
-    this.angleBarrel =
-      angleStoH +
-      halfToothSpring -
-      (this.angleHours - angleHtoS) * (hours.teeth / spring.teeth);
+  public isZoomedIn(): boolean {
+    return this.targetScale > WatchMechanism.DEFAULT_SCALE + 0.12;
+  }
+
+  public resetCamera(): void {
+    this.targetScale = WatchMechanism.DEFAULT_SCALE;
+    this.targetFocusX = WatchMechanism.DEFAULT_FOCUS_X;
+    this.targetFocusY = WatchMechanism.DEFAULT_FOCUS_Y;
+    this.selectedOrgan = 'overview';
+  }
+
+  /**
+   * Zoom au pincement (ou molette) centré sur le point exact entre les deux doigts
+   */
+  public zoomAtPoint(scaleMultiplier: number, canvasX: number, canvasY: number): void {
+    const prevScale = this.targetScale;
+    const nextScale = Math.max(
+      WatchMechanism.MIN_SCALE,
+      Math.min(WatchMechanism.MAX_SCALE, prevScale * scaleMultiplier)
+    );
+
+    const worldX = (canvasX - this.width / 2) / this.currentScale + this.currentFocusX;
+    const worldY = (canvasY - this.height / 2) / this.currentScale + this.currentFocusY;
+
+    this.targetScale = nextScale;
+
+    if (nextScale <= WatchMechanism.MIN_SCALE + 0.05) {
+      this.targetFocusX = WatchMechanism.DEFAULT_FOCUS_X;
+      this.targetFocusY = WatchMechanism.DEFAULT_FOCUS_Y;
+      this.selectedOrgan = 'overview';
+    } else {
+      const rawFocusX = worldX - (canvasX - this.width / 2) / nextScale;
+      const rawFocusY = worldY - (canvasY - this.height / 2) / nextScale;
+      this.targetFocusX = Math.max(-105, Math.min(165, rawFocusX));
+      this.targetFocusY = Math.max(-105, Math.min(105, rawFocusY));
+      this.selectedOrgan = this.detectOrganAtWorldPoint(this.targetFocusX, this.targetFocusY);
+    }
+  }
+
+  /**
+   * Déplacement (pan) à 1 doigt lorsque la vue est zoomée
+   */
+  public panBy(deltaCanvasX: number, deltaCanvasY: number): void {
+    if (this.targetScale <= WatchMechanism.MIN_SCALE + 0.05) return;
+    this.targetFocusX = Math.max(
+      -105,
+      Math.min(165, this.targetFocusX - deltaCanvasX / this.currentScale)
+    );
+    this.targetFocusY = Math.max(
+      -105,
+      Math.min(105, this.targetFocusY - deltaCanvasY / this.currentScale)
+    );
+    this.selectedOrgan = this.detectOrganAtWorldPoint(this.targetFocusX, this.targetFocusY);
+  }
+
+  /**
+   * Touche directe ou double-tap sur un organe pour afficher son explication ou zoomer dessus
+   */
+  public selectOrganAtCanvasPoint(canvasX: number, canvasY: number, zoomInOnTap: boolean = false): WorkshopOrgan {
+    const worldX = (canvasX - this.width / 2) / this.currentScale + this.currentFocusX;
+    const worldY = (canvasY - this.height / 2) / this.currentScale + this.currentFocusY;
+    const organ = this.detectOrganAtWorldPoint(worldX, worldY);
+    this.selectedOrgan = organ;
+
+    if (zoomInOnTap) {
+      if (this.isZoomedIn()) {
+        this.resetCamera();
+      } else {
+        this.targetScale = 2.55;
+        this.targetFocusX = Math.max(-95, Math.min(140, worldX));
+        this.targetFocusY = Math.max(-95, Math.min(95, worldY));
+      }
+    }
+    return this.selectedOrgan;
+  }
+
+  private detectOrganAtWorldPoint(wx: number, wy: number): WorkshopOrgan {
+    if (wx > 42 && wy < 25) return 'spring';
+    if (wy < -34 && Math.abs(wx) <= 48) return 'minutes';
+    if (wx < -24 || wy > 24) return 'seconds';
+    return 'hours';
   }
 
   public isPointInCrown(canvasX: number, canvasY: number): boolean {
@@ -112,14 +244,13 @@ export class WatchMechanism {
   }
 
   public update(deltaTime: number, isWinding: boolean): void {
-    // 1. Interpolation fluide de la caméra
-    const targetCam = WatchMechanism.CAMERA_TARGETS[this.zoomMode];
-    const camLerp = Math.min(1, deltaTime * 0.012);
-    this.currentScale += (targetCam.scale - this.currentScale) * camLerp;
-    this.currentFocusX += (targetCam.x - this.currentFocusX) * camLerp;
-    this.currentFocusY += (targetCam.y - this.currentFocusY) * camLerp;
+    // 1. Interpolation fluide de la caméra (Pinch & Pan)
+    const camLerp = Math.min(1, deltaTime * 0.018);
+    this.currentScale += (this.targetScale - this.currentScale) * camLerp;
+    this.currentFocusX += (this.targetFocusX - this.currentFocusX) * camLerp;
+    this.currentFocusY += (this.targetFocusY - this.currentFocusY) * camLerp;
 
-    const { spring, relayMinutes, minutes, relaySeconds, seconds } = WatchMechanism.POS;
+    const { spring } = WatchMechanism.POS;
     const threadPitch = 12;
 
     // 2. Remontage par la molette : S'ARRÊTE EN BOUT DE COURSE dès que power >= 100%
@@ -139,33 +270,23 @@ export class WatchMechanism {
 
       const deltaBarrel = -deltaWorm / spring.r;
       this.angleBarrel = (this.angleBarrel + deltaBarrel) % (Math.PI * 2);
+      return;
     }
 
-    // 3. Marche du mouvement :
-    // - En Vitesse réelle : 1 battement ("Tic" ou "Tac") toutes les 1000 ms (1 seconde exacte)
-    // - En Mode accéléré : 1 battement toutes les 140 ms (~7x plus rapide)
-    // Dans les DEUX modes, le train de rouages conserve ses rapports cinématiques visuels (1 : 3.5 : 10.5)
-    // afin que l'enfant voie tourner les roues et aiguilles des Minutes et des Heures même en Vitesse réelle !
+    // 3. Marche du mouvement avec vrai ratio horloger 1 : 60 : 720 :
+    // - Vitesse réelle (1x)  : 1 pas = 1000 ms (1 tour de secondes = 60 s = +1 min pile)
+    // - Mode accéléré (15x) : 1 pas = 66.67 ms (1 tour de secondes = 4 s = +1 min pile)
     if (this.power > 0 && !isWinding) {
-      const dischargeRate = this.realTimeMode ? 0.00035 : 0.0016;
+      const speedFactor = this.realTimeMode ? 1 : 15;
+      const dischargeRate = this.realTimeMode ? 0.0002 : 0.0014;
       this.power = Math.max(0, this.power - deltaTime * dischargeRate);
 
-      const stepPeriodMs = this.realTimeMode ? 1000 : 140;
-      const stepAngleSec = Math.PI / 30; // 1 seconde = 6° (1/60e de tour)
+      const stepPeriodMs = 1000 / speedFactor;
+      const stepAngleSec = Math.PI / 30; // 1 seconde = 6°
 
-      // Avancée synchronisée des roues et aiguilles des Minutes et des Heures
-      const continuousSecEquivalent = (deltaTime / stepPeriodMs) * stepAngleSec;
-      const deltaMin = continuousSecEquivalent / 3.5;
-      const deltaHr = continuousSecEquivalent / 10.5;
+      // Avance le compteur horloger maître en secondes
+      this.watchTimeSeconds += (deltaTime / 1000) * speedFactor;
 
-      this.angleHours = (this.angleHours + deltaHr) % (Math.PI * 2);
-      this.syncBarrelPhaseWithHours();
-
-      this.angleRelayMinutes =
-        (this.angleRelayMinutes - deltaMin * (minutes.teeth / relayMinutes.teethWheel)) % (Math.PI * 2);
-      this.angleMinutes = (this.angleMinutes + deltaMin) % (Math.PI * 2);
-
-      // Avancée SACCADÉE de l'aiguille des secondes et de l'échappement Tic-Tac
       this.stepTimerMs += deltaTime;
       while (this.stepTimerMs >= stepPeriodMs) {
         this.stepTimerMs -= stepPeriodMs;
@@ -173,20 +294,15 @@ export class WatchMechanism {
         this.secondsStepIndex = (this.secondsStepIndex + 1) % 60;
         this.targetSecondsAngle = this.secondsStepIndex * stepAngleSec;
 
-        // Déclenche le son Tic-Tac pile à chaque seconde (1000 ms en temps réel)
         this.onTickCallback?.(this.isTicPhase);
         this.isTicPhase = !this.isTicPhase;
       }
 
-      const jumpDurationMs = Math.min(65, stepPeriodMs * 0.45);
+      const jumpDurationMs = Math.min(60, stepPeriodMs * 0.55);
       const jumpProgress = Math.min(1, this.stepTimerMs / jumpDurationMs);
       const easedJump = 1 - Math.pow(1 - jumpProgress, 3);
 
-      let deltaStep = this.targetSecondsAngle - this.prevSecondsAngle;
-      if (deltaStep < 0) deltaStep += Math.PI * 2;
-      this.angleSeconds = (this.prevSecondsAngle + deltaStep * easedJump) % (Math.PI * 2);
-      this.angleRelaySeconds =
-        (-this.angleSeconds * (seconds.teeth / relaySeconds.teethWheel)) % (Math.PI * 2);
+      this.syncAllGearsFromMasterTime(easedJump);
     }
   }
 
@@ -198,33 +314,18 @@ export class WatchMechanism {
     this.ctx.translate(-this.currentFocusX, -this.currentFocusY);
 
     const { crown, spring, hours, relayMinutes, minutes, relaySeconds, seconds, escapement } = WatchMechanism.POS;
-    const z = this.zoomMode;
 
-    // 1. Début de bracelet (haut/bas) + Platine squelette parfaitement ronde
+    // 1. Début de bracelet (haut/bas) + Platine squelette avec les 60 graduations de secondes/minutes
     this.drawChassisWithBraceletStubs();
 
-    // 2. Roue dorée des Heures (mise en valeur dans Vue globale, Ressort, Heures et Minutes)
-    this.ctx.save();
-    this.ctx.globalAlpha =
-      z === 'overview' || z === 'hours' || z === 'spring' || z === 'minutes' ? 1 : 0.22;
+    // 2. Roue dorée des Heures (au centre, plan inférieur)
     this.drawToyDiscGear(hours.x, hours.y, hours.r, hours.teeth, this.angleHours, '#fbbf24', '#b45309', '#fef3c7', 8);
-    this.ctx.restore();
 
-    // 3. Barillet du Ressort et Molette à droite (mis en valeur dans Ressort et Heures)
-    this.ctx.save();
-    this.ctx.globalAlpha = z === 'overview' || z === 'spring' ? 1 : z === 'hours' ? 0.85 : 0.2;
+    // 3. Barillet du Ressort et Molette à droite
     this.drawToyBarrel(spring.x, spring.y, spring.r, spring.teeth, this.angleBarrel, this.power);
-    this.ctx.restore();
-
-    this.ctx.save();
-    this.ctx.globalAlpha = z === 'overview' || z === 'spring' ? 1 : 0.22;
     this.drawRightCrownAndWormStem(crown.x, crown.y, this.wormOffset, isWinding && this.power < 100);
-    this.ctx.restore();
 
-    // 4. Train des Minutes à double roue (mis en valeur dans Minutes)
-    this.ctx.save();
-    this.ctx.globalAlpha =
-      z === 'overview' || z === 'minutes' ? 1 : z === 'seconds' ? 0.42 : 0.18;
+    // 4. Train des Minutes à double roue (en haut et au centre, plan médian)
     this.drawSteppedRelayGear(
       relayMinutes.x,
       relayMinutes.y,
@@ -238,11 +339,8 @@ export class WatchMechanism {
       '#38bdf8'
     );
     this.drawToyDiscGear(minutes.x, minutes.y, minutes.r, minutes.teeth, this.angleMinutes, '#38bdf8', '#0284c7', '#e0f2fe', 6);
-    this.ctx.restore();
 
-    // 5. Train des Secondes à gauche & Échappement Tic-Tac en bas (mis en valeur dans Secondes)
-    this.ctx.save();
-    this.ctx.globalAlpha = z === 'overview' || z === 'seconds' ? 1 : 0.18;
+    // 5. Train des Secondes à gauche & Échappement Tic-Tac en bas (plan supérieur, engrènement exact !)
     this.drawSteppedRelayGear(
       relaySeconds.x,
       relaySeconds.y,
@@ -257,9 +355,8 @@ export class WatchMechanism {
     );
     this.drawToyDiscGear(seconds.x, seconds.y, seconds.r, seconds.teeth, this.angleSeconds, '#f43f5e', '#be123c', '#ffe4e6', 4);
     this.drawSimpleTicTacClicker(escapement.x, escapement.y, this.isTicPhase ? 1 : -1);
-    this.ctx.restore();
 
-    // 6. Aiguilles avec mise en valeur selon le zoom actif
+    // 6. Aiguilles calibrées (1 : 60 : 720)
     this.drawHandsOnly();
 
     this.ctx.restore();
@@ -286,6 +383,21 @@ export class WatchMechanism {
     this.ctx.strokeStyle = borderColor;
     this.ctx.stroke();
 
+    // 60 graduations fines en bord de platine pour visualiser chaque saut de 1 seconde et de 1 minute
+    for (let i = 0; i < 60; i++) {
+      const isFive = i % 5 === 0;
+      const a = (i * Math.PI) / 30;
+      const rOut = 122;
+      const rIn = isFive ? 114 : 118;
+      this.ctx.beginPath();
+      this.ctx.moveTo(Math.sin(a) * rIn, -Math.cos(a) * rIn);
+      this.ctx.lineTo(Math.sin(a) * rOut, -Math.cos(a) * rOut);
+      this.ctx.strokeStyle = isFive ? '#fbbf24' : 'rgba(148, 163, 184, 0.38)';
+      this.ctx.lineWidth = isFive ? 2.4 : 1.2;
+      this.ctx.lineCap = 'round';
+      this.ctx.stroke();
+    }
+
     this.ctx.beginPath();
     this.ctx.moveTo(0, 0);
     this.ctx.lineTo(82, -41);
@@ -294,7 +406,7 @@ export class WatchMechanism {
     this.ctx.moveTo(0, 0);
     this.ctx.lineTo(-68, 0);
     this.ctx.moveTo(0, 0);
-    this.ctx.lineTo(0, 38);
+    this.ctx.lineTo(0, 44);
     this.ctx.strokeStyle = 'rgba(148, 163, 184, 0.2)';
     this.ctx.lineWidth = 6;
     this.ctx.lineCap = 'round';
@@ -570,21 +682,22 @@ export class WatchMechanism {
   }
 
   private drawSimpleTicTacClicker(x: number, y: number, rockDir: 1 | -1): void {
-    const bounce = rockDir * 0.24;
+    const bounce = rockDir * 0.22;
     this.ctx.save();
     this.ctx.translate(x, y);
     this.ctx.rotate(bounce);
 
     this.ctx.beginPath();
-    this.ctx.arc(0, 14, 16, 0, Math.PI * 2);
+    this.ctx.arc(0, 12, 14, 0, Math.PI * 2);
     this.ctx.strokeStyle = '#fbbf24';
-    this.ctx.lineWidth = 3.5;
+    this.ctx.lineWidth = 3.2;
     this.ctx.stroke();
 
+    // Bec d'ancre remontant jusqu'à y_local = -16 (soit y = 44 - 16 = 28, pile sur le sommet des dents de la roue des secondes !)
     this.ctx.beginPath();
-    this.ctx.moveTo(0, 14);
-    this.ctx.lineTo(-6, -14);
-    this.ctx.lineTo(6, -12);
+    this.ctx.moveTo(0, 10);
+    this.ctx.lineTo(-5.5, -16);
+    this.ctx.lineTo(5.5, -14);
     this.ctx.closePath();
     this.ctx.fillStyle = '#fbbf24';
     this.ctx.fill();
@@ -593,7 +706,7 @@ export class WatchMechanism {
     this.ctx.stroke();
 
     this.ctx.beginPath();
-    this.ctx.arc(0, 0, 5, 0, Math.PI * 2);
+    this.ctx.arc(0, 0, 4.5, 0, Math.PI * 2);
     this.ctx.fillStyle = '#e11d48';
     this.ctx.fill();
     this.ctx.strokeStyle = '#ffffff';
@@ -604,11 +717,8 @@ export class WatchMechanism {
   }
 
   private drawHandsOnly(): void {
-    const z = this.zoomMode;
-
-    // Petite aiguille des Heures (mise en valeur dans Vue globale et 2. Roue des Heures)
+    // Petite aiguille des Heures
     this.ctx.save();
-    this.ctx.globalAlpha = z === 'overview' || z === 'hours' ? 1 : 0.22;
     this.ctx.rotate(this.angleHours);
     this.ctx.shadowColor = 'rgba(0, 0, 0, 0.65)';
     this.ctx.shadowBlur = 5;
@@ -624,9 +734,8 @@ export class WatchMechanism {
     this.ctx.stroke();
     this.ctx.restore();
 
-    // Grande aiguille des Minutes (mise en valeur dans Vue globale et 3. Train des Minutes)
+    // Grande aiguille des Minutes
     this.ctx.save();
-    this.ctx.globalAlpha = z === 'overview' || z === 'minutes' ? 1 : 0.22;
     this.ctx.rotate(this.angleMinutes);
     this.ctx.shadowColor = 'rgba(0, 0, 0, 0.65)';
     this.ctx.shadowBlur = 5;
@@ -639,9 +748,8 @@ export class WatchMechanism {
     this.ctx.stroke();
     this.ctx.restore();
 
-    // Trotteuse rouge des Secondes (mise en valeur dans Vue globale et 4. Secondes & Tic-Tac)
+    // Trotteuse rouge des Secondes
     this.ctx.save();
-    this.ctx.globalAlpha = z === 'overview' || z === 'seconds' ? 1 : 0.22;
     this.ctx.rotate(this.angleSeconds);
     this.ctx.shadowColor = 'rgba(0, 0, 0, 0.5)';
     this.ctx.shadowBlur = 4;

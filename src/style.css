@@ -1179,3 +1179,27 @@ body.theme-night #instruction {
   padding: 8px 6px !important;
   font-size: 0.8rem !important;
 }
+
+/* ============================================================================
+   12. ATELIER V32 : MONTRE PLEIN CADRE (+40%) SANS DÉCOUPE RONDE & PINCH-TO-ZOOM
+   ============================================================================ */
+#workshop-canvas-wrap {
+  width: min(96vw, 435px, 57dvh) !important;
+  max-width: 435px !important;
+  height: auto !important;
+  aspect-ratio: 1 / 1 !important;
+  flex: 0 0 auto !important;
+  margin: auto 0 !important;
+  border-radius: 20px !important;
+  overflow: hidden !important;
+}
+
+#workshop-ui {
+  gap: 8px !important;
+  width: 100%;
+}
+
+#workshop-instruction {
+  min-height: 58px !important;
+  font-size: 0.88rem !important;
+}

@@ -7,7 +7,7 @@ import type { GameSave } from './SaveManager';
 import { SoundEngine } from './SoundEngine';
 import { TimeMath } from './TimeMath';
 import { WatchMechanism } from './WatchMechanism';
-import type { WorkshopZoom } from './WatchMechanism';
+import type { WorkshopOrgan } from './WatchMechanism';
 
 interface CelebrationParticle {
   x: number;
@@ -20,27 +20,17 @@ interface CelebrationParticle {
   vRot: number;
 }
 
-const ZOOM_EXPLANATIONS: Record<WorkshopZoom, { label: string; desc: string }> = {
-  overview: {
-    label: '🔍 Vue globale du mouvement',
-    desc: 'Voici le mouvement complet ! Touche les <strong>4 loupes numérotées</strong> en bas pour voir comment chaque aiguille est entraînée.'
-  },
-  spring: {
-    label: '⚙️ 1. Molette & Ressort',
-    desc: 'À droite, la <strong>vis sans fin</strong> de la molette pousse les dents du barillet : le <strong>ressort orange</strong> se serre quand tu remontes et libère son énergie en se détendant !'
-  },
-  hours: {
-    label: '🟠 2. Roue des Heures',
-    desc: 'En se déroulant, le barillet du ressort entraîne directement la <strong>grande roue dorée centrale</strong> qui fait tourner la <strong>petite aiguille des heures</strong> !'
-  },
-  minutes: {
-    label: '🔵 3. Train des Minutes',
-    desc: 'En haut, la <strong>double roue relais</strong> (petit pignon doré + grande roue bleue) multiplie la vitesse de la roue des heures pour entraîner la <strong>grande aiguille des minutes</strong> !'
-  },
-  seconds: {
-    label: '🔴 4. Secondes & Tic-Tac',
-    desc: 'À gauche, la double roue entraîne la <strong>trotteuse rouge des secondes</strong> par saccades au rythme de l’ancre dorée du <strong>Tic-Tac</strong> en bas !'
-  }
+const ORGAN_EXPLANATIONS: Record<WorkshopOrgan, string> = {
+  overview:
+    '🔍 <strong>Pince l’écran à 2 doigts</strong> pour zoomer sur un engrenage, ou <strong>touche une roue</strong> pour découvrir son rôle !',
+  spring:
+    '⚙️ <strong>Molette & Ressort :</strong> la vis sans fin pousse les dents du barillet ; le ressort orange se serre au remontage et se détend pour entraîner la montre !',
+  hours:
+    '🟠 <strong>Roue des Heures :</strong> entraînée par le barillet du ressort, la grande roue dorée fait un tour en 12 heures avec la petite aiguille !',
+  minutes:
+    '🔵 <strong>Train des Minutes :</strong> en haut, la double roue relais démultiplie le mouvement pour que la grande aiguille bleue fasse 1 tour en 60 minutes !',
+  seconds:
+    '🔴 <strong>Secondes & Tic-Tac :</strong> à gauche, la double roue entraîne la trotteuse rouge par saccades d’une seconde au rythme de l’ancre du Tic-Tac !'
 };
 
 export class GameEngine {
@@ -56,6 +46,12 @@ export class GameEngine {
   private workshopAnimId: number = 0;
   private lastWorkshopTime: number = 0;
   private isWinding: boolean = false;
+
+  private isWorkshopPanning: boolean = false;
+  private lastPanX: number = 0;
+  private lastPanY: number = 0;
+  private lastPinchDist: number = 0;
+  private lastTapTimestamp: number = 0;
 
   private currentHours: number = 12;
   private currentMinutes: number = 0;
@@ -119,6 +115,7 @@ export class GameEngine {
     cancelAnimationFrame(this.celebrationAnimId);
     cancelAnimationFrame(this.workshopAnimId);
     this.isWinding = false;
+    this.isWorkshopPanning = false;
     this.isWaitingNext = false;
     this.nextActionCallback = null;
   }
@@ -158,7 +155,7 @@ export class GameEngine {
     }
 
     if (this.watchMechanism) {
-      this.watchMechanism.setZoomMode('overview');
+      this.watchMechanism.resetCamera();
       this.watchMechanism.realTimeMode = false;
     }
 
@@ -192,38 +189,18 @@ export class GameEngine {
   }
 
   private renderWorkshopUI(): void {
-    const tray = document.getElementById('workshop-parts-tray');
     const instr = document.getElementById('workshop-instruction');
     const speedBtn = document.getElementById('toggle-speed-btn');
-    if (!tray || !this.watchMechanism) return;
+    if (!this.watchMechanism) return;
 
     if (speedBtn) {
       speedBtn.textContent = this.watchMechanism.realTimeMode ? '⏱️ Vitesse réelle' : '⏩ Accéléré';
       speedBtn.classList.toggle('real-time-active', this.watchMechanism.realTimeMode);
     }
 
-    const activeZoom = this.watchMechanism.zoomMode;
     if (instr) {
-      instr.innerHTML = ZOOM_EXPLANATIONS[activeZoom].desc;
+      instr.innerHTML = ORGAN_EXPLANATIONS[this.watchMechanism.selectedOrgan];
     }
-
-    const zoomModes: WorkshopZoom[] = ['overview', 'spring', 'hours', 'minutes', 'seconds'];
-    tray.innerHTML = '';
-    zoomModes.forEach(mode => {
-      const info = ZOOM_EXPLANATIONS[mode];
-      const isSelected = activeZoom === mode;
-      const btn = document.createElement('button');
-      btn.type = 'button';
-      btn.className = `workshop-part-btn${isSelected ? ' active-zoom-btn' : ''}`;
-      btn.textContent = info.label;
-      btn.addEventListener('click', () => {
-        if (!this.watchMechanism) return;
-        this.watchMechanism.setZoomMode(mode);
-        this.soundEngine.playSnap();
-        this.renderWorkshopUI();
-      });
-      tray.appendChild(btn);
-    });
   }
 
   private returnToMenu(): void {
@@ -318,28 +295,146 @@ export class GameEngine {
     };
     const stopWinding = () => {
       this.isWinding = false;
+      this.isWorkshopPanning = false;
     };
     windBtn?.addEventListener('mousedown', startWinding);
     windBtn?.addEventListener('touchstart', startWinding, { passive: false });
     window.addEventListener('mouseup', stopWinding);
     window.addEventListener('touchend', stopWinding);
 
+    // --- GESTION TACTILE DE L'ATELIER : PINCH-TO-ZOOM (2 DOIGTS), PAN (1 DOIGT), DOUBLE-TAP & MOLETTE ---
     if (this.workshopCanvas) {
-      const onWorkshopPointerDown = (e: MouseEvent | TouchEvent) => {
-        if (!this.watchMechanism || !this.workshopCanvas) return;
-        const rect = this.workshopCanvas.getBoundingClientRect();
-        const clientX = 'touches' in e ? e.touches[0].clientX : (e as MouseEvent).clientX;
-        const clientY = 'touches' in e ? e.touches[0].clientY : (e as MouseEvent).clientY;
-        const canvasX = (clientX - rect.left) * (this.workshopCanvas.width / rect.width);
-        const canvasY = (clientY - rect.top) * (this.workshopCanvas.height / rect.height);
-
-        if (this.watchMechanism.isPointInCrown(canvasX, canvasY)) {
-          e.preventDefault();
-          this.isWinding = true;
-        }
+      const toCanvasCoords = (clientX: number, clientY: number) => {
+        const rect = this.workshopCanvas!.getBoundingClientRect();
+        return {
+          x: (clientX - rect.left) * (this.workshopCanvas!.width / rect.width),
+          y: (clientY - rect.top) * (this.workshopCanvas!.height / rect.height)
+        };
       };
-      this.workshopCanvas.addEventListener('mousedown', onWorkshopPointerDown);
-      this.workshopCanvas.addEventListener('touchstart', onWorkshopPointerDown, { passive: false });
+
+      this.workshopCanvas.addEventListener(
+        'touchstart',
+        (e: TouchEvent) => {
+          if (!this.watchMechanism || !this.workshopCanvas) return;
+          e.preventDefault();
+
+          if (e.touches.length === 2) {
+            this.isWinding = false;
+            this.isWorkshopPanning = false;
+            const p1 = toCanvasCoords(e.touches[0].clientX, e.touches[0].clientY);
+            const p2 = toCanvasCoords(e.touches[1].clientX, e.touches[1].clientY);
+            this.lastPinchDist = Math.hypot(p2.x - p1.x, p2.y - p1.y);
+            return;
+          }
+
+          if (e.touches.length === 1) {
+            const pt = toCanvasCoords(e.touches[0].clientX, e.touches[0].clientY);
+
+            if (this.watchMechanism.isPointInCrown(pt.x, pt.y)) {
+              this.isWinding = true;
+              this.watchMechanism.selectedOrgan = 'spring';
+              this.renderWorkshopUI();
+              return;
+            }
+
+            const now = performance.now();
+            const isDoubleTap = now - this.lastTapTimestamp < 300;
+            this.lastTapTimestamp = now;
+
+            this.watchMechanism.selectOrganAtCanvasPoint(pt.x, pt.y, isDoubleTap);
+            this.renderWorkshopUI();
+
+            this.isWorkshopPanning = true;
+            this.lastPanX = pt.x;
+            this.lastPanY = pt.y;
+          }
+        },
+        { passive: false }
+      );
+
+      this.workshopCanvas.addEventListener(
+        'touchmove',
+        (e: TouchEvent) => {
+          if (!this.watchMechanism || !this.workshopCanvas) return;
+          e.preventDefault();
+
+          if (e.touches.length === 2) {
+            const p1 = toCanvasCoords(e.touches[0].clientX, e.touches[0].clientY);
+            const p2 = toCanvasCoords(e.touches[1].clientX, e.touches[1].clientY);
+            const dist = Math.hypot(p2.x - p1.x, p2.y - p1.y);
+            if (this.lastPinchDist > 8) {
+              const midX = (p1.x + p2.x) / 2;
+              const midY = (p1.y + p2.y) / 2;
+              this.watchMechanism.zoomAtPoint(dist / this.lastPinchDist, midX, midY);
+              this.renderWorkshopUI();
+            }
+            this.lastPinchDist = dist;
+            return;
+          }
+
+          if (e.touches.length === 1 && this.isWorkshopPanning && !this.isWinding) {
+            const pt = toCanvasCoords(e.touches[0].clientX, e.touches[0].clientY);
+            this.watchMechanism.panBy(pt.x - this.lastPanX, pt.y - this.lastPanY);
+            this.lastPanX = pt.x;
+            this.lastPanY = pt.y;
+            this.renderWorkshopUI();
+          }
+        },
+        { passive: false }
+      );
+
+      this.workshopCanvas.addEventListener('touchend', (e: TouchEvent) => {
+        if (e.touches.length < 2) {
+          this.lastPinchDist = 0;
+        }
+        if (e.touches.length === 0) {
+          this.isWinding = false;
+          this.isWorkshopPanning = false;
+        }
+      });
+
+      // Support souris / trackpad (Chromebook & ordinateur)
+      this.workshopCanvas.addEventListener('mousedown', (e: MouseEvent) => {
+        if (!this.watchMechanism || !this.workshopCanvas) return;
+        const pt = toCanvasCoords(e.clientX, e.clientY);
+        if (this.watchMechanism.isPointInCrown(pt.x, pt.y)) {
+          this.isWinding = true;
+          this.watchMechanism.selectedOrgan = 'spring';
+          this.renderWorkshopUI();
+          return;
+        }
+        const now = performance.now();
+        const isDouble = now - this.lastTapTimestamp < 300;
+        this.lastTapTimestamp = now;
+        this.watchMechanism.selectOrganAtCanvasPoint(pt.x, pt.y, isDouble);
+        this.renderWorkshopUI();
+
+        this.isWorkshopPanning = true;
+        this.lastPanX = pt.x;
+        this.lastPanY = pt.y;
+      });
+
+      window.addEventListener('mousemove', (e: MouseEvent) => {
+        if (!this.isWorkshopPanning || this.isWinding || !this.watchMechanism || !this.workshopCanvas) return;
+        const pt = toCanvasCoords(e.clientX, e.clientY);
+        this.watchMechanism.panBy(pt.x - this.lastPanX, pt.y - this.lastPanY);
+        this.lastPanX = pt.x;
+        this.lastPanY = pt.y;
+        this.renderWorkshopUI();
+      });
+
+      this.workshopCanvas.addEventListener(
+        'wheel',
+        (e: WheelEvent) => {
+          if (!this.watchMechanism || !this.workshopCanvas) return;
+          e.preventDefault();
+          const pt = toCanvasCoords(e.clientX, e.clientY);
+          const factor = e.deltaY < 0 ? 1.14 : 0.88;
+          this.watchMechanism.zoomAtPoint(factor, pt.x, pt.y);
+          this.renderWorkshopUI();
+        },
+        { passive: false }
+      );
     }
 
     document.getElementById('back-menu-btn')?.addEventListener('click', () => {
