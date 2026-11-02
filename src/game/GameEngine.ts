@@ -20,27 +20,11 @@ interface CelebrationParticle {
   vRot: number;
 }
 
-const ZOOM_EXPLANATIONS: Record<WorkshopZoom, { label: string; desc: string }> = {
-  overview: {
-    label: '🔍 Vue globale',
-    desc: 'Voici le mouvement complet ! Touche l’un des <strong>4 boutons de zoom</strong> en bas pour observer chaque mécanisme de près (retouche le bouton actif pour dézoomer).'
-  },
-  spring: {
-    label: '⚙️ Ressort / Molette',
-    desc: 'Quand tu remontes, la vis s’embraye et serre le <strong>ressort orange</strong>. Dès que tu relâches (ou à 100%), elle <strong>débraye en s’abaissant</strong> pour laisser le ressort tourner librement !'
-  },
-  hours: {
-    label: '🟠 Heures',
-    desc: 'En se déroulant, le barillet du ressort entraîne directement la <strong>grande roue dorée centrale</strong> qui fait tourner la <strong>petite aiguille des heures</strong> !'
-  },
-  minutes: {
-    label: '🔵 Minutes',
-    desc: 'En haut, la <strong>double roue relais</strong> (petit pignon doré + grande roue bleue) multiplie le mouvement pour entraîner la <strong>grande aiguille des minutes</strong> !'
-  },
-  seconds: {
-    label: '🔴 Secondes',
-    desc: 'À gauche, la double roue accélère le mouvement pour faire avancer la <strong>trotteuse rouge des secondes</strong> par saccades d’une seconde !'
-  }
+const ZOOM_LABELS: Record<Exclude<WorkshopZoom, 'overview'>, string> = {
+  spring: '⚙️ Ressort / Molette',
+  hours: '🟠 Heures',
+  minutes: '🔵 Minutes',
+  seconds: '🔴 Secondes'
 };
 
 const FOUR_ZOOM_BUTTONS: Array<Exclude<WorkshopZoom, 'overview'>> = [
@@ -166,7 +150,6 @@ export class GameEngine {
 
     if (this.watchMechanism) {
       this.watchMechanism.setZoomMode('overview');
-      this.watchMechanism.realTimeMode = true;
     }
 
     this.renderWorkshopUI();
@@ -177,54 +160,27 @@ export class GameEngine {
       if (this.watchMechanism) {
         this.watchMechanism.update(dt, this.isWinding);
         this.watchMechanism.draw(this.isWinding);
-        this.updatePowerMeterUI(this.watchMechanism.power);
       }
       this.workshopAnimId = requestAnimationFrame(loop);
     };
     this.workshopAnimId = requestAnimationFrame(loop);
   }
 
-  private updatePowerMeterUI(power: number): void {
-    const fillEl = document.getElementById('power-bar-fill');
-    const textEl = document.getElementById('power-bar-text');
-    const windBtn = document.getElementById('wind-crown-btn');
-    const pct = Math.round(power);
-    if (fillEl) fillEl.style.width = `${pct}%`;
-    if (textEl) {
-      textEl.textContent = pct >= 100 ? '🔋 Ressort : 100% (Max)' : `🔋 Ressort : ${pct}%`;
-    }
-    if (windBtn) {
-      windBtn.textContent = pct >= 100 ? '🛑 Ressort remonté à fond' : '🔄 Maintenir pour remonter';
-    }
-  }
-
   private renderWorkshopUI(): void {
     const tray = document.getElementById('workshop-parts-tray');
-    const instr = document.getElementById('workshop-instruction');
-    const speedBtn = document.getElementById('toggle-speed-btn');
     if (!tray || !this.watchMechanism) return;
 
-    if (speedBtn) {
-      speedBtn.textContent = this.watchMechanism.realTimeMode ? '⏱️ Vitesse réelle' : '⏩ Accéléré';
-      speedBtn.classList.toggle('real-time-active', this.watchMechanism.realTimeMode);
-    }
-
     const activeZoom = this.watchMechanism.zoomMode;
-    if (instr) {
-      instr.innerHTML = ZOOM_EXPLANATIONS[activeZoom].desc;
-    }
 
     tray.innerHTML = '';
     FOUR_ZOOM_BUTTONS.forEach(mode => {
-      const info = ZOOM_EXPLANATIONS[mode];
       const isSelected = activeZoom === mode;
       const btn = document.createElement('button');
       btn.type = 'button';
       btn.className = `workshop-part-btn${isSelected ? ' active-zoom-btn' : ''}`;
-      btn.textContent = info.label;
+      btn.textContent = ZOOM_LABELS[mode];
       btn.addEventListener('click', () => {
         if (!this.watchMechanism) return;
-        // Cliquer sur le bouton déjà actif ramène à la vue globale
         const nextMode: WorkshopZoom = this.watchMechanism.zoomMode === mode ? 'overview' : mode;
         this.watchMechanism.setZoomMode(nextMode);
         this.soundEngine.playSnap();
@@ -312,23 +268,9 @@ export class GameEngine {
       this.returnToMenu();
     });
 
-    document.getElementById('toggle-speed-btn')?.addEventListener('click', () => {
-      if (!this.watchMechanism) return;
-      this.watchMechanism.realTimeMode = !this.watchMechanism.realTimeMode;
-      this.soundEngine.playSnap();
-      this.renderWorkshopUI();
-    });
-
-    const windBtn = document.getElementById('wind-crown-btn');
-    const startWinding = (e: Event) => {
-      e.preventDefault();
-      this.isWinding = true;
-    };
     const stopWinding = () => {
       this.isWinding = false;
     };
-    windBtn?.addEventListener('mousedown', startWinding);
-    windBtn?.addEventListener('touchstart', startWinding, { passive: false });
     window.addEventListener('mouseup', stopWinding);
     window.addEventListener('touchend', stopWinding);
 
@@ -347,7 +289,6 @@ export class GameEngine {
           return;
         }
 
-        // Toucher le fond de la montre lorsqu'on est zoomé ramène à la vue globale
         if (this.watchMechanism.zoomMode !== 'overview') {
           e.preventDefault();
           this.watchMechanism.setZoomMode('overview');

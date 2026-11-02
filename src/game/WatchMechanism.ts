@@ -11,10 +11,8 @@ export class WatchMechanism {
   private width: number;
   private height: number;
 
-  public power: number = 80;
-  public realTimeMode: boolean = true;
+  public power: number = 100;
   public zoomMode: WorkshopZoom = 'overview';
-
   public clutchEngagement: number = 0;
 
   private currentScale: number = 1.72;
@@ -30,9 +28,6 @@ export class WatchMechanism {
   public angleSeconds: number = 0;
 
   private stepTimerMs: number = 0;
-  private secondsStepIndex: number = 0;
-  private prevSecondsAngle: number = 0;
-  private targetSecondsAngle: number = 0;
 
   private windingStepAccumulator: number = 0;
   private isTicPhase: boolean = true;
@@ -40,14 +35,6 @@ export class WatchMechanism {
   private onTickCallback?: (isTic: boolean) => void;
   private onWindingClickCallback?: () => void;
 
-  /**
-   * Géométrie horlogère à entraxes exacts (R1 + R2 = Distance centre à centre) :
-   * - Contact 1 : hours (0,0, r=56, Z=16) <-> spring (82,-41, r=36, Z=12) => Distance = 91.7 px (≈ 56+36 = 92 px)
-   * - Contact 2 : hours (0,0, r=56, Z=16) <-> relayMinutes.pinion (0,-76, r=20, Z=8) => Distance = 76 px (56+20 = 76 px)
-   * - Contact 3 : relayMinutes.wheel (0,-76, r=36, Z=14) <-> minutes (0,0, r=40, Z=12) => Distance = 76 px (36+40 = 76 px)
-   * - Contact 4 : minutes (0,0, r=40, Z=12) <-> relaySeconds.pinion (-68,0, r=28, Z=8) => Distance = 68 px (40+28 = 68 px)
-   * - Contact 5 : relaySeconds.wheel (-68,0, r=44, Z=14) <-> seconds (0,0, r=24, Z=8) => Distance = 68 px (44+24 = 68 px)
-   */
   public static readonly POS = {
     crown: { x: 138, y: 0 },
     spring: { x: 82, y: -41, r: 36, teeth: 12 },
@@ -79,18 +66,13 @@ export class WatchMechanism {
     this.height = height;
     this.onTickCallback = onTick;
     this.onWindingClickCallback = onWindingClick;
-    this.syncFullKinematicChain();
+    this.initInitialGearMesh();
   }
 
   public setZoomMode(mode: WorkshopZoom): void {
     this.zoomMode = mode;
   }
 
-  /**
-   * Loi d'engrènement géométrique exacte entre deux roues dentées extérieures :
-   * Calcule l'angle de la roue menée (driven) pour que chacune de ses dents
-   * tombe pile au milieu du creux (valley) de la roue menante (driver), sans jamais glisser ni se chevaucher.
-   */
   public static computeDrivenGearAngle(
     driverX: number,
     driverY: number,
@@ -111,47 +93,66 @@ export class WatchMechanism {
   }
 
   /**
-   * Chaîne cinématique intégrale à 5 contacts verrouillés :
-   * Chaque pignon et chaque roue est entraîné par la denture exacte de l'étage adjacent.
-   * Les décalages de posture initiale (2 pas de dent sur les minutes = +60°, 13 pas sur les heures = ~10h)
-   * sont des multiples entiers exacts du pas de denture (2π/Z), ce qui préserve l'engrènement au micron près !
+   * Calage initial des 5 contacts d'engrenage au démarrage uniquement.
+   * Ensuite, tous les angles évoluent par incréments continus afin que le barillet
+   * du ressort ne saute jamais vers une autre position après avoir été remonté !
    */
-  private syncFullKinematicChain(): void {
+  private initInitialGearMesh(): void {
     const { spring, hours, relayMinutes, minutes, relaySeconds, seconds } = WatchMechanism.POS;
 
-    // 1. Contact 5 : Roue des secondes (Z=8) <-> Grande roue du relais des secondes (Z=14)
+    this.angleSeconds = 0;
+
     this.angleRelaySeconds = WatchMechanism.computeDrivenGearAngle(
       seconds.x, seconds.y, seconds.teeth, this.angleSeconds,
       relaySeconds.x, relaySeconds.y, relaySeconds.teethWheel
     );
 
-    // 2. Contact 4 : Pignon du relais des secondes (Z=8) <-> Roue des minutes (Z=12)
-    // + décalage de 2 dents entières (2 * 2π/12) pour orienter l'aiguille des minutes vers 10 min
     const rawAngleMinutes = WatchMechanism.computeDrivenGearAngle(
       relaySeconds.x, relaySeconds.y, relaySeconds.teethPinion, this.angleRelaySeconds,
       minutes.x, minutes.y, minutes.teeth
     );
     this.angleMinutes = rawAngleMinutes + 2 * ((Math.PI * 2) / minutes.teeth);
 
-    // 3. Contact 3 : Roue des minutes (Z=12) <-> Grande roue du relais des minutes (Z=14)
     this.angleRelayMinutes = WatchMechanism.computeDrivenGearAngle(
       minutes.x, minutes.y, minutes.teeth, this.angleMinutes,
       relayMinutes.x, relayMinutes.y, relayMinutes.teethWheel
     );
 
-    // 4. Contact 2 : Pignon du relais des minutes (Z=8) <-> Roue des heures (Z=16)
-    // + décalage de 13 dents entières (13 * 2π/16) pour orienter la petite aiguille vers ~10h
     const rawAngleHours = WatchMechanism.computeDrivenGearAngle(
       relayMinutes.x, relayMinutes.y, relayMinutes.teethPinion, this.angleRelayMinutes,
       hours.x, hours.y, hours.teeth
     );
     this.angleHours = rawAngleHours + 13 * ((Math.PI * 2) / hours.teeth);
 
-    // 5. Contact 1 : Roue des heures (Z=16) <-> Barillet du ressort (Z=12)
     this.angleBarrel = WatchMechanism.computeDrivenGearAngle(
       hours.x, hours.y, hours.teeth, this.angleHours,
       spring.x, spring.y, spring.teeth
     );
+  }
+
+  /**
+   * Propage une variation angulaire deltaSec sur toute la chaîne cinématique
+   * sans jamais réinitialiser ni faire sauter la position du barillet du ressort.
+   */
+  private applyKinematicDelta(deltaSec: number): void {
+    const { spring, hours, relayMinutes, minutes, relaySeconds, seconds } = WatchMechanism.POS;
+
+    this.angleSeconds = (this.angleSeconds + deltaSec) % (Math.PI * 2);
+
+    const dRelaySec = -deltaSec * (seconds.teeth / relaySeconds.teethWheel);
+    this.angleRelaySeconds = (this.angleRelaySeconds + dRelaySec) % (Math.PI * 2);
+
+    const dMin = -dRelaySec * (relaySeconds.teethPinion / minutes.teeth);
+    this.angleMinutes = (this.angleMinutes + dMin) % (Math.PI * 2);
+
+    const dRelayMin = -dMin * (minutes.teeth / relayMinutes.teethWheel);
+    this.angleRelayMinutes = (this.angleRelayMinutes + dRelayMin) % (Math.PI * 2);
+
+    const dHr = -dRelayMin * (relayMinutes.teethPinion / hours.teeth);
+    this.angleHours = (this.angleHours + dHr) % (Math.PI * 2);
+
+    const dBarrel = -dHr * (hours.teeth / spring.teeth);
+    this.angleBarrel = (this.angleBarrel + dBarrel) % (Math.PI * 2);
   }
 
   public isAtEndStop(): boolean {
@@ -162,14 +163,17 @@ export class WatchMechanism {
     return this.clutchEngagement > 0.5;
   }
 
+  /**
+   * Zone tactile élargie autour de la molette à droite pour remonter facilement au doigt
+   */
   public isPointInCrown(canvasX: number, canvasY: number): boolean {
     const worldX = (canvasX - this.width / 2) / this.currentScale + this.currentFocusX;
     const worldY = (canvasY - this.height / 2) / this.currentScale + this.currentFocusY;
     return (
-      worldX >= 115 &&
-      worldX <= 168 &&
-      worldY >= -35 &&
-      worldY <= 35
+      worldX >= 95 &&
+      worldX <= 175 &&
+      worldY >= -48 &&
+      worldY <= 48
     );
   }
 
@@ -181,8 +185,8 @@ export class WatchMechanism {
     this.currentFocusX += (targetCam.x - this.currentFocusX) * camLerp;
     this.currentFocusY += (targetCam.y - this.currentFocusY) * camLerp;
 
-    const { spring } = WatchMechanism.POS;
-    const threadPitch = 12;
+    const { spring, hours } = WatchMechanism.POS;
+    const threadPitch = 11;
 
     // 2. Débrayage automatique de la molette
     const activelyWinding = isWinding && this.power < 100;
@@ -192,6 +196,7 @@ export class WatchMechanism {
 
     if (activelyWinding) {
       const prevPower = this.power;
+      // Remontage rapide (environ 1,5 seconde pour charger à 100%)
       this.power = Math.min(100, this.power + deltaTime * 0.065);
       const effectiveDt = (this.power - prevPower) / 0.065;
 
@@ -199,62 +204,66 @@ export class WatchMechanism {
       this.wormOffset = (this.wormOffset + deltaWorm) % threadPitch;
 
       this.windingStepAccumulator += deltaWorm;
-      if (this.windingStepAccumulator >= 6.0) {
+      if (this.windingStepAccumulator >= 5.5) {
         this.windingStepAccumulator = 0;
         this.onWindingClickCallback?.();
       }
 
-      const deltaBarrel = -deltaWorm / spring.r;
+      // Les filets de la vis poussent les dents du bas du barillet vers la gauche :
+      // le barillet tourne dans le sens horaire (+deltaBarrel) en resserrant le ressort,
+      // et repartira exactement de cet angle en sens inverse lors de la détente !
+      const deltaBarrel = deltaWorm / spring.r;
       this.angleBarrel = (this.angleBarrel + deltaBarrel) % (Math.PI * 2);
+
+      // Recale uniquement la phase de la denture du barillet sur son angle courant à la fin du remontage
+      if (this.power >= 100) {
+        const toothPitch = (Math.PI * 2) / spring.teeth;
+        const idealMesh = WatchMechanism.computeDrivenGearAngle(
+          hours.x, hours.y, hours.teeth, this.angleHours,
+          spring.x, spring.y, spring.teeth
+        );
+        const diff = idealMesh - this.angleBarrel;
+        this.angleBarrel += diff - Math.round(diff / toothPitch) * toothPitch;
+      }
       return;
     }
 
-    // 3. Marche de la chaîne cinématique complète :
-    // - En Vitesse réelle : 1 battement = 1000 ms (1 seconde exacte)
-    // - En Mode accéléré  : 5 battements/s = 200 ms
-    // L'impulsion saccadée de la seconde (65% saut franc + 35% glissement de maintien) entraîne
-    // l'intégralité du train d'engrenages sans qu'aucune roue ne paraisse figée entre deux battements.
+    // 3. Marche en temps réel (1 battement = 1000 ms) avec temps de détente court (~20 secondes de 100% à 0%)
     if (this.power > 0 && !isWinding) {
-      const dischargeRate = this.realTimeMode ? 0.00025 : 0.0012;
+      const dischargeRate = 0.005; // 5% par seconde => détente complète en 20 secondes
       this.power = Math.max(0, this.power - deltaTime * dischargeRate);
 
-      const stepPeriodMs = this.realTimeMode ? 1000 : 200;
+      const stepPeriodMs = 1000;
       const stepAngleSec = Math.PI / 30; // 1 seconde = 6°
 
+      const prevBlended = this.getBlendedStepProgress(this.stepTimerMs, stepPeriodMs);
       this.stepTimerMs += deltaTime;
+
+      let completedSteps = 0;
       while (this.stepTimerMs >= stepPeriodMs) {
         this.stepTimerMs -= stepPeriodMs;
-        this.prevSecondsAngle = this.targetSecondsAngle;
-        this.secondsStepIndex = (this.secondsStepIndex + 1) % 60;
-        this.targetSecondsAngle = this.secondsStepIndex * stepAngleSec;
+        completedSteps++;
 
         this.onTickCallback?.(this.isTicPhase);
         this.isTicPhase = !this.isTicPhase;
       }
 
-      const jumpDurationMs = Math.min(75, stepPeriodMs * 0.45);
-      const jumpProgress = Math.min(1, this.stepTimerMs / jumpDurationMs);
-      const cubicJump = 1 - Math.pow(1 - jumpProgress, 3);
-      const linearCreep = this.stepTimerMs / stepPeriodMs;
+      const newBlended = this.getBlendedStepProgress(this.stepTimerMs, stepPeriodMs);
+      const progressDelta = completedSteps - prevBlended + newBlended;
+      const deltaSec = progressDelta * stepAngleSec;
 
-      // Combine la saccade franche de la trotteuse (72%) et l'entraînement continu du train (28%)
-      const blendedProgress = 0.72 * cubicJump + 0.28 * linearCreep;
-
-      let deltaStep = this.targetSecondsAngle - this.prevSecondsAngle;
-      if (deltaStep < 0) deltaStep += Math.PI * 2;
-      if (deltaStep > Math.PI) deltaStep = 0;
-
-      this.angleSeconds = (this.prevSecondsAngle + deltaStep * blendedProgress) % (Math.PI * 2);
-
-      // Verrouille instantanément les 5 engrènements (Secondes -> Relais Sec -> Minutes -> Relais Min -> Heures -> Ressort)
-      this.syncFullKinematicChain();
+      this.applyKinematicDelta(deltaSec);
     }
   }
 
-  /**
-   * Applique un rendu normal (opaque + couleurs vives) sur le mécanisme actif,
-   * et un rendu GRIS TRANSPARENT (grayscale + globalAlpha = 0.20) sur les autres éléments lors d'un zoom.
-   */
+  private getBlendedStepProgress(timerMs: number, stepPeriodMs: number): number {
+    const jumpDurationMs = Math.min(75, stepPeriodMs * 0.45);
+    const jumpProgress = Math.min(1, timerMs / jumpDurationMs);
+    const cubicJump = 1 - Math.pow(1 - jumpProgress, 3);
+    const linearCreep = timerMs / stepPeriodMs;
+    return 0.72 * cubicJump + 0.28 * linearCreep;
+  }
+
   private drawWithFocus(isFocused: boolean, drawFn: () => void): void {
     this.ctx.save();
     if (this.zoomMode !== 'overview' && !isFocused) {
@@ -281,18 +290,18 @@ export class WatchMechanism {
     // 1. Début de bracelet (haut/bas) + Platine squelette avec les 60 graduations
     this.drawChassisWithBraceletStubs();
 
-    // 2. Roue dorée des Heures (mise en valeur dans Zoom Heures, et visible en gris transparent dans les autres zooms)
+    // 2. Roue dorée des Heures
     this.drawWithFocus(z === 'hours', () => {
       this.drawToyDiscGear(hours.x, hours.y, hours.r, hours.teeth, this.angleHours, '#fbbf24', '#b45309', '#fef3c7', 8);
     });
 
-    // 3. Barillet du Ressort et Molette à débrayage automatique (mis en valeur dans Zoom Ressort/Molette)
+    // 3. Barillet du Ressort et Molette à débrayage automatique (sans ressort bleu)
     this.drawWithFocus(z === 'spring', () => {
       this.drawToyBarrel(spring.x, spring.y, spring.r, spring.teeth, this.angleBarrel, this.power);
       this.drawRightCrownWithAutoClutch(crown.x, crown.y, this.wormOffset, isWinding && this.power < 100);
     });
 
-    // 4. Train des Minutes à double roue (mis en valeur dans Zoom Minutes)
+    // 4. Train des Minutes à double roue
     this.drawWithFocus(z === 'minutes', () => {
       this.drawSteppedRelayGear(
         relayMinutes.x,
@@ -309,7 +318,7 @@ export class WatchMechanism {
       this.drawToyDiscGear(minutes.x, minutes.y, minutes.r, minutes.teeth, this.angleMinutes, '#38bdf8', '#0284c7', '#e0f2fe', 6);
     });
 
-    // 5. Train des Secondes à double roue (mis en valeur dans Zoom Secondes)
+    // 5. Train des Secondes à double roue
     this.drawWithFocus(z === 'seconds', () => {
       this.drawSteppedRelayGear(
         relaySeconds.x,
@@ -326,7 +335,7 @@ export class WatchMechanism {
       this.drawToyDiscGear(seconds.x, seconds.y, seconds.r, seconds.teeth, this.angleSeconds, '#f43f5e', '#be123c', '#ffe4e6', 4);
     });
 
-    // 6. Les 3 aiguilles (l'aiguille du mécanisme zoomé est vive, les autres sont en gris transparent)
+    // 6. Les 3 aiguilles
     this.drawHandsWithFocus();
 
     this.ctx.restore();
@@ -380,6 +389,11 @@ export class WatchMechanism {
     this.ctx.stroke();
   }
 
+  /**
+   * Dessine la molette compacte et sa vis sans fin à débrayage automatique (sans ressort bleu).
+   * Pendant le remontage, les filets se déplacent vers la gauche (tx = base - offset)
+   * pour pousser les dents du bas du barillet dans le sens horaire.
+   */
   private drawRightCrownWithAutoClutch(x: number, y: number, offset: number, isActivelyWinding: boolean): void {
     this.ctx.save();
     this.ctx.translate(x, y);
@@ -395,6 +409,7 @@ export class WatchMechanism {
     const wormZoneRight = -32;
     const pitch = 11;
 
+    // Guide vertical du palier de débrayage à gauche (sans ressort bleu)
     this.ctx.fillStyle = '#1e293b';
     this.ctx.strokeStyle = '#64748b';
     this.ctx.lineWidth = 1.6;
@@ -403,31 +418,24 @@ export class WatchMechanism {
     this.ctx.fill();
     this.ctx.stroke();
 
-    this.ctx.beginPath();
-    this.ctx.strokeStyle = isActivelyWinding ? '#fbbf24' : '#38bdf8';
-    this.ctx.lineWidth = 1.8;
-    for (let s = 0; s < 3; s++) {
-      const sy = -7 + s * 2.2 + dropY * 0.3;
-      this.ctx.moveTo(stemLeft - 4, sy);
-      this.ctx.lineTo(stemLeft + 2, sy + 1.2);
-    }
-    this.ctx.stroke();
-
+    // Ensemble mobile (Tige + Vis sans fin + Molette) qui s'abaisse quand il est débrayé
     this.ctx.save();
     this.ctx.translate(0, dropY);
 
+    // Arbre métallique de la vis
     this.ctx.fillStyle = '#94a3b8';
     this.ctx.fillRect(stemLeft, -4.5, stemLength, 9);
     this.ctx.strokeStyle = '#334155';
     this.ctx.lineWidth = 1.8;
     this.ctx.strokeRect(stemLeft, -4.5, stemLength, 9);
 
+    // Filets trapézoïdaux de la vis sans fin (avancent vers la gauche lors du remontage)
     this.ctx.fillStyle = isActivelyWinding ? '#fde047' : '#cbd5e1';
     this.ctx.strokeStyle = '#334155';
     this.ctx.lineWidth = 1.5;
 
     for (let base = wormZoneLeft; base <= wormZoneRight + pitch; base += pitch) {
-      const tx = base + (offset % pitch);
+      const tx = base - (offset % pitch);
       if (tx < wormZoneLeft - 2 || tx > wormZoneRight - 4) continue;
 
       this.ctx.beginPath();
@@ -447,6 +455,7 @@ export class WatchMechanism {
       this.ctx.stroke();
     }
 
+    // Palier mobile en laiton à gauche
     this.ctx.fillStyle = '#d97706';
     this.ctx.strokeStyle = '#78350f';
     this.ctx.lineWidth = 1.8;
@@ -455,21 +464,7 @@ export class WatchMechanism {
     this.ctx.fill();
     this.ctx.stroke();
 
-    const neckLeft = -24;
-    const neckRight = stemRight;
-    this.ctx.beginPath();
-    this.ctx.strokeStyle = isActivelyWinding ? '#fde047' : '#38bdf8';
-    this.ctx.lineWidth = 2;
-    const coils = 4;
-    const coilStep = (neckRight - neckLeft) / coils;
-    for (let c = 0; c < coils; c++) {
-      const cx = neckLeft + c * coilStep;
-      this.ctx.moveTo(cx, -6.5);
-      this.ctx.lineTo(cx + coilStep * 0.5, 6.5);
-      this.ctx.lineTo(cx + coilStep, -6.5);
-    }
-    this.ctx.stroke();
-
+    // Molette extérieure compacte (largeur 20 px, hauteur 38 px)
     this.ctx.save();
     this.ctx.translate(pushOutX, 0);
     if (isActivelyWinding) {
@@ -515,12 +510,13 @@ export class WatchMechanism {
     this.ctx.lineWidth = 2;
     this.ctx.stroke();
 
+    // Spires du ressort très expressives : bien serrées au centre à 100%, largement détendues à 0%
     this.ctx.beginPath();
-    const turns = 3.8;
+    const turns = 3.2 + (power / 100) * 1.2;
     const innerR = 4.5;
     const tightness = power / 100;
-    const maxCoilR = r * (0.72 - tightness * 0.22);
-    const exponent = 0.65 + tightness * 1.45;
+    const maxCoilR = r * (0.74 - tightness * 0.28);
+    const exponent = 0.55 + tightness * 1.85;
 
     for (let i = 0; i <= 150; i++) {
       const t = i / 150;
@@ -534,7 +530,7 @@ export class WatchMechanism {
       else this.ctx.lineTo(px, py);
     }
 
-    this.ctx.strokeStyle = power > 15 ? '#f97316' : '#64748b';
+    this.ctx.strokeStyle = power > 5 ? '#f97316' : '#64748b';
     this.ctx.lineWidth = 3.2;
     this.ctx.lineCap = 'round';
     this.ctx.stroke();
@@ -680,7 +676,6 @@ export class WatchMechanism {
   private drawHandsWithFocus(): void {
     const z = this.zoomMode;
 
-    // Petite aiguille des Heures
     this.drawWithFocus(z === 'hours', () => {
       this.ctx.save();
       this.ctx.rotate(this.angleHours);
@@ -699,7 +694,6 @@ export class WatchMechanism {
       this.ctx.restore();
     });
 
-    // Grande aiguille des Minutes
     this.drawWithFocus(z === 'minutes', () => {
       this.ctx.save();
       this.ctx.rotate(this.angleMinutes);
@@ -715,7 +709,6 @@ export class WatchMechanism {
       this.ctx.restore();
     });
 
-    // Trotteuse rouge des Secondes
     this.drawWithFocus(z === 'seconds', () => {
       this.ctx.save();
       this.ctx.rotate(this.angleSeconds);
@@ -731,7 +724,6 @@ export class WatchMechanism {
       this.ctx.restore();
     });
 
-    // Rubis central
     this.ctx.beginPath();
     this.ctx.arc(0, 0, 6.5, 0, Math.PI * 2);
     this.ctx.fillStyle = '#e11d48';

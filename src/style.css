@@ -1241,3 +1241,32 @@ body.theme-night #instruction {
   width: min(95vw, 390px, 47dvh) !important;
   max-width: 390px !important;
 }
+
+/* ============================================================================
+   15. ATELIER V40 : INTERFACE ÉPURÉE (MONTRE PLEIN CADRE + 4 BOUTONS DE ZOOM UNIQUEMENT)
+   ============================================================================ */
+#workshop-canvas-wrap {
+  width: min(96vw, 440px, 64dvh) !important;
+  max-width: 440px !important;
+  height: auto !important;
+  aspect-ratio: 1 / 1 !important;
+  flex: 0 0 auto !important;
+  margin: auto 0 !important;
+}
+
+#workshop-ui {
+  width: 100%;
+  padding-bottom: 4px;
+}
+
+#workshop-parts-tray {
+  display: grid !important;
+  grid-template-columns: repeat(2, 1fr) !important;
+  gap: 10px !important;
+  width: 100%;
+}
+
+.workshop-part-btn {
+  padding: 12px 10px !important;
+  font-size: 0.92rem !important;
+}

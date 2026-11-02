@@ -35,7 +35,7 @@
               <span id="current-profile-name">Joueur 1</span> ▾
             </button>
             <button id="dev-unlock-btn" type="button" title="Bouton provisoire de test">🔓 Mode Test</button>
-            <button id="force-refresh-btn" type="button" title="Vider le cache PWA et forcer la mise à jour">⚡ Maj v39</button>
+            <button id="force-refresh-btn" type="button" title="Vider le cache PWA et forcer la mise à jour">⚡ Maj v40</button>
           </div>
           <button id="sound-toggle-btn" type="button" aria-pressed="true" aria-label="Activer ou couper le son" title="Son actif">
             <svg viewBox="0 0 24 24" width="26" height="26" fill="none" stroke="currentColor" stroke-width="2.3" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
@@ -167,17 +167,12 @@
         </div>
       </div>
 
-      <!-- VUE 3 : LE VÉRITABLE ATELIER DE L'HORLOGER -->
+      <!-- VUE 3 : L'ATELIER DE L'HORLOGER ÉPURÉ -->
       <div id="workshop-screen" class="view hidden">
         <div id="workshop-top-bar">
           <button id="workshop-back-btn" type="button" title="Retour au menu">
-            <span class="back-label">← Menu · ⚙️ L'Atelier</span>
-            <span id="power-bar-text">🔋 Énergie : 75%</span>
+            <span class="back-label">← Menu · ⚙️ L'Atelier de l'Horloger</span>
           </button>
-        </div>
-
-        <div id="power-bar-track">
-          <div id="power-bar-fill" style="width: 75%;"></div>
         </div>
 
         <div id="workshop-canvas-wrap">
@@ -185,11 +180,6 @@
         </div>
 
         <div id="workshop-ui">
-          <div id="workshop-controls-row">
-            <button id="wind-crown-btn" type="button">🔄 Maintenir pour remonter</button>
-            <button id="toggle-speed-btn" type="button" class="real-time-active">⏱️ Vitesse réelle</button>
-          </div>
-          <div id="workshop-instruction">Touche les pièces sur la montre ou les boutons en bas pour assembler ton mécanisme !</div>
           <div id="workshop-parts-tray"></div>
         </div>
       </div>
