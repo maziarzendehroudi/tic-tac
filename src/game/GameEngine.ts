@@ -36,7 +36,6 @@ export class GameEngine {
   private levelTotalErrors: number = 0;
   private currentQuestionAssisted: boolean = false;
   private showGhostGuide: boolean = false;
-  private highlightHourSector: number | undefined = undefined;
 
   private currentLevel: number = 1;
   private currentPhase: 1 | 2 = 1;
@@ -129,7 +128,7 @@ export class GameEngine {
 
     const metaTheme = document.querySelector('meta[name="theme-color"]');
     if (metaTheme) {
-      metaTheme.setAttribute('content', isDay ? '#38bdf8' : '#060b19');
+      metaTheme.setAttribute('content', isDay ? '#38bdf8' : '#0b132b');
     }
   }
 
@@ -138,7 +137,6 @@ export class GameEngine {
     this.errorsCount = 0;
     this.currentQuestionAssisted = false;
     this.showGhostGuide = false;
-    this.highlightHourSector = undefined;
     this.isTransitioning = false;
     this.hideHelp();
     this.resetButtonsState();
@@ -153,7 +151,6 @@ export class GameEngine {
     } else {
       const targetH12 = this.targetTime.hours % 12 || 12;
       this.currentHours = targetH12 === 9 ? 6 : 9;
-      // Aux niveaux 2 à 6, on évite que la grande aiguille démarre déjà sur la minute cible
       this.currentMinutes =
         this.currentLevel >= 2 && this.targetTime.minutes === 0 ? 30 : 0;
       this.activeHand = 'hour';
@@ -331,11 +328,13 @@ export class GameEngine {
   }
 
   private updateHandSelectorUI(): void {
+    const selectorGroup = document.querySelector('.hand-selector-group') as HTMLElement | null;
     const hrBtn = document.getElementById('select-hour-btn');
     const minBtn = document.getElementById('select-minute-btn');
 
-    if (minBtn) {
-      minBtn.style.display = this.currentLevel === 1 ? 'none' : '';
+    // Au Niveau 1 (Heures piles), les minutes restent toujours sur 12 (:00), inutile d'afficher le sélecteur d'aiguille
+    if (selectorGroup) {
+      selectorGroup.style.display = this.currentLevel === 1 ? 'none' : 'flex';
     }
 
     if (this.activeHand === 'hour') {
@@ -431,14 +430,14 @@ export class GameEngine {
     if (this.currentQuestionAssisted) {
       this.soundEngine.playSuccess();
       this.showFeedback(
-        `👍 <strong>Bien vu avec l'aide !</strong> Réussis la suivante tout seul pour gagner ton étoile ★`,
+        `👍 <strong>Bien vu !</strong> Réussis la suivante du premier coup pour gagner ton étoile ★`,
         'success'
       );
       this.scheduleTransition(() => {
         this.initNewQuestion();
         this.updateUI();
         this.render();
-      }, 1500);
+      }, 1450);
       return;
     }
 
@@ -455,7 +454,7 @@ export class GameEngine {
           this.initNewQuestion();
           this.updateUI();
           this.render();
-        }, 1500);
+        }, 1450);
         return;
       } else {
         this.soundEngine.playLevelComplete();
@@ -468,12 +467,12 @@ export class GameEngine {
         const starsStr = '★'.repeat(earnedStars) + '☆'.repeat(3 - earnedStars);
         const msg =
           earnedStars === 3
-            ? `🏆 <strong>Niveau ${this.currentLevel} parfait (${starsStr}) !</strong> Aucun piège ne te résiste !`
-            : `🏆 <strong>Niveau ${this.currentLevel} validé (${starsStr}) !</strong> Rejoue-le pour viser les 3 étoiles !`;
+            ? `🏆 <strong>Niveau ${this.currentLevel} parfait (${starsStr}) !</strong>`
+            : `🏆 <strong>Niveau ${this.currentLevel} validé (${starsStr}) !</strong>`;
 
         this.showFeedback(msg, 'success');
         this.playCelebrationAnimation(earnedStars);
-        this.scheduleTransition(() => { this.returnToMenu(); }, 2300);
+        this.scheduleTransition(() => { this.returnToMenu(); }, 2200);
         return;
       }
     }
@@ -485,7 +484,7 @@ export class GameEngine {
       this.initNewQuestion();
       this.updateUI();
       this.render();
-    }, 1250);
+    }, 1200);
   }
 
   private playCelebrationAnimation(earnedStars: 1 | 2 | 3): void {
@@ -547,77 +546,70 @@ export class GameEngine {
     this.celebrationAnimId = requestAnimationFrame(animate);
   }
 
-  private handleFailedAttempt(): void {
+  private handleFailedReadAttempt(selectedChoice: TimeTarget): void {
     this.errorsCount++;
     this.levelTotalErrors++;
-    this.highlightHourSector = this.targetTime.hours;
 
-    // En Lecture : la solution est donnée au 2e échec.
-    // En Placement : le modèle en pointillés (silhouette) est affiché au 3e échec.
-    if (this.currentPhase === 1 && this.errorsCount >= 2) {
+    if (this.errorsCount >= 2) {
       this.currentQuestionAssisted = true;
-    } else if (this.currentPhase === 2 && this.errorsCount >= 3) {
+    }
+
+    this.soundEngine.playError();
+    this.triggerShakeEffect();
+
+    const diagnosticHint = TimeMath.buildReadDiagnosticHint(
+      this.targetTime.hours,
+      this.targetTime.minutes,
+      selectedChoice.hours,
+      selectedChoice.minutes,
+      this.currentLevel
+    );
+
+    this.showFeedback(`💡 ${diagnosticHint}`, 'error');
+  }
+
+  private handleFailedPlaceAttempt(): void {
+    this.errorsCount++;
+    this.levelTotalErrors++;
+
+    if (this.errorsCount >= 3) {
       this.currentQuestionAssisted = true;
       this.showGhostGuide = true;
     }
 
     this.soundEngine.playError();
     this.triggerShakeEffect();
+
+    const isHourCorrect = (this.currentHours % 12) === (this.targetTime.hours % 12);
+    const isMinuteCorrect =
+      this.currentLevel === 6
+        ? TimeMath.circularMinuteDiff(this.currentMinutes, this.targetTime.minutes) <= 1
+        : this.currentMinutes === this.targetTime.minutes;
+
+    if (isHourCorrect && !isMinuteCorrect) {
+      this.activeHand = 'minute';
+      this.updateHandSelectorUI();
+    } else if (!isHourCorrect && isMinuteCorrect) {
+      this.activeHand = 'hour';
+      this.updateHandSelectorUI();
+    }
+
     this.render();
-    this.showDiagnosticHelp();
-  }
 
-  private showDiagnosticHelp(): void {
-    if (this.currentPhase === 1) {
-      if (this.errorsCount === 1) {
-        const methodHint = TimeMath.buildMethodHint(
-          this.targetTime.hours,
-          this.targetTime.minutes,
-          this.currentLevel
-        );
-        this.showFeedback(`💡 ${methodHint}`, 'error');
-      } else {
-        const fullExplanation = TimeMath.buildPedagogicalHint(
-          this.targetTime.hours,
-          this.targetTime.minutes,
-          this.currentLevel
-        );
-        this.showFeedback(`💡 ${fullExplanation} ➔ Clique sur <strong>${this.targetTime.text}</strong>.`, 'error');
-      }
+    if (this.showGhostGuide) {
+      this.showFeedback(
+        '💡 Aide-toi du modèle en pointillés sur l’horloge, puis clique sur <strong>✓ Vérifier</strong> !',
+        'error'
+      );
     } else {
-      const isHourCorrect = (this.currentHours % 12) === (this.targetTime.hours % 12);
-      const isMinuteCorrect =
-        this.currentLevel === 6
-          ? TimeMath.circularMinuteDiff(this.currentMinutes, this.targetTime.minutes) <= 1
-          : this.currentMinutes === this.targetTime.minutes;
-
-      const targetDialHour = this.targetTime.hours % 12 || 12;
-      const targetDialMinNum = TimeMath.minuteToDialNumber(this.targetTime.minutes);
-
-      if (this.showGhostGuide) {
-        this.showFeedback(
-          `💡 Aligne les aiguilles sur le modèle en pointillés pour afficher <strong>${this.targetTime.text}</strong> !`,
-          'error'
-        );
-      } else if (isHourCorrect && !isMinuteCorrect) {
-        this.activeHand = 'minute';
-        this.updateHandSelectorUI();
-        this.render();
-        if (this.currentLevel === 6) {
-          this.showFeedback(`💡 Les heures sont justes ! Place la grande aiguille bleue sur <strong>${this.targetTime.minutes} min</strong> (avec − / +).`, 'error');
-        } else {
-          const minStr = this.targetTime.minutes < 10 ? `0${this.targetTime.minutes}` : `${this.targetTime.minutes}`;
-          this.showFeedback(`💡 Les heures sont justes ! Place la grande aiguille bleue sur <strong>${minStr}</strong> (en face du ${targetDialMinNum}).`, 'error');
-        }
-      } else if (!isHourCorrect && isMinuteCorrect) {
-        this.activeHand = 'hour';
-        this.updateHandSelectorUI();
-        this.render();
-        this.showFeedback(`💡 Les minutes sont justes ! Place la petite aiguille orange dans la zone dorée du <strong>${targetDialHour}</strong>.`, 'error');
-      } else {
-        const minStr = this.targetTime.minutes < 10 ? `0${this.targetTime.minutes}` : `${this.targetTime.minutes}`;
-        this.showFeedback(`💡 Place la petite aiguille orange sur le <strong>${targetDialHour}</strong> et la grande aiguille bleue sur <strong>${minStr}</strong>.`, 'error');
-      }
+      const placeHint = TimeMath.buildPlacementDiagnosticHint(
+        this.currentHours,
+        this.currentMinutes,
+        this.targetTime.hours,
+        this.targetTime.minutes,
+        this.currentLevel
+      );
+      this.showFeedback(`💡 ${placeHint}`, 'error');
     }
   }
 
@@ -694,7 +686,7 @@ export class GameEngine {
 
     this.animateButtonFeedback(checkBtn, isCorrect);
     if (isCorrect) this.handleSuccessfulAnswer();
-    else this.handleFailedAttempt();
+    else this.handleFailedPlaceAttempt();
   }
 
   private checkReadAnswer(choiceIndex: number): void {
@@ -714,13 +706,12 @@ export class GameEngine {
     this.animateButtonFeedback(clickedBtn, isCorrect);
 
     if (isCorrect) this.handleSuccessfulAnswer();
-    else this.handleFailedAttempt();
+    else this.handleFailedReadAttempt(selectedChoice);
   }
 
   private formatColoredTargetHTML(target: TimeTarget): string {
     const [hPart, mPart] = target.text.split('h');
-    const spokenChip = target.spokenText ? `<span class="spoken-chip">« ${target.spokenText} »</span>` : '';
-    return `<span class="hr-badge" title="Toucher pour régler les heures">${hPart}h</span><span class="min-badge" title="Toucher pour régler les minutes">${mPart}</span>${spokenChip}`;
+    return `<span class="hr-badge" title="Toucher pour régler les heures">${hPart}h</span><span class="min-badge" title="Toucher pour régler les minutes">${mPart}</span>`;
   }
 
   private updatePhaseStarsUI(): void {
@@ -736,7 +727,6 @@ export class GameEngine {
   private updateUI(): void {
     const instructionEl = document.getElementById('instruction');
     const placementTools = document.getElementById('placement-tools');
-    const checkBtn = document.getElementById('check-btn');
     const choicesContainer = document.getElementById('choices-container');
 
     this.updatePhaseStarsUI();
@@ -747,7 +737,6 @@ export class GameEngine {
         : '';
 
     if (this.currentPhase === 1) {
-      checkBtn?.classList.add('hidden');
       placementTools?.classList.add('hidden');
       choicesContainer?.classList.remove('hidden');
       if (instructionEl) {
@@ -759,12 +748,11 @@ export class GameEngine {
         if (this.currentChoices[idx]) btn.textContent = this.currentChoices[idx].text;
       });
     } else {
-      checkBtn?.classList.remove('hidden');
       placementTools?.classList.remove('hidden');
       choicesContainer?.classList.add('hidden');
       this.updateHandSelectorUI();
       if (instructionEl) {
-        instructionEl.innerHTML = `${periodChip}<span>Place</span> ${this.formatColoredTargetHTML(this.targetTime)}`;
+        instructionEl.innerHTML = `${periodChip}<span>Place les aiguilles sur</span> ${this.formatColoredTargetHTML(this.targetTime)}`;
       }
     }
   }
@@ -776,16 +764,8 @@ export class GameEngine {
   public render(): void {
     const isDay = this.currentLevel < 5 ? true : (this.targetTime ? this.targetTime.isDay : true);
     const is24HourTarget = this.targetTime ? TimeMath.is24HourRingTarget(this.targetTime.hours) : false;
-    const activeHourPreview =
-      this.currentPhase === 2 && this.activeHand === 'hour' ? this.currentHours : undefined;
 
-    this.clock.draw(
-      this.currentLevel,
-      isDay,
-      is24HourTarget,
-      this.highlightHourSector,
-      activeHourPreview
-    );
+    this.clock.draw(this.currentLevel, isDay, is24HourTarget);
 
     const ghostTarget =
       this.currentPhase === 2 && this.showGhostGuide && this.targetTime

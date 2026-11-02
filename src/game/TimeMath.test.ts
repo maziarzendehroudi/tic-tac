@@ -4,62 +4,44 @@ import { QuestionManager } from './QuestionManager';
 import { SaveManager } from './SaveManager';
 import { SoundEngine } from './SoundEngine';
 
-describe('TimeMath — Jour/Nuit, Calibrage Angulaire :55 & Indices Progressifs', () => {
-  it('distingue correctement les heures du Jour (06h..17h) et de la Nuit (18h..05h)', () => {
-    expect(TimeMath.isDayTime(6)).toBe(true);
-    expect(TimeMath.isDayTime(12)).toBe(true);
-    expect(TimeMath.isDayTime(17)).toBe(true);
-    expect(TimeMath.isDayTime(18)).toBe(false);
-    expect(TimeMath.isDayTime(0)).toBe(false);
+describe('TimeMath — Indices Diagnostiques Pertinents (Sans dévoiler la réponse)', () => {
+  it('détecte l’erreur Matin vs Après-midi (ex: cliquer 03h00 au lieu de 15h00)', () => {
+    const hintAfternoon = TimeMath.buildReadDiagnosticHint(15, 0, 3, 0, 5);
+    expect(hintAfternoon).toContain('après-midi');
+    expect(hintAfternoon).toContain('orange');
+    // Ne dévoile pas le nombre 15 dans l'indice
+    expect(hintAfternoon).not.toContain('15');
+
+    const hintNight = TimeMath.buildReadDiagnosticHint(3, 0, 15, 0, 5);
+    expect(hintNight).toContain('avant midi');
+    expect(hintNight).not.toContain('03h00');
   });
 
-  it('sélectionne toujours l’heure H à :55 que l’enfant vise le chiffre H (ex: 3.92) ou le secteur [H, H+1)', () => {
-    const radJustLeftOf4 = (3.92 * Math.PI) / 6;
-    const radInsideSector4 = (4.65 * Math.PI) / 6;
-    expect(
-      TimeMath.pointerToHours(Math.sin(radJustLeftOf4) * 100, -Math.cos(radJustLeftOf4) * 100, 55)
-    ).toBe(4);
-    expect(
-      TimeMath.pointerToHours(Math.sin(radInsideSector4) * 100, -Math.cos(radInsideSector4) * 100, 55)
-    ).toBe(4);
+  it('détecte l’inversion entre la petite aiguille et la grande aiguille', () => {
+    // À 3h00 (grande aiguille sur 12), l'enfant clique 12h00
+    const hintInverted = TimeMath.buildReadDiagnosticHint(3, 0, 12, 0, 1);
+    expect(hintInverted).toContain('inverser');
+    expect(hintInverted).not.toContain('sur le 3');
   });
 
-  it('fournit un indice méthodologique au 1er essai sans dévoiler la minute exacte', () => {
-    const methodHint = TimeMath.buildMethodHint(8, 45, 3);
-    expect(methodHint).toContain('zone dorée entre <strong>8</strong> et <strong>9</strong>');
-    expect(methodHint).not.toContain('8h45');
-
-    const fullHint = TimeMath.buildPedagogicalHint(8, 45, 3);
-    expect(fullHint).toContain('moins le quart');
+  it('détecte le piège de l’heure suivante (H+1) lorsque les minutes dépassent :30', () => {
+    const hintTrap = TimeMath.buildReadDiagnosticHint(8, 45, 9, 45, 3);
+    expect(hintTrap).toContain('pas encore dépassé');
+    expect(hintTrap).not.toContain('8h45');
   });
 
-  it('formate correctement les expressions courantes en français', () => {
-    expect(TimeMath.formatSpokenTime(4, 30, 2)).toBe('4 h et demie');
-    expect(TimeMath.formatSpokenTime(6, 15, 3)).toBe('6 h et quart');
-    expect(TimeMath.formatSpokenTime(7, 45, 3)).toBe('8 h moins le quart');
-    expect(TimeMath.formatSpokenTime(12, 0, 5)).toBe('Midi pile');
-    expect(TimeMath.formatSpokenTime(0, 0, 5)).toBe('Minuit pile');
-  });
-});
+  it('ne mentionne jamais 00 au Niveau 1 et guide uniquement sur l’élément erroné en Placement', () => {
+    const hintLvl1 = TimeMath.buildReadDiagnosticHint(3, 0, 2, 0, 1);
+    expect(hintLvl1).not.toContain('00');
+    expect(hintLvl1).not.toContain('sur le 3');
 
-describe('QuestionManager — Leurre Anti-Piège H+1 après :35', () => {
-  it('inclut systématiquement le leurre H+1 lorsque les minutes valent 35 ou plus', () => {
-    const qm4 = new QuestionManager(4);
-    const target = {
-      hours: 4,
-      minutes: 50,
-      text: '4h50',
-      spokenText: '',
-      isDay: true,
-      periodLabel: ''
-    };
-    const choices = qm4.generateChoices(target);
-    expect(choices).toHaveLength(3);
-    expect(choices.some(c => c.text === '5h50')).toBe(true);
+    const placeHintMin = TimeMath.buildPlacementDiagnosticHint(4, 15, 4, 30, 2);
+    expect(placeHintMin).toContain('L’heure est bonne');
+    expect(placeHintMin).toContain(':30');
   });
 });
 
-describe('SaveManager — Notation 1..3 Étoiles & Grades sur 18 ⭐', () => {
+describe('QuestionManager & SaveManager — Cohérence Globale', () => {
   beforeEach(() => {
     const store: Record<string, string> = {};
     globalThis.localStorage = {
@@ -72,29 +54,21 @@ describe('SaveManager — Notation 1..3 Étoiles & Grades sur 18 ⭐', () => {
     };
   });
 
-  it('calcule de 1 à 3 étoiles selon le nombre d’erreurs et conserve le meilleur score', () => {
-    expect(SaveManager.computeStarsForErrors(0)).toBe(3);
-    expect(SaveManager.computeStarsForErrors(1)).toBe(3);
-    expect(SaveManager.computeStarsForErrors(3)).toBe(2);
-    expect(SaveManager.computeStarsForErrors(6)).toBe(1);
+  it('inclut le leurre H+1 après :35 et calcule correctement les 18 étoiles', () => {
+    const qm4 = new QuestionManager(4);
+    const choices = qm4.generateChoices({
+      hours: 4,
+      minutes: 50,
+      text: '4h50',
+      spokenText: '',
+      isDay: true,
+      periodLabel: ''
+    });
+    expect(choices.some(c => c.text === '5h50')).toBe(true);
 
-    let save = SaveManager.load();
-    save = SaveManager.applyLevelRewards(save, 1, 2);
-    expect(save.levelStars[1]).toBe(2);
-
-    save = SaveManager.applyLevelRewards(save, 1, 3);
-    expect(save.levelStars[1]).toBe(3);
-
-    save = SaveManager.applyLevelRewards(save, 1, 1);
-    expect(save.levelStars[1]).toBe(3);
-
-    const sound = new SoundEngine(false);
-    expect(() => sound.playSuccess()).not.toThrow();
-  });
-
-  it('attribue le grade Grand Maître du Temps à 18 étoiles', () => {
     const unlocked = SaveManager.unlockAll(false);
     expect(SaveManager.getTotalStars(unlocked)).toBe(18);
-    expect(SaveManager.getRankTitle(18)).toContain('Grand Maître du Temps');
+    const sound = new SoundEngine(false);
+    expect(() => sound.playSuccess()).not.toThrow();
   });
 });

@@ -15,11 +15,9 @@
     <meta name="theme-color" content="#38bdf8">
   </head>
   <body class="theme-day">
-    <!-- FOND DE CIEL PLEIN ÉCRAN -->
     <div id="sky-backdrop" aria-hidden="true">
       <div class="sun-orb"></div>
       <div class="cloud cloud-1"></div>
-      <div class="cloud cloud-2"></div>
       <div class="moon-orb"></div>
       <div class="stars-layer"></div>
     </div>
@@ -27,7 +25,6 @@
     <div id="app">
       <!-- VUE 1 : MENU PRINCIPAL -->
       <div id="main-menu" class="view">
-        <!-- BARRE SUPÉRIEURE UNIQUEMENT SUR LA PAGE D'ACCUEIL -->
         <div id="global-top-bar">
           <button id="dev-unlock-btn" type="button" title="Bouton provisoire de test">🔓 Mode Test</button>
           <button id="sound-toggle-btn" type="button" aria-pressed="true">🔊 Son</button>
@@ -95,11 +92,10 @@
 
       <!-- VUE 2 : ÉCRAN DE JEU -->
       <div id="game-screen" class="view hidden">
-        <!-- BOUTON LARGE REGROUPANT LE RETOUR AU MENU ET LES ÉTOILES DE PROGRESSION -->
         <div id="game-top-bar">
           <button id="back-menu-btn" type="button" title="Retour au menu">
             <span class="back-label">← Menu · <span id="level-title-display">Niveau 1</span></span>
-            <span id="phase-badge" class="stars-group"><span class="star-off">☆</span><span class="star-off">☆</span><span class="star-off">☆</span></span>
+            <span id="phase-badge" class="stars-group"></span>
           </button>
         </div>
 
@@ -111,28 +107,31 @@
           <!-- 1. QUESTION FIXE -->
           <div id="instruction">Quelle heure est-il ?</div>
 
-          <!-- 2. ZONE DES BOUTONS FIXE -->
+          <!-- 2. ZONE DES BOUTONS FIXE (SANS TRONCATURE) -->
           <div id="controls-zone">
+            <!-- Étape 1 : 3 boutons de choix -->
             <div id="choices-container">
-              <button class="choice-btn" data-index="0">--</button>
-              <button class="choice-btn" data-index="1">--</button>
-              <button class="choice-btn" data-index="2">--</button>
+              <button class="choice-btn" type="button" data-index="0">--</button>
+              <button class="choice-btn" type="button" data-index="1">--</button>
+              <button class="choice-btn" type="button" data-index="2">--</button>
             </div>
 
+            <!-- Étape 2 : Sélection d'aiguille + Barre [ − | ✓ Vérifier | + ] -->
             <div id="placement-tools" class="hidden">
-              <button id="step-minus-btn" type="button" class="nudge-btn" aria-label="Reculer l'aiguille">−</button>
               <div class="hand-selector-group">
                 <button id="select-hour-btn" type="button" class="hand-select-btn hour-mode active-hand-btn">
-                  <span class="dot-indicator dot-hour"></span> Heures
+                  <span class="dot-indicator dot-hour"></span> Aiguille Heures
                 </button>
                 <button id="select-minute-btn" type="button" class="hand-select-btn minute-mode">
-                  <span class="dot-indicator dot-minute"></span> Minutes
+                  <span class="dot-indicator dot-minute"></span> Aiguille Minutes
                 </button>
               </div>
-              <button id="step-plus-btn" type="button" class="nudge-btn" aria-label="Avancer l'aiguille">+</button>
+              <div class="verify-row">
+                <button id="step-minus-btn" type="button" class="nudge-btn" aria-label="Reculer l'aiguille">−</button>
+                <button id="check-btn" type="button">✓ Vérifier</button>
+                <button id="step-plus-btn" type="button" class="nudge-btn" aria-label="Avancer l'aiguille">+</button>
+              </div>
             </div>
-
-            <button id="check-btn" class="hidden">✓ Vérifier</button>
           </div>
 
           <!-- 3. COMMENTAIRES TOUJOURS EN DESSOUS -->

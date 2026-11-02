@@ -10,9 +10,7 @@ export class Clock {
   public draw(
     level: number = 1,
     isDay: boolean = true,
-    is24HourTarget: boolean = false,
-    highlightHourSector?: number,
-    activeSelectedHour?: number
+    is24HourTarget: boolean = false
   ): void {
     const ctx = this.ctx;
     const r = this.radius;
@@ -32,28 +30,8 @@ export class Clock {
     ctx.strokeStyle = outerBezelColor;
     ctx.stroke();
 
-    // 2. Chantier C : Secteur doré [H, H+1] affiché en cas d'erreur pour illustrer le territoire de l'heure
+    // 2. Anneau de la piste des minutes (niveaux 2 à 5)
     const showMinuteTrackBand = level >= 2 && level <= 5;
-    if (typeof highlightHourSector === 'number') {
-      const h12 = highlightHourSector % 12;
-      const startAngle = (h12 * Math.PI) / 6 - Math.PI / 2;
-      const endAngle = ((h12 + 1) * Math.PI) / 6 - Math.PI / 2;
-      const sectorRadius = showMinuteTrackBand ? r - 40 : r - 18;
-
-      ctx.save();
-      ctx.beginPath();
-      ctx.moveTo(0, 0);
-      ctx.arc(0, 0, sectorRadius, startAngle, endAngle);
-      ctx.closePath();
-      ctx.fillStyle = 'rgba(245, 158, 11, 0.22)';
-      ctx.fill();
-      ctx.lineWidth = 2;
-      ctx.strokeStyle = 'rgba(234, 88, 12, 0.55)';
-      ctx.stroke();
-      ctx.restore();
-    }
-
-    // 3. Anneau de la piste des minutes (niveaux 2 à 5)
     if (showMinuteTrackBand) {
       ctx.beginPath();
       ctx.arc(0, 0, r - 4.5, 0, 2 * Math.PI);
@@ -62,7 +40,7 @@ export class Clock {
       ctx.fill('evenodd');
     }
 
-    // 4. Repères géométriques pour demi-heures (Niv 2) et quarts d'heure (Niv 3)
+    // 3. Repères géométriques pour demi-heures (Niv 2) et quarts d'heure (Niv 3)
     if (level === 2 || level === 3) {
       ctx.save();
       ctx.setLineDash([5, 5]);
@@ -82,7 +60,7 @@ export class Clock {
       ctx.restore();
     }
 
-    // 5. Graduations au bord du cadran
+    // 4. Graduations au bord du cadran
     for (let i = 0; i < 60; i++) {
       const isFiveMark = i % 5 === 0;
       if (level === 1 && !isFiveMark) continue;
@@ -100,7 +78,7 @@ export class Clock {
       ctx.stroke();
     }
 
-    // 6. Repères des minutes en bleu (r - 25)
+    // 5. Repères des minutes en bleu (r - 25)
     const minuteLabelRadius = r - 25;
     let minutesToDisplay: number[] = [];
     if (level === 2) minutesToDisplay = [0, 30];
@@ -122,38 +100,19 @@ export class Clock {
       ctx.fillText(label, mx, my);
     });
 
-    // 7. Chiffres des heures 1 à 12 et heures 24h (13 à 00 aux Niveaux 5 & 6)
+    // 6. Chiffres des heures 1 à 12 et heures 24h (13 à 00 aux Niveaux 5 & 6)
     const hour12Radius = showMinuteTrackBand ? r - 66 : r - 52;
     const hour24Radius = showMinuteTrackBand ? r - 102 : r - 92;
-    const highlightedH12 =
-      typeof highlightHourSector === 'number'
-        ? highlightHourSector % 12 || 12
-        : typeof activeSelectedHour === 'number'
-          ? activeSelectedHour % 12 || 12
-          : null;
 
     for (let i = 1; i <= 12; i++) {
       const angle = (i * Math.PI) / 6;
       const hx = hour12Radius * Math.sin(angle);
       const hy = -hour12Radius * Math.cos(angle);
-      const isHighlightedHour = highlightedH12 === i;
-
-      if (isHighlightedHour && (!is24HourTarget || level < 5)) {
-        ctx.save();
-        ctx.beginPath();
-        ctx.arc(hx, hy, 20, 0, 2 * Math.PI);
-        ctx.fillStyle = typeof highlightHourSector === 'number' ? '#fef3c7' : 'rgba(254, 243, 199, 0.65)';
-        ctx.fill();
-        ctx.lineWidth = 2;
-        ctx.strokeStyle = '#ea580c';
-        ctx.stroke();
-        ctx.restore();
-      }
 
       // A. Heures 1 à 12
       ctx.save();
       ctx.font = '700 29px "Fredoka", sans-serif';
-      ctx.fillStyle = isHighlightedHour && (!is24HourTarget || level < 5) ? '#ea580c' : hourNumberColor;
+      ctx.fillStyle = hourNumberColor;
       ctx.globalAlpha = level >= 5 && is24HourTarget ? 0.45 : 1;
       ctx.textAlign = 'center';
       ctx.textBaseline = 'middle';
@@ -166,22 +125,10 @@ export class Clock {
         const x24 = hour24Radius * Math.sin(angle);
         const y24 = -hour24Radius * Math.cos(angle);
 
-        if (isHighlightedHour && is24HourTarget) {
-          ctx.save();
-          ctx.beginPath();
-          ctx.arc(x24, y24, 15, 0, 2 * Math.PI);
-          ctx.fillStyle = typeof highlightHourSector === 'number' ? '#fef3c7' : 'rgba(254, 243, 199, 0.65)';
-          ctx.fill();
-          ctx.lineWidth = 2;
-          ctx.strokeStyle = '#ea580c';
-          ctx.stroke();
-          ctx.restore();
-        }
-
         ctx.save();
         ctx.font = is24HourTarget ? '700 16px "Fredoka", sans-serif' : '600 14px "Fredoka", sans-serif';
         ctx.fillStyle = hour24Color;
-        ctx.globalAlpha = is24HourTarget ? 1 : 0.28;
+        ctx.globalAlpha = is24HourTarget ? 1 : 0.3;
         ctx.textAlign = 'center';
         ctx.textBaseline = 'middle';
         ctx.fillText(h24Text, x24, y24);
