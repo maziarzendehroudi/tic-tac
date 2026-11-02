@@ -1,10 +1,24 @@
+export type WorkshopZoom = 'overview' | 'spring' | 'minutes' | 'seconds';
+
+interface CameraTarget {
+  scale: number;
+  x: number;
+  y: number;
+}
+
 export class WatchMechanism {
   private ctx: CanvasRenderingContext2D;
   private width: number;
   private height: number;
 
-  public power: number = 75;
+  public power: number = 80;
   public showDial: boolean = true;
+  public realTimeMode: boolean = false;
+  public zoomMode: WorkshopZoom = 'overview';
+
+  private currentScale: number = 1.14;
+  private currentFocusX: number = 10;
+  private currentFocusY: number = 0;
 
   private wormOffset: number = 0;
   public angleBarrel: number = 0;
@@ -22,22 +36,29 @@ export class WatchMechanism {
   private onWindingClickCallback?: () => void;
 
   /**
-   * Géométrie horlogère cohérente :
-   * - La tige filetée (vis sans fin) de la molette ('crown') court horizontalement sur l'axe y = 0 (de x = -182 à x = -64).
-   * - Le barillet du ressort ('spring', r = 36, 12 dents) est placé en (x = -82, y = -41) :
-   *   1) Ses dents inférieures (à x = -82, y = -5) engrènent tangentiellement dans les filets de la vis sans fin (y = 0).
-   *   2) Sa distance au centre de la roue des heures (0, 0, r = 56, 16 dents) vaut √(82² + 41²) = 91.68 px (≈ 36 + 56 = 92 px),
-   *      assurant un engrenage parfait avec la roue des heures !
+   * Disposition horlogère en miroir avec Molette à droite (3h) :
+   * - Molette ('crown') à droite (x = +178, y = 0), tige filetée vers la gauche jusqu'au palier (x = +58).
+   * - Barillet du ressort ('spring', r = 36, 12 dents) à droite en (x = +82, y = -41) :
+   *   1) Ses dents inférieures (y = -5) engrènent dans la vis sans fin (y = 0).
+   *   2) Sa distance à la roue des heures (0, 0, r = 56, 16 dents) vaut √(82² + 41²) = 91.68 px (≈ 36 + 56 = 92 px).
+   * - Relais des secondes ('relaySeconds') basculé à gauche (x = -68, y = 0).
    */
   public static readonly POS = {
-    crown: { x: -194, y: 0 },
-    spring: { x: -82, y: -41, r: 36, teeth: 12 },
+    crown: { x: 178, y: 0 },
+    spring: { x: 82, y: -41, r: 36, teeth: 12 },
     hours: { x: 0, y: 0, r: 56, teeth: 16 },
     relayMinutes: { x: 0, y: -76, rPinion: 20, teethPinion: 8, rWheel: 36, teethWheel: 12 },
     minutes: { x: 0, y: 0, r: 40, teeth: 12 },
-    relaySeconds: { x: 68, y: 0, rPinion: 28, teethPinion: 10, rWheel: 44, teethWheel: 14 },
+    relaySeconds: { x: -68, y: 0, rPinion: 28, teethPinion: 10, rWheel: 44, teethWheel: 14 },
     seconds: { x: 0, y: 0, r: 24, teeth: 8 },
     escapement: { x: 0, y: 38 }
+  };
+
+  private static readonly CAMERA_TARGETS: Record<WorkshopZoom, CameraTarget> = {
+    overview: { scale: 1.14, x: 10, y: 0 },
+    spring: { scale: 2.05, x: 92, y: -18 },
+    minutes: { scale: 2.05, x: 0, y: -42 },
+    seconds: { scale: 2.05, x: -26, y: 12 }
   };
 
   constructor(
@@ -56,10 +77,10 @@ export class WatchMechanism {
     this.syncBarrelPhaseWithHours();
   }
 
-  /**
-   * Calcule la phase angulaire exacte du barillet ('spring') pour que ses 12 dents
-   * s'imbriquent toujours pile entre les 16 dents de la roue des heures ('hours').
-   */
+  public setZoomMode(mode: WorkshopZoom): void {
+    this.zoomMode = mode;
+  }
+
   private syncBarrelPhaseWithHours(): void {
     const { spring, hours } = WatchMechanism.POS;
     const angleHtoS = Math.atan2(spring.y - hours.y, spring.x - hours.x);
@@ -71,50 +92,33 @@ export class WatchMechanism {
       (this.angleHours - angleHtoS) * (hours.teeth / spring.teeth);
   }
 
-  public getPartAtPoint(canvasX: number, canvasY: number): string | null {
-    const lx = canvasX - this.width / 2;
-    const ly = canvasY - this.height / 2;
-
-    const hitZones: Array<{ id: string; x: number; y: number; r: number }> = [
-      { id: 'crown', x: -172, y: 8, r: 46 },
-      { id: 'spring', x: -82, y: -41, r: 44 },
-      { id: 'escapement', x: 0, y: 62, r: 42 },
-      { id: 'seconds', x: 75, y: 28, r: 46 },
-      { id: 'minutes', x: 0, y: -82, r: 44 },
-      { id: 'hours', x: -32, y: 34, r: 52 }
-    ];
-
-    for (const z of hitZones) {
-      if (Math.hypot(lx - z.x, ly - z.y) <= z.r) {
-        return z.id;
-      }
-    }
-    return null;
-  }
-
+  /**
+   * Convertit les coordonnées écran du toucher en coordonnées du mécanisme (tenant compte du zoom actif)
+   */
   public isPointInCrown(canvasX: number, canvasY: number): boolean {
-    const localX = canvasX - this.width / 2;
-    const localY = canvasY - this.height / 2;
+    const worldX = (canvasX - this.width / 2) / this.currentScale + this.currentFocusX;
+    const worldY = (canvasY - this.height / 2) / this.currentScale + this.currentFocusY;
     return (
-      localX >= -235 &&
-      localX <= -145 &&
-      localY >= -45 &&
-      localY <= 45
+      worldX >= 135 &&
+      worldX <= 220 &&
+      worldY >= -45 &&
+      worldY <= 45
     );
   }
 
-  public update(deltaTime: number, placedParts: string[], isWinding: boolean): void {
-    const hasCrown = placedParts.includes('crown');
-    const hasSpring = placedParts.includes('spring');
-    const hasHours = placedParts.includes('hours');
-    const hasMinutes = placedParts.includes('minutes');
-    const hasSeconds = placedParts.includes('seconds');
-    const hasEscapement = placedParts.includes('escapement');
+  public update(deltaTime: number, isWinding: boolean): void {
+    // 1. Interpolation fluide de la caméra (Loupe d'Horloger)
+    const targetCam = WatchMechanism.CAMERA_TARGETS[this.zoomMode];
+    const camLerp = Math.min(1, deltaTime * 0.012);
+    this.currentScale += (targetCam.scale - this.currentScale) * camLerp;
+    this.currentFocusX += (targetCam.x - this.currentFocusX) * camLerp;
+    this.currentFocusY += (targetCam.y - this.currentFocusY) * camLerp;
 
     const { spring, relayMinutes, minutes, relaySeconds, seconds } = WatchMechanism.POS;
     const threadPitch = 12;
 
-    if (isWinding && hasCrown) {
+    // 2. Remontage par la molette de droite (vis sans fin entraînant le ressort)
+    if (isWinding) {
       const deltaWorm = deltaTime * 0.09;
       this.wormOffset = (this.wormOffset + deltaWorm) % threadPitch;
 
@@ -124,216 +128,184 @@ export class WatchMechanism {
         this.onWindingClickCallback?.();
       }
 
-      if (hasSpring) {
-        // Cohérence cinématique : le filet de la vis sans fin pousse tangentiellement les dents du bas du barillet
-        const deltaBarrel = deltaWorm / spring.r;
-        this.angleBarrel = (this.angleBarrel + deltaBarrel) % (Math.PI * 2);
-        if (this.power < 100) {
-          this.power = Math.min(100, this.power + deltaTime * 0.065);
-        }
+      const deltaBarrel = -deltaWorm / spring.r;
+      this.angleBarrel = (this.angleBarrel + deltaBarrel) % (Math.PI * 2);
+      if (this.power < 100) {
+        this.power = Math.min(100, this.power + deltaTime * 0.065);
       }
     }
 
-    if (hasSpring && hasHours && this.power > 0 && !isWinding) {
-      this.power = Math.max(0, this.power - deltaTime * 0.0012);
+    // 3. Marche du mouvement (Mode Accéléré vs Mode Vitesse Réelle)
+    if (this.power > 0 && !isWinding) {
+      const dischargeRate = this.realTimeMode ? 0.00015 : 0.0014;
+      this.power = Math.max(0, this.power - deltaTime * dischargeRate);
 
-      const deltaSec = (deltaTime / 1000) * (Math.PI / 3);
-      const deltaMin = deltaSec / 4;
-      const deltaHr = deltaSec / 12;
+      // En vitesse réelle : 1 tour de trotteuse en 60 s (soit π/30 rad/s).
+      // En vitesse accélérée : démonstration cinématique où l'on voit tourner toutes les roues !
+      const deltaSec = this.realTimeMode
+        ? (deltaTime / 1000) * (Math.PI / 30)
+        : (deltaTime / 1000) * (Math.PI / 2.5);
+
+      const deltaMin = this.realTimeMode ? deltaSec / 60 : deltaSec / 4;
+      const deltaHr = this.realTimeMode ? deltaMin / 12 : deltaSec / 12;
 
       this.angleHours = (this.angleHours + deltaHr) % (Math.PI * 2);
-      // Rapport d'engrenage exact basé sur le nombre de dents (16 / 12) pour un engrènement sans glissement
       this.syncBarrelPhaseWithHours();
 
-      if (hasMinutes) {
-        this.angleRelayMinutes =
-          (this.angleRelayMinutes - deltaMin * (minutes.teeth / relayMinutes.teethWheel)) % (Math.PI * 2);
-        this.angleMinutes = (this.angleMinutes + deltaMin) % (Math.PI * 2);
+      this.angleRelayMinutes =
+        (this.angleRelayMinutes - deltaMin * (minutes.teeth / relayMinutes.teethWheel)) % (Math.PI * 2);
+      this.angleMinutes = (this.angleMinutes + deltaMin) % (Math.PI * 2);
 
-        if (hasSeconds) {
-          this.angleRelaySeconds =
-            (this.angleRelaySeconds - deltaSec * (seconds.teeth / relaySeconds.teethWheel)) % (Math.PI * 2);
-          this.angleSeconds = (this.angleSeconds + deltaSec) % (Math.PI * 2);
+      this.angleRelaySeconds =
+        (this.angleRelaySeconds - deltaSec * (seconds.teeth / relaySeconds.teethWheel)) % (Math.PI * 2);
+      this.angleSeconds = (this.angleSeconds + deltaSec) % (Math.PI * 2);
 
-          if (hasEscapement) {
-            const toothPitch = (Math.PI * 2) / seconds.teeth;
-            this.toothStepAccumulator += deltaSec;
-            if (this.toothStepAccumulator >= toothPitch) {
-              this.toothStepAccumulator %= toothPitch;
-              this.onTickCallback?.(this.isTicPhase);
-              this.isTicPhase = !this.isTicPhase;
-            }
-          }
-        }
+      const toothPitch = (Math.PI * 2) / seconds.teeth;
+      this.toothStepAccumulator += deltaSec;
+      if (this.toothStepAccumulator >= toothPitch) {
+        this.toothStepAccumulator %= toothPitch;
+        this.onTickCallback?.(this.isTicPhase);
+        this.isTicPhase = !this.isTicPhase;
       }
     }
   }
 
-  public draw(placedParts: string[], unlockedParts: string[], isWinding: boolean): void {
+  private getGroupAlpha(group: 'spring' | 'minutes' | 'seconds'): number {
+    if (this.zoomMode === 'overview') return 1;
+    if (this.zoomMode === group) return 1;
+    return 0.22;
+  }
+
+  public draw(isWinding: boolean): void {
     this.ctx.clearRect(0, 0, this.width, this.height);
     this.ctx.save();
     this.ctx.translate(this.width / 2, this.height / 2);
+    this.ctx.scale(this.currentScale, this.currentScale);
+    this.ctx.translate(-this.currentFocusX, -this.currentFocusY);
 
     const { crown, spring, hours, relayMinutes, minutes, relaySeconds, seconds, escapement } = WatchMechanism.POS;
 
-    this.drawBasePlate();
+    // 1. Platine squelette épurée (sans boîtier ni cornes de bracelet)
+    this.drawMinimalChassis();
 
-    this.drawPart('hours', '3. Heures', placedParts, unlockedParts, -64, 68, () => {
-      this.drawToyDiscGear(hours.x, hours.y, hours.r, hours.teeth, this.angleHours, '#fbbf24', '#b45309', '#fef3c7', 8);
-    });
+    // 2. Roue des Heures (active dans les zooms 'spring' et 'minutes')
+    this.ctx.save();
+    this.ctx.globalAlpha =
+      this.zoomMode === 'overview' || this.zoomMode === 'spring' || this.zoomMode === 'minutes' ? 1 : 0.25;
+    this.drawToyDiscGear(hours.x, hours.y, hours.r, hours.teeth, this.angleHours, '#fbbf24', '#b45309', '#fef3c7', 8);
+    this.ctx.restore();
 
-    this.drawPart('spring', '2. Ressort', placedParts, unlockedParts, spring.x, spring.y, () => {
-      this.drawToyBarrel(spring.x, spring.y, spring.r, spring.teeth, this.angleBarrel, this.power);
-    });
+    // 3. Barillet du Ressort et Molette à droite (Zoom 1 : 'spring')
+    this.ctx.save();
+    this.ctx.globalAlpha = this.getGroupAlpha('spring');
+    this.drawToyBarrel(spring.x, spring.y, spring.r, spring.teeth, this.angleBarrel, this.power);
+    this.drawRightCrownAndWormStem(crown.x, crown.y, this.wormOffset, isWinding);
+    this.ctx.restore();
 
-    this.drawPart('crown', '1. Molette', placedParts, unlockedParts, -152, 32, () => {
-      this.drawCenteredCrownAndStem(crown.x, crown.y, this.wormOffset, isWinding);
-    });
+    // 4. Train des Minutes à double roue (Zoom 2 : 'minutes')
+    this.ctx.save();
+    this.ctx.globalAlpha =
+      this.zoomMode === 'overview' || this.zoomMode === 'minutes' || this.zoomMode === 'seconds' ? 1 : 0.22;
+    if (this.zoomMode === 'seconds') this.ctx.globalAlpha = 0.45;
+    this.drawSteppedRelayGear(
+      relayMinutes.x,
+      relayMinutes.y,
+      relayMinutes.rPinion,
+      relayMinutes.teethPinion,
+      relayMinutes.rWheel,
+      relayMinutes.teethWheel,
+      this.angleRelayMinutes,
+      '#fbbf24',
+      '#0284c7',
+      '#38bdf8'
+    );
+    this.drawToyDiscGear(minutes.x, minutes.y, minutes.r, minutes.teeth, this.angleMinutes, '#38bdf8', '#0284c7', '#e0f2fe', 6);
+    this.ctx.restore();
 
-    this.drawPart('minutes', '4. Minutes', placedParts, unlockedParts, 0, -96, () => {
-      this.drawSteppedRelayGear(
-        relayMinutes.x,
-        relayMinutes.y,
-        relayMinutes.rPinion,
-        relayMinutes.teethPinion,
-        relayMinutes.rWheel,
-        relayMinutes.teethWheel,
-        this.angleRelayMinutes,
-        '#fbbf24',
-        '#0284c7',
-        '#38bdf8'
-      );
-      this.drawToyDiscGear(minutes.x, minutes.y, minutes.r, minutes.teeth, this.angleMinutes, '#38bdf8', '#0284c7', '#e0f2fe', 6);
-    });
+    // 5. Train des Secondes à gauche & Échappement Tic-Tac en bas (Zoom 3 : 'seconds')
+    this.ctx.save();
+    this.ctx.globalAlpha = this.getGroupAlpha('seconds');
+    this.drawSteppedRelayGear(
+      relaySeconds.x,
+      relaySeconds.y,
+      relaySeconds.rPinion,
+      relaySeconds.teethPinion,
+      relaySeconds.rWheel,
+      relaySeconds.teethWheel,
+      this.angleRelaySeconds,
+      '#38bdf8',
+      '#be123c',
+      '#f43f5e'
+    );
+    this.drawToyDiscGear(seconds.x, seconds.y, seconds.r, seconds.teeth, this.angleSeconds, '#f43f5e', '#be123c', '#ffe4e6', 4);
+    this.drawSimpleTicTacClicker(escapement.x, escapement.y, this.angleSeconds * seconds.teeth);
+    this.ctx.restore();
 
-    this.drawPart('seconds', '5. Secondes', placedParts, unlockedParts, 82, 56, () => {
-      this.drawSteppedRelayGear(
-        relaySeconds.x,
-        relaySeconds.y,
-        relaySeconds.rPinion,
-        relaySeconds.teethPinion,
-        relaySeconds.rWheel,
-        relaySeconds.teethWheel,
-        this.angleRelaySeconds,
-        '#38bdf8',
-        '#be123c',
-        '#f43f5e'
-      );
-      this.drawToyDiscGear(seconds.x, seconds.y, seconds.r, seconds.teeth, this.angleSeconds, '#f43f5e', '#be123c', '#ffe4e6', 4);
-    });
-
-    this.drawPart('escapement', '6. Tic-Tac', placedParts, unlockedParts, 0, 86, () => {
-      this.drawSimpleTicTacClicker(escapement.x, escapement.y, this.angleSeconds * seconds.teeth);
-    });
-
-    this.drawChildFriendlyDialAndHands(placedParts);
+    // 6. Aiguilles et repères horaires
+    this.drawDialAndHands();
 
     this.ctx.restore();
   }
 
-  private drawBasePlate(): void {
-    const borderColor = '#d97706';
-
-    this.ctx.fillStyle = '#334155';
-    this.ctx.strokeStyle = borderColor;
-    this.ctx.lineWidth = 3;
-    [-1, 1].forEach(dir => {
-      this.ctx.beginPath();
-      this.ctx.roundRect(-52, dir * 162 - (dir === 1 ? 0 : 24), 104, 24, 6);
-      this.ctx.fill();
-      this.ctx.stroke();
-    });
-
+  /**
+   * Platine squelette légère sans boîtier massif ni attaches de bracelet
+   */
+  private drawMinimalChassis(): void {
     this.ctx.beginPath();
-    this.ctx.arc(0, 0, 174, 0, Math.PI * 2);
-    this.ctx.fillStyle = '#0f172a';
+    this.ctx.arc(0, 0, 124, 0, Math.PI * 2);
+    this.ctx.fillStyle = 'rgba(9, 13, 22, 0.85)';
     this.ctx.fill();
-    this.ctx.lineWidth = 8;
-    this.ctx.strokeStyle = borderColor;
+    this.ctx.lineWidth = 2.5;
+    this.ctx.strokeStyle = 'rgba(148, 163, 184, 0.28)';
     this.ctx.stroke();
 
+    // Ponts horlogers fins reliant les axes
     this.ctx.beginPath();
-    this.ctx.arc(0, 0, 126, 0, Math.PI * 2);
-    this.ctx.fillStyle = '#090d16';
-    this.ctx.fill();
-    this.ctx.lineWidth = 2;
-    this.ctx.strokeStyle = '#1e293b';
+    this.ctx.moveTo(0, 0);
+    this.ctx.lineTo(82, -41);
+    this.ctx.moveTo(0, 0);
+    this.ctx.lineTo(0, -76);
+    this.ctx.moveTo(0, 0);
+    this.ctx.lineTo(-68, 0);
+    this.ctx.moveTo(0, 0);
+    this.ctx.lineTo(0, 38);
+    this.ctx.strokeStyle = 'rgba(148, 163, 184, 0.18)';
+    this.ctx.lineWidth = 6;
+    this.ctx.lineCap = 'round';
     this.ctx.stroke();
-  }
-
-  private drawPart(
-    id: string,
-    label: string,
-    placed: string[],
-    unlocked: string[],
-    badgeX: number,
-    badgeY: number,
-    drawFunc: () => void
-  ): void {
-    const isPlaced = placed.includes(id);
-    const isUnlocked = unlocked.includes(id);
-
-    if (isPlaced) {
-      this.ctx.save();
-      this.ctx.globalAlpha = 1;
-      drawFunc();
-      this.ctx.restore();
-    } else {
-      this.ctx.save();
-      this.ctx.globalAlpha = isUnlocked ? 0.22 : 0.09;
-      this.ctx.filter = 'grayscale(100%)';
-      drawFunc();
-      this.ctx.restore();
-
-      this.ctx.save();
-      this.ctx.beginPath();
-      this.ctx.roundRect(badgeX - 36, badgeY - 11, 72, 22, 8);
-      this.ctx.fillStyle = isUnlocked ? 'rgba(15, 23, 42, 0.94)' : 'rgba(15, 23, 42, 0.72)';
-      this.ctx.fill();
-      this.ctx.strokeStyle = isUnlocked ? '#fbbf24' : '#475569';
-      this.ctx.lineWidth = 1.6;
-      this.ctx.stroke();
-
-      this.ctx.fillStyle = isUnlocked ? '#fbbf24' : '#64748b';
-      this.ctx.font = 'bold 10.5px "Fredoka", sans-serif';
-      this.ctx.textAlign = 'center';
-      this.ctx.textBaseline = 'middle';
-      this.ctx.fillText(label, badgeX, badgeY);
-      this.ctx.restore();
-    }
   }
 
   /**
-   * Dessine la molette ('crown'), sa longue tige et sa vis sans fin (worm gear)
-   * qui passe juste sous la roue dentée du ressort (x = -82) et se termine dans un palier en laiton (x = -62).
+   * Dessine la molette à DROITE (x = +178) et sa tige à vis sans fin qui s'étend vers la gauche
+   * sous la roue dentée du ressort (x = +82) jusqu'au palier en laiton (x = +54).
    */
-  private drawCenteredCrownAndStem(x: number, y: number, offset: number, isWinding: boolean): void {
+  private drawRightCrownAndWormStem(x: number, y: number, offset: number, isWinding: boolean): void {
     this.ctx.save();
     this.ctx.translate(x, y);
 
-    const stemStart = 12;
-    const stemLength = 120; // S'étend de x = -182 jusqu'à x = -62 (sous le ressort centré en x = -82)
-    const wormZoneStart = 84; // Zone filetée de x = -110 à x = -64
-    const wormZoneEnd = 128;
+    const stemRight = -12;
+    const stemLength = 122; // De x = +166 jusqu'à x = +44 (passe sous le ressort centré en x = +82)
+    const stemLeft = stemRight - stemLength; // -134 en coordonnées locales
+    const wormZoneLeft = -124; // Zone filetée de x = +54 à x = +110
+    const wormZoneRight = -68;
     const pitch = 12;
 
-    // 1. Arbre métallique principal de la tige
+    // 1. Arbre métallique principal
     this.ctx.fillStyle = '#94a3b8';
-    this.ctx.fillRect(stemStart, -5, stemLength, 10);
+    this.ctx.fillRect(stemLeft, -5, stemLength, 10);
     this.ctx.strokeStyle = '#334155';
     this.ctx.lineWidth = 2;
-    this.ctx.strokeRect(stemStart, -5, stemLength, 10);
+    this.ctx.strokeRect(stemLeft, -5, stemLength, 10);
 
-    // 2. Filets trapézoïdaux de la vis sans fin (en prise directe avec les dents du bas du ressort)
+    // 2. Filets trapézoïdaux de la vis sans fin (en prise directe avec le bas du ressort à y ≈ -5)
     this.ctx.fillStyle = isWinding ? '#fde047' : '#e2e8f0';
     this.ctx.strokeStyle = '#334155';
     this.ctx.lineWidth = 1.6;
 
-    for (let base = wormZoneStart - pitch; base <= wormZoneEnd; base += pitch) {
-      const tx = base - (offset % pitch);
-      if (tx < wormZoneStart - 4 || tx > wormZoneEnd - 4) continue;
+    for (let base = wormZoneLeft; base <= wormZoneRight + pitch; base += pitch) {
+      const tx = base + (offset % pitch);
+      if (tx < wormZoneLeft - 2 || tx > wormZoneRight - 4) continue;
 
-      // Dent supérieure du filet (engrène dans le bas de la roue du ressort à y ≈ -5)
       this.ctx.beginPath();
       this.ctx.moveTo(tx, -5);
       this.ctx.lineTo(tx + 2.5, -10);
@@ -343,32 +315,31 @@ export class WatchMechanism {
       this.ctx.fill();
       this.ctx.stroke();
 
-      // Filet oblique sur le corps de la vis
       this.ctx.beginPath();
-      this.ctx.moveTo(tx + 2.5, -5);
-      this.ctx.lineTo(tx + 6.5, 5);
+      this.ctx.moveTo(tx + 6.5, -5);
+      this.ctx.lineTo(tx + 2.5, 5);
       this.ctx.strokeStyle = '#475569';
       this.ctx.lineWidth = 2.2;
       this.ctx.stroke();
     }
 
-    // 3. Palier de maintien en laiton à l'extrémité droite de la vis sans fin (x = -62)
+    // 3. Palier de maintien en laiton à l'extrémité gauche de la vis (x = +44)
     this.ctx.fillStyle = '#d97706';
     this.ctx.strokeStyle = '#78350f';
     this.ctx.lineWidth = 2;
     this.ctx.beginPath();
-    this.ctx.roundRect(stemStart + stemLength - 2, -9, 10, 18, 3);
+    this.ctx.roundRect(stemLeft - 6, -9, 10, 18, 3);
     this.ctx.fill();
     this.ctx.stroke();
 
-    // 4. Bouton moleté extérieur (Couronne de remontoir)
+    // 4. Molette extérieure crantée à droite
     if (isWinding) {
       this.ctx.shadowColor = '#fbbf24';
       this.ctx.shadowBlur = 18;
     }
     this.ctx.fillStyle = isWinding ? '#f59e0b' : '#d97706';
     this.ctx.beginPath();
-    this.ctx.roundRect(-22, -28, 34, 56, 10);
+    this.ctx.roundRect(-12, -28, 34, 56, 10);
     this.ctx.fill();
     this.ctx.shadowBlur = 0;
 
@@ -378,8 +349,8 @@ export class WatchMechanism {
 
     this.ctx.beginPath();
     for (let i = -18; i <= 18; i += 9) {
-      this.ctx.moveTo(-18, i);
-      this.ctx.lineTo(8, i);
+      this.ctx.moveTo(-6, i);
+      this.ctx.lineTo(18, i);
     }
     this.ctx.strokeStyle = '#fde68a';
     this.ctx.lineWidth = 2.5;
@@ -403,17 +374,19 @@ export class WatchMechanism {
     this.ctx.lineWidth = 2;
     this.ctx.stroke();
 
+    // Spires du ressort qui se contractent vers le centre quand l'énergie monte à 100%
+    // et se détendent vers le bord quand l'énergie baisse !
     this.ctx.beginPath();
-    const turns = 3.5;
-    const innerR = 5;
-    const outerR = r * 0.68;
+    const turns = 3.8;
+    const innerR = 4.5;
     const tightness = power / 100;
-    const exponent = 0.6 + tightness * 1.6;
+    const maxCoilR = r * (0.72 - tightness * 0.22);
+    const exponent = 0.65 + tightness * 1.45;
 
-    for (let i = 0; i <= 140; i++) {
-      const t = i / 140;
+    for (let i = 0; i <= 150; i++) {
+      const t = i / 150;
       const theta = t * Math.PI * 2 * turns;
-      const currentR = innerR + (outerR - innerR) * Math.pow(t, exponent);
+      const currentR = innerR + (maxCoilR - innerR) * Math.pow(t, exponent);
 
       const px = Math.cos(theta) * currentR;
       const py = Math.sin(theta) * currentR;
@@ -422,7 +395,7 @@ export class WatchMechanism {
       else this.ctx.lineTo(px, py);
     }
 
-    this.ctx.strokeStyle = power > 10 ? '#f97316' : '#64748b';
+    this.ctx.strokeStyle = power > 15 ? '#f97316' : '#64748b';
     this.ctx.lineWidth = 3.2;
     this.ctx.lineCap = 'round';
     this.ctx.stroke();
@@ -599,88 +572,78 @@ export class WatchMechanism {
     this.ctx.restore();
   }
 
-  private drawChildFriendlyDialAndHands(placedParts: string[]): void {
-    const borderColor = '#d97706';
-    const dialRadius = 165;
-
-    if (this.showDial) {
+  private drawDialAndHands(): void {
+    if (this.showDial && this.zoomMode === 'overview') {
       this.ctx.beginPath();
-      this.ctx.arc(0, 0, dialRadius, 0, Math.PI * 2);
-      this.ctx.arc(0, 0, 125, 0, Math.PI * 2, true);
-      this.ctx.fillStyle = 'rgba(15, 23, 42, 0.84)';
+      this.ctx.arc(0, 0, 146, 0, Math.PI * 2);
+      this.ctx.arc(0, 0, 118, 0, Math.PI * 2, true);
+      this.ctx.fillStyle = 'rgba(15, 23, 42, 0.72)';
       this.ctx.fill('evenodd');
 
       for (let i = 1; i <= 12; i++) {
         const a = (i * Math.PI) / 6;
-        this.ctx.beginPath();
-        this.ctx.moveTo(Math.sin(a) * 156, -Math.cos(a) * 156);
-        this.ctx.lineTo(Math.sin(a) * 165, -Math.cos(a) * 165);
-        this.ctx.strokeStyle = borderColor;
-        this.ctx.lineWidth = 3;
-        this.ctx.lineCap = 'round';
-        this.ctx.stroke();
-
         this.ctx.fillStyle = '#f8fafc';
-        this.ctx.font = 'bold 21px "Fredoka", sans-serif';
+        this.ctx.font = 'bold 18px "Fredoka", sans-serif';
         this.ctx.textAlign = 'center';
         this.ctx.textBaseline = 'middle';
-        this.ctx.fillText(i.toString(), Math.sin(a) * 141, -Math.cos(a) * 141);
+        this.ctx.fillText(i.toString(), Math.sin(a) * 132, -Math.cos(a) * 132);
       }
     }
 
-    if (placedParts.includes('hours')) {
-      this.ctx.save();
-      this.ctx.rotate(this.angleHours);
-      this.ctx.shadowColor = 'rgba(0, 0, 0, 0.65)';
-      this.ctx.shadowBlur = 5;
-      this.ctx.beginPath();
-      this.ctx.moveTo(0, 12);
-      this.ctx.lineTo(0, -82);
-      this.ctx.strokeStyle = '#fbbf24';
-      this.ctx.lineWidth = 10;
-      this.ctx.lineCap = 'round';
-      this.ctx.stroke();
-      this.ctx.strokeStyle = '#78350f';
-      this.ctx.lineWidth = 2;
-      this.ctx.stroke();
-      this.ctx.restore();
-    }
-
-    if (placedParts.includes('minutes')) {
-      this.ctx.save();
-      this.ctx.rotate(this.angleMinutes);
-      this.ctx.shadowColor = 'rgba(0, 0, 0, 0.65)';
-      this.ctx.shadowBlur = 5;
-      this.ctx.beginPath();
-      this.ctx.moveTo(0, 16);
-      this.ctx.lineTo(0, -116);
-      this.ctx.strokeStyle = '#38bdf8';
-      this.ctx.lineWidth = 7;
-      this.ctx.lineCap = 'round';
-      this.ctx.stroke();
-      this.ctx.restore();
-    }
-
-    if (placedParts.includes('seconds')) {
-      this.ctx.save();
-      this.ctx.rotate(this.angleSeconds);
-      this.ctx.shadowColor = 'rgba(0, 0, 0, 0.5)';
-      this.ctx.shadowBlur = 4;
-      this.ctx.beginPath();
-      this.ctx.moveTo(0, 20);
-      this.ctx.lineTo(0, -128);
-      this.ctx.strokeStyle = '#f43f5e';
-      this.ctx.lineWidth = 3.5;
-      this.ctx.lineCap = 'round';
-      this.ctx.stroke();
-      this.ctx.restore();
-    }
-
+    // Petite aiguille des Heures
+    this.ctx.save();
+    this.ctx.globalAlpha = this.zoomMode === 'seconds' ? 0.25 : 1;
+    this.ctx.rotate(this.angleHours);
+    this.ctx.shadowColor = 'rgba(0, 0, 0, 0.65)';
+    this.ctx.shadowBlur = 5;
     this.ctx.beginPath();
-    this.ctx.arc(0, 0, 7, 0, Math.PI * 2);
+    this.ctx.moveTo(0, 12);
+    this.ctx.lineTo(0, -76);
+    this.ctx.strokeStyle = '#fbbf24';
+    this.ctx.lineWidth = 9;
+    this.ctx.lineCap = 'round';
+    this.ctx.stroke();
+    this.ctx.strokeStyle = '#78350f';
+    this.ctx.lineWidth = 1.8;
+    this.ctx.stroke();
+    this.ctx.restore();
+
+    // Grande aiguille des Minutes
+    this.ctx.save();
+    this.ctx.globalAlpha = this.zoomMode === 'spring' || this.zoomMode === 'seconds' ? 0.25 : 1;
+    this.ctx.rotate(this.angleMinutes);
+    this.ctx.shadowColor = 'rgba(0, 0, 0, 0.65)';
+    this.ctx.shadowBlur = 5;
+    this.ctx.beginPath();
+    this.ctx.moveTo(0, 16);
+    this.ctx.lineTo(0, -108);
+    this.ctx.strokeStyle = '#38bdf8';
+    this.ctx.lineWidth = 6.5;
+    this.ctx.lineCap = 'round';
+    this.ctx.stroke();
+    this.ctx.restore();
+
+    // Trotteuse rouge des Secondes
+    this.ctx.save();
+    this.ctx.globalAlpha = this.zoomMode === 'spring' || this.zoomMode === 'minutes' ? 0.25 : 1;
+    this.ctx.rotate(this.angleSeconds);
+    this.ctx.shadowColor = 'rgba(0, 0, 0, 0.5)';
+    this.ctx.shadowBlur = 4;
+    this.ctx.beginPath();
+    this.ctx.moveTo(0, 18);
+    this.ctx.lineTo(0, -118);
+    this.ctx.strokeStyle = '#f43f5e';
+    this.ctx.lineWidth = 3.2;
+    this.ctx.lineCap = 'round';
+    this.ctx.stroke();
+    this.ctx.restore();
+
+    // Rubis central
+    this.ctx.beginPath();
+    this.ctx.arc(0, 0, 6.5, 0, Math.PI * 2);
     this.ctx.fillStyle = '#e11d48';
     this.ctx.fill();
-    this.ctx.lineWidth = 2.5;
+    this.ctx.lineWidth = 2;
     this.ctx.strokeStyle = '#ffffff';
     this.ctx.stroke();
   }

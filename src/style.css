@@ -1076,3 +1076,53 @@ body.theme-night #instruction {
 #toggle-all-parts-btn:active {
   transform: scale(0.97);
 }
+
+/* ============================================================================
+   8. ATELIER V28 : GRILLE 2x2 DES LOUPE/ZOOMS & BOUTON VITESSE RÉELLE / ACCÉLÉRÉ
+   ============================================================================ */
+#toggle-speed-btn {
+  flex: 1;
+  background: rgba(15, 23, 42, 0.85);
+  color: #7dd3fc;
+  border: 2px solid rgba(56, 189, 248, 0.5);
+  padding: 9px 8px;
+  border-radius: 13px;
+  font-size: 0.82rem;
+  font-weight: 700;
+  cursor: pointer;
+  white-space: nowrap;
+}
+#toggle-speed-btn.real-time-active {
+  background: rgba(6, 78, 59, 0.9);
+  color: #6ee7b7;
+  border-color: #34d399;
+}
+#toggle-speed-btn:active {
+  transform: scale(0.97);
+}
+
+#workshop-parts-tray {
+  display: grid !important;
+  grid-template-columns: repeat(2, 1fr) !important;
+  gap: 8px !important;
+  width: 100%;
+}
+
+.workshop-part-btn {
+  background: rgba(15, 23, 42, 0.82) !important;
+  color: #cbd5e1 !important;
+  border: 2px solid rgba(255, 255, 255, 0.28) !important;
+  padding: 10px 8px !important;
+  border-radius: 14px !important;
+  font-size: 0.84rem !important;
+  font-weight: 700 !important;
+  cursor: pointer !important;
+  transition: transform 0.12s ease, border-color 0.15s ease !important;
+}
+
+.workshop-part-btn.active-zoom-btn {
+  background: linear-gradient(135deg, #d97706, #b45309) !important;
+  color: #ffffff !important;
+  border-color: #fde047 !important;
+  box-shadow: 0 4px 12px rgba(245, 158, 11, 0.4) !important;
+}

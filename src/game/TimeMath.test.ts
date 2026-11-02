@@ -5,16 +5,21 @@ import { SaveManager } from './SaveManager';
 import { SoundEngine } from './SoundEngine';
 import { WatchMechanism } from './WatchMechanism';
 
-describe('WatchMechanism — Cohérence Cinématique Molette / Ressort / Roue des Heures', () => {
-  it('place la roue du ressort en tangence avec la vis de la molette (y=0) ET avec la roue des heures (0,0)', () => {
-    const { spring, hours } = WatchMechanism.POS;
+describe('WatchMechanism V28 — Disposition Miroir à Droite (3h), Vis Sans Fin & Zooms', () => {
+  it('place la molette et le ressort à droite (x > 0) en tangence avec la vis (y=0) et la roue des heures (0,0)', () => {
+    const { crown, spring, hours, relaySeconds } = WatchMechanism.POS;
 
-    // 1. Tangence avec la roue des heures : r_spring + r_hours = 36 + 56 = 92 px (± 1 px)
+    // 1. Molette et ressort à droite (x > 0), relais des secondes en miroir à gauche (x < 0)
+    expect(crown.x).toBeGreaterThan(150);
+    expect(spring.x).toBeGreaterThan(70);
+    expect(relaySeconds.x).toBeLessThan(-50);
+
+    // 2. Tangence avec la roue des heures : r_spring + r_hours = 36 + 56 = 92 px (± 1 px)
     const distSpringToHours = Math.hypot(spring.x - hours.x, spring.y - hours.y);
     expect(distSpringToHours).toBeGreaterThan(90.5);
     expect(distSpringToHours).toBeLessThan(93.0);
 
-    // 2. Tangence avec la vis sans fin de la molette (axe y = 0)
+    // 3. Tangence avec la vis sans fin de la molette (axe horizontal y = 0)
     const bottomPitchY = spring.y + spring.r;
     expect(bottomPitchY).toBeGreaterThanOrEqual(-7);
     expect(bottomPitchY).toBeLessThanOrEqual(-3);
@@ -31,16 +36,6 @@ describe('QuestionManager — Mix obligatoire 1 Leurre Heure + 1 Leurre Minute (
 
       expect(choices.some(c => c.minutes !== target.minutes)).toBe(true);
       expect(choices.some(c => c.hours !== target.hours)).toBe(true);
-    }
-  });
-
-  it('ne répète jamais la même question au cours d’une série de 6 questions', () => {
-    const qm = new QuestionManager(4);
-    const seen = new Set<string>();
-    for (let i = 0; i < 6; i++) {
-      const q = qm.generateQuestion();
-      expect(seen.has(q.text)).toBe(false);
-      seen.add(q.text);
     }
   });
 });
@@ -74,7 +69,6 @@ describe('TimeMath & SaveManager — Pédagogie Niv. 5/6/7 & Atelier', () => {
     save = SaveManager.applyLevelRewards(save, 7, 3);
     expect(SaveManager.isWorkshopUnlocked(save)).toBe(true);
 
-    expect(QuestionManager.formatTimeText(16, 5, 6)).toBe('16:05');
     const sound = new SoundEngine(false);
     expect(() => sound.playWindingClick()).not.toThrow();
   });

@@ -7,6 +7,7 @@ import type { GameSave } from './SaveManager';
 import { SoundEngine } from './SoundEngine';
 import { TimeMath } from './TimeMath';
 import { WatchMechanism } from './WatchMechanism';
+import type { WorkshopZoom } from './WatchMechanism';
 
 interface CelebrationParticle {
   x: number;
@@ -19,30 +20,22 @@ interface CelebrationParticle {
   vRot: number;
 }
 
-const PART_INFO: Record<string, { label: string; desc: string }> = {
-  crown: {
-    label: '1. Molette',
-    desc: 'La molette et sa tige filetée permettent de remonter la montre !'
+const ZOOM_EXPLANATIONS: Record<WorkshopZoom, { label: string; desc: string }> = {
+  overview: {
+    label: '🔍 Vue globale',
+    desc: 'Voici le mouvement complet ! Utilise les <strong>loupes en bas</strong> pour explorer chaque engrenage de près.'
   },
   spring: {
-    label: '2. Ressort',
-    desc: 'Le ressort de barillet stocke l’énergie quand tu tournes la molette !'
-  },
-  hours: {
-    label: '3. Heures',
-    desc: 'La roue dorée des heures fait tourner la petite aiguille !'
+    label: '⚙️ 1. Molette & Ressort',
+    desc: 'À droite, la <strong>vis sans fin</strong> de la molette pousse les dents du barillet : le <strong>ressort orange</strong> se serre quand tu remontes et se détend pour faire tourner la roue des heures !'
   },
   minutes: {
-    label: '4. Minutes',
-    desc: 'L’engrenage bleu démultiplie le mouvement pour la grande aiguille des minutes !'
+    label: '🔵 2. Train des Minutes',
+    desc: 'En haut, la <strong>double roue relais</strong> (petit pignon doré + grande roue bleue) démultiplie la vitesse pour entraîner la <strong>grande aiguille des minutes</strong> au centre !'
   },
   seconds: {
-    label: '5. Secondes',
-    desc: 'L’engrenage rouge rapide entraîne la trotteuse des secondes !'
-  },
-  escapement: {
-    label: '6. Tic-Tac',
-    desc: 'L’échappement à ancre régule les engrenages dent par dent en faisant Tic-Tac !'
+    label: '🔴 3. Secondes & Tic-Tac',
+    desc: 'À gauche, la double roue accélère la <strong>roue rouge des secondes</strong>, tandis qu’en bas l’ancre dorée du <strong>Tic-Tac</strong> bloque et libère une dent à chaque battement !'
   }
 };
 
@@ -156,15 +149,13 @@ export class GameEngine {
 
     if (this.saveData.unlockedParts.length < ALL_PARTS.length) {
       this.saveData.unlockedParts = [...ALL_PARTS];
+      this.saveData.placedParts = [...ALL_PARTS];
       SaveManager.save(this.saveData);
     }
 
-    const instr = document.getElementById('workshop-instruction');
-    if (instr) {
-      instr.textContent =
-        this.saveData.placedParts.length === ALL_PARTS.length
-          ? '👑 Toutes les pièces sont en place ! Maintiens la molette ou clique sur 🔧 Démonter pour réassembler !'
-          : 'Touche les pièces sur la montre ou les boutons en bas pour assembler ton mécanisme !';
+    if (this.watchMechanism) {
+      this.watchMechanism.setZoomMode('overview');
+      this.watchMechanism.realTimeMode = false;
     }
 
     this.renderWorkshopUI();
@@ -173,12 +164,8 @@ export class GameEngine {
       const dt = Math.min(50, now - this.lastWorkshopTime);
       this.lastWorkshopTime = now;
       if (this.watchMechanism) {
-        this.watchMechanism.update(dt, this.saveData.placedParts, this.isWinding);
-        this.watchMechanism.draw(
-          this.saveData.placedParts,
-          this.saveData.unlockedParts,
-          this.isWinding
-        );
+        this.watchMechanism.update(dt, this.isWinding);
+        this.watchMechanism.draw(this.isWinding);
         this.updatePowerMeterUI(this.watchMechanism.power);
       }
       this.workshopAnimId = requestAnimationFrame(loop);
@@ -191,55 +178,43 @@ export class GameEngine {
     const textEl = document.getElementById('power-bar-text');
     const pct = Math.round(power);
     if (fillEl) fillEl.style.width = `${pct}%`;
-    if (textEl) textEl.textContent = `🔋 Énergie : ${pct}%`;
-  }
-
-  private toggleWorkshopPart(partId: string): void {
-    const info = PART_INFO[partId];
-    if (!info) return;
-    const instr = document.getElementById('workshop-instruction');
-    const idx = this.saveData.placedParts.indexOf(partId);
-    if (idx === -1) {
-      this.saveData.placedParts.push(partId);
-      if (this.saveData.placedParts.length === ALL_PARTS.length) {
-        this.soundEngine.playLevelComplete();
-      } else {
-        this.soundEngine.playSuccess();
-      }
-      if (instr) instr.innerHTML = `✨ <strong>${info.label}</strong> : ${info.desc}`;
-    } else {
-      this.saveData.placedParts.splice(idx, 1);
-      this.soundEngine.playSnap();
-      if (instr) instr.textContent = `${info.label} retirée du mécanisme.`;
-    }
-    SaveManager.save(this.saveData);
-    this.renderWorkshopUI();
+    if (textEl) textEl.textContent = `🔋 Ressort : ${pct}%`;
   }
 
   private renderWorkshopUI(): void {
     const tray = document.getElementById('workshop-parts-tray');
+    const instr = document.getElementById('workshop-instruction');
     const dialBtn = document.getElementById('toggle-dial-btn');
-    const toggleAllBtn = document.getElementById('toggle-all-parts-btn');
+    const speedBtn = document.getElementById('toggle-speed-btn');
     if (!tray || !this.watchMechanism) return;
 
     if (dialBtn) {
       dialBtn.textContent = this.watchMechanism.showDial ? '👁️ Cadran : Oui' : '👁️ Cadran : Non';
     }
-    if (toggleAllBtn) {
-      const allPlaced = this.saveData.placedParts.length === ALL_PARTS.length;
-      toggleAllBtn.textContent = allPlaced ? '🔧 Démonter' : '🔧 Tout monter';
+    if (speedBtn) {
+      speedBtn.textContent = this.watchMechanism.realTimeMode ? '⏱️ Vitesse réelle' : '⏩ Accéléré';
+      speedBtn.classList.toggle('real-time-active', this.watchMechanism.realTimeMode);
     }
 
+    const activeZoom = this.watchMechanism.zoomMode;
+    if (instr) {
+      instr.innerHTML = ZOOM_EXPLANATIONS[activeZoom].desc;
+    }
+
+    const zoomModes: WorkshopZoom[] = ['overview', 'spring', 'minutes', 'seconds'];
     tray.innerHTML = '';
-    ALL_PARTS.forEach(partId => {
-      const info = PART_INFO[partId];
-      const isPlaced = this.saveData.placedParts.includes(partId);
+    zoomModes.forEach(mode => {
+      const info = ZOOM_EXPLANATIONS[mode];
+      const isSelected = activeZoom === mode;
       const btn = document.createElement('button');
       btn.type = 'button';
-      btn.className = `workshop-part-btn${isPlaced ? ' placed' : ''}`;
-      btn.textContent = isPlaced ? `✓ ${info.label}` : `+ ${info.label}`;
+      btn.className = `workshop-part-btn${isSelected ? ' active-zoom-btn' : ''}`;
+      btn.textContent = info.label;
       btn.addEventListener('click', () => {
-        this.toggleWorkshopPart(partId);
+        if (!this.watchMechanism) return;
+        this.watchMechanism.setZoomMode(mode);
+        this.soundEngine.playSnap();
+        this.renderWorkshopUI();
       });
       tray.appendChild(btn);
     });
@@ -330,27 +305,16 @@ export class GameEngine {
       this.renderWorkshopUI();
     });
 
-    document.getElementById('toggle-all-parts-btn')?.addEventListener('click', () => {
-      const instr = document.getElementById('workshop-instruction');
-      if (this.saveData.placedParts.length === ALL_PARTS.length) {
-        this.saveData.placedParts = [];
-        this.soundEngine.playSnap();
-        if (instr) instr.textContent = '🔧 Toutes les pièces sont démontées ! Touche-les une par une pour reconstruire ta montre.';
-      } else {
-        this.saveData.placedParts = [...ALL_PARTS];
-        this.soundEngine.playLevelComplete();
-        if (instr) instr.textContent = '👑 Toutes les pièces sont montées ! Maintiens la molette à gauche pour remonter le ressort !';
-      }
-      SaveManager.save(this.saveData);
+    document.getElementById('toggle-speed-btn')?.addEventListener('click', () => {
+      if (!this.watchMechanism) return;
+      this.watchMechanism.realTimeMode = !this.watchMechanism.realTimeMode;
+      this.soundEngine.playSnap();
       this.renderWorkshopUI();
     });
 
     const windBtn = document.getElementById('wind-crown-btn');
     const startWinding = (e: Event) => {
       e.preventDefault();
-      if (!this.saveData.placedParts.includes('crown')) {
-        this.toggleWorkshopPart('crown');
-      }
       this.isWinding = true;
     };
     const stopWinding = () => {
@@ -370,16 +334,9 @@ export class GameEngine {
         const canvasX = (clientX - rect.left) * (this.workshopCanvas.width / rect.width);
         const canvasY = (clientY - rect.top) * (this.workshopCanvas.height / rect.height);
 
-        if (this.saveData.placedParts.includes('crown') && this.watchMechanism.isPointInCrown(canvasX, canvasY)) {
+        if (this.watchMechanism.isPointInCrown(canvasX, canvasY)) {
           e.preventDefault();
           this.isWinding = true;
-          return;
-        }
-
-        const hitPart = this.watchMechanism.getPartAtPoint(canvasX, canvasY);
-        if (hitPart) {
-          e.preventDefault();
-          this.toggleWorkshopPart(hitPart);
         }
       };
       this.workshopCanvas.addEventListener('mousedown', onWorkshopPointerDown);
@@ -678,7 +635,7 @@ export class GameEngine {
     if (workshopBtn && workshopStatus) {
       if (workshopUnlocked) {
         workshopBtn.classList.remove('locked');
-        workshopStatus.innerHTML = `<span class="lvl-star-on">${this.saveData.placedParts.length}/6</span>`;
+        workshopStatus.innerHTML = `<span class="lvl-star-on">🔍 Loupe</span>`;
         workshopStatus.className = 'lvl-status stars-badge';
       } else {
         workshopBtn.classList.add('locked');
@@ -710,7 +667,6 @@ export class GameEngine {
         nextBtn.classList.remove('hidden');
         this.isWaitingNext = true;
         this.nextActionCallback = nextCallback;
-        // Masque le bouton "✓ Vérifier" dès que la réponse est bonne pour ne laisser que "Suivant ➔"
         if (this.currentPhase === 2) {
           placementTools?.classList.add('hidden');
         }
@@ -885,7 +841,6 @@ export class GameEngine {
       this.currentQuestionAssisted = true;
     }
 
-    // Grise et verrouille le bouton erroné déjà tenté pour aider l'enfant à procéder par élimination
     if (clickedBtn) {
       clickedBtn.classList.add('choice-tried');
       clickedBtn.setAttribute('disabled', 'true');
