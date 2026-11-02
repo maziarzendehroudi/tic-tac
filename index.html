@@ -13,8 +13,8 @@
     <link href="https://fonts.googleapis.com/css2?family=Fredoka:wght@400;600;700&display=swap" rel="stylesheet">
     <link rel="manifest" href="./manifest.json">
     <meta name="theme-color" content="#38bdf8">
-    <script type="module" crossorigin src="/tic-tac/assets/index-BlP8uZZ-.js"></script>
-    <link rel="stylesheet" crossorigin href="/tic-tac/assets/index-Cr_YQ4q0.css">
+    <script type="module" crossorigin src="/tic-tac/assets/index-CKkR8c1W.js"></script>
+    <link rel="stylesheet" crossorigin href="/tic-tac/assets/index-bMWGWr4p.css">
   </head>
   <body class="theme-day">
     <div id="sky-backdrop" aria-hidden="true">
@@ -164,21 +164,29 @@
         </div>
       </div>
 
-      <!-- VUE 3 : L'ATELIER DE L'HORLOGER (RÉCOMPENSE FINALE) -->
+      <!-- VUE 3 : LE VÉRITABLE ATELIER DE L'HORLOGER (6 PIÈCES + MOLETTE + JAUGE RESSORT + CADRAN) -->
       <div id="workshop-screen" class="view hidden">
         <div id="workshop-top-bar">
           <button id="workshop-back-btn" type="button" title="Retour au menu">
-            <span class="back-label">← Menu · ⚙️ Atelier</span>
-            <span id="workshop-progress-badge">0 / 5 pièces</span>
+            <span class="back-label">← Menu · ⚙️ L'Atelier</span>
+            <span id="power-bar-text">🔋 Énergie : 75%</span>
           </button>
         </div>
 
+        <div id="power-bar-track">
+          <div id="power-bar-fill" style="width: 75%;"></div>
+        </div>
+
         <div id="workshop-canvas-wrap">
-          <canvas id="workshopCanvas" width="500" height="500"></canvas>
+          <canvas id="workshopCanvas" width="460" height="380"></canvas>
         </div>
 
         <div id="workshop-ui">
-          <div id="workshop-instruction">Touche chaque pièce dorée en bas pour assembler le cœur de ta montre !</div>
+          <div id="workshop-controls-row">
+            <button id="wind-crown-btn" type="button">🔄 Maintenir pour remonter</button>
+            <button id="toggle-dial-btn" type="button">👁️ Cadran : Oui</button>
+          </div>
+          <div id="workshop-instruction">Touche les 6 pièces en bas pour assembler le mécanisme de ta montre !</div>
           <div id="workshop-parts-tray"></div>
         </div>
       </div>
