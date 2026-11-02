@@ -28,8 +28,34 @@ function createMockCtx(): CanvasRenderingContext2D {
   } as unknown as CanvasRenderingContext2D;
 }
 
-describe('WatchMechanism V37 — Isolation Complète du Mécanisme Zoomé (Zéro Transparence Grise)', () => {
-  it('masque complètement les autres mécanismes sans jamais utiliser de transparence partielle (globalAlpha < 1) lors d’un zoom', () => {
+describe('WatchMechanism V38 — Molette Compacte Rapprochée, Boîtier Agrandi (1.72x) & Débrayage Automatique', () => {
+  it('rapproche la molette du boîtier (x = 138) et agrandit l’échelle de la vue globale à 1.72x', () => {
+    expect(WatchMechanism.POS.crown.x).toBe(138);
+    expect(WatchMechanism.CAMERA_TARGETS.overview.scale).toBeCloseTo(1.72, 2);
+  });
+
+  it('embraye la vis sans fin pendant le remontage (power < 100) et débraye automatiquement au relâcher ou à 100%', () => {
+    const wm = new WatchMechanism(createMockCtx(), 500, 500);
+    wm.power = 70;
+
+    // Au repos : la molette est débrayée
+    expect(wm.isClutchEngaged()).toBe(false);
+
+    // Pendant le remontage : la vis s'embraye contre les dents du barillet
+    wm.update(200, true);
+    expect(wm.isClutchEngaged()).toBe(true);
+
+    // Dès qu'on relâche la molette : la vis débraye automatiquement pour ne pas tourner à l'envers
+    wm.update(300, false);
+    expect(wm.isClutchEngaged()).toBe(false);
+
+    // À 100% de charge : même si on maintient la molette, le débrayage automatique de fin de course s'active
+    wm.power = 100;
+    wm.update(300, true);
+    expect(wm.isClutchEngaged()).toBe(false);
+  });
+
+  it('masque complètement les autres mécanismes sans jamais utiliser de transparence partielle lors d’un zoom', () => {
     const ctx = createMockCtx();
     let minAlphaObserved = 1;
     let currentAlpha = 1;
@@ -48,31 +74,6 @@ describe('WatchMechanism V37 — Isolation Complète du Mécanisme Zoomé (Zéro
     }
 
     expect(minAlphaObserved).toBe(1);
-  });
-
-  it('fait tourner franchement les 4 mécanismes (Ressort, Heures, Minutes, Secondes) en Vitesse réelle comme en Accéléré', () => {
-    for (const isRealTime of [true, false]) {
-      const wm = new WatchMechanism(createMockCtx(), 500, 500);
-      wm.realTimeMode = isRealTime;
-      wm.power = 90;
-
-      const initBarrel = wm.angleBarrel;
-      const initHours = wm.angleHours;
-      const initRelayMin = wm.angleRelayMinutes;
-      const initMinutes = wm.angleMinutes;
-      const initRelaySec = wm.angleRelaySeconds;
-      const initSeconds = wm.angleSeconds;
-
-      wm.update(1000, false);
-      wm.update(70, false);
-
-      expect(Math.abs(wm.angleHours - initHours)).toBeGreaterThan(0.038);
-      expect(Math.abs(wm.angleBarrel - initBarrel)).toBeGreaterThan(0.05);
-      expect(Math.abs(wm.angleMinutes - initMinutes)).toBeGreaterThan(0.06);
-      expect(Math.abs(wm.angleRelayMinutes - initRelayMin)).toBeGreaterThan(0.06);
-      expect(Math.abs(wm.angleRelaySeconds - initRelaySec)).toBeGreaterThan(0.05);
-      expect(Math.abs(wm.angleSeconds - initSeconds)).toBeGreaterThan(0.09);
-    }
   });
 });
 

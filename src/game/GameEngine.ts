@@ -27,7 +27,7 @@ const ZOOM_EXPLANATIONS: Record<WorkshopZoom, { label: string; desc: string }> =
   },
   spring: {
     label: '⚙️ Ressort / Molette',
-    desc: 'À droite, la <strong>vis sans fin</strong> de la molette pousse les dents du barillet : le <strong>ressort orange</strong> se serre au remontage et se détend pour entraîner la montre !'
+    desc: 'Quand tu remontes, la vis s’embraye et serre le <strong>ressort orange</strong>. Dès que tu relâches (ou à 100%), elle <strong>débraye en s’abaissant</strong> pour laisser le ressort tourner librement !'
   },
   hours: {
     label: '🟠 Heures',
