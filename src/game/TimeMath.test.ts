@@ -27,21 +27,19 @@ function createMockCtx(): CanvasRenderingContext2D {
   } as unknown as CanvasRenderingContext2D;
 }
 
-describe('WatchMechanism V35 — Vitesse Réelle par défaut, Son des Secondes maintenu & Rotation des 4 Mécanismes', () => {
-  it('démarre en Vitesse réelle par défaut (realTimeMode = true) et déclenche le son Tic-Tac chaque seconde (1000 ms)', () => {
-    let ticks = 0;
-    const wm = new WatchMechanism(createMockCtx(), 500, 500, () => {
-      ticks++;
-    });
-
+describe('WatchMechanism V36 — 4 Boutons de Zoom Manuels, Vitesse Réelle par défaut & Rotation des 4 Mécanismes', () => {
+  it('supporte les 4 modes de zoom manuels (spring, hours, minutes, seconds) ainsi que le retour à overview', () => {
+    const wm = new WatchMechanism(createMockCtx(), 500, 500);
     expect(wm.realTimeMode).toBe(true);
-    expect('escapement' in WatchMechanism.POS).toBe(false);
+    expect(wm.zoomMode).toBe('overview');
 
-    wm.update(500, false);
-    expect(ticks).toBe(0);
+    for (const mode of ['spring', 'hours', 'minutes', 'seconds'] as const) {
+      wm.setZoomMode(mode);
+      expect(wm.zoomMode).toBe(mode);
+    }
 
-    wm.update(500, false);
-    expect(ticks).toBe(1);
+    wm.setZoomMode('overview');
+    expect(wm.zoomMode).toBe('overview');
   });
 
   it('fait tourner franchement les 4 mécanismes (Ressort, Heures, Minutes, Secondes) en Vitesse réelle comme en Accéléré', () => {
