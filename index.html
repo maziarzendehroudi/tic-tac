@@ -107,10 +107,19 @@
             </div>
             <span class="lvl-status locked-icon">🔒</span>
           </button>
+
+          <!-- RÉCOMPENSE FINALE APRÈS LE NIVEAU 7 : L'ATELIER DE L'HORLOGER -->
+          <button id="workshop-btn" type="button" class="workshop-rect locked">
+            <span class="lvl-badge workshop-badge">⚙️</span>
+            <div class="lvl-content">
+              <span class="lvl-title">L'Atelier de l'Horloger</span>
+            </div>
+            <span id="workshop-status" class="lvl-status locked-icon">🔒</span>
+          </button>
         </div>
       </div>
 
-      <!-- VUE 2 : ÉCRAN DE JEU -->
+      <!-- VUE 2 : ÉCRAN DE JEU (100 % FIXE, SANS SCROLL NI PULL-TO-REFRESH) -->
       <div id="game-screen" class="view hidden">
         <div id="game-top-bar">
           <button id="back-menu-btn" type="button" title="Retour au menu">
@@ -124,6 +133,11 @@
         </div>
 
         <div id="ui-container">
+          <!-- 0. PILULE JOUR/NUIT AU-DESSUS DE LA QUESTION -->
+          <div id="period-row">
+            <span id="period-chip-el" class="period-chip invisible-chip">☀️ Matin</span>
+          </div>
+
           <!-- 1. QUESTION FIXE -->
           <div id="instruction">Quelle heure est-il ?</div>
 
@@ -145,6 +159,25 @@
             <span id="help-text"></span>
             <button id="next-question-btn" type="button" class="hidden">Suivant ➔</button>
           </div>
+        </div>
+      </div>
+
+      <!-- VUE 3 : L'ATELIER DE L'HORLOGER (RÉCOMPENSE FINALE) -->
+      <div id="workshop-screen" class="view hidden">
+        <div id="workshop-top-bar">
+          <button id="workshop-back-btn" type="button" title="Retour au menu">
+            <span class="back-label">← Menu · ⚙️ Atelier</span>
+            <span id="workshop-progress-badge">0 / 5 pièces</span>
+          </button>
+        </div>
+
+        <div id="workshop-canvas-wrap">
+          <canvas id="workshopCanvas" width="500" height="500"></canvas>
+        </div>
+
+        <div id="workshop-ui">
+          <div id="workshop-instruction">Touche chaque pièce dorée en bas pour assembler le cœur de ta montre !</div>
+          <div id="workshop-parts-tray"></div>
         </div>
       </div>
 

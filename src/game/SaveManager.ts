@@ -69,7 +69,6 @@ export class SaveManager {
       if (!levelStars[lvl]) levelStars[lvl] = 2;
     });
 
-    // Si le niveau 6 était déjà complété dans l'ancienne version, débloquer le niveau 7
     const adjustedMax =
       completedLevels.includes(6) && maxUnlockedLevel === 6 ? 7 : maxUnlockedLevel;
 
@@ -92,7 +91,7 @@ export class SaveManager {
             name: typeof p.name === 'string' && p.name.trim() ? p.name.trim().slice(0, 18) : `Joueur ${idx + 1}`,
             save: this.sanitizeSave(p.save)
           }));
-          const activeId = profiles.some(p => p.id === parsed.activeProfileId)
+          const activeId = profiles.some(p => p.id === storeActiveId(parsed))
             ? (parsed.activeProfileId as string)
             : profiles[0].id;
           return { activeProfileId: activeId, profiles };
@@ -102,7 +101,6 @@ export class SaveManager {
       }
     }
 
-    // Migration transparente d'une sauvegarde existante éventuelle
     let initialSave = this.createDefaultSave(false);
     const legacy = localStorage.getItem(this.LEGACY_KEY);
     if (legacy) {
@@ -170,17 +168,6 @@ export class SaveManager {
     return newProfile;
   }
 
-  public static renameActiveProfile(newName: string): PlayerProfile {
-    const cleanName = newName.trim().slice(0, 18);
-    const store = this.loadStore();
-    const active = store.profiles.find(p => p.id === store.activeProfileId) || store.profiles[0];
-    if (active && cleanName) {
-      active.name = cleanName;
-      this.saveStore(store);
-    }
-    return active;
-  }
-
   public static deleteProfile(profileId: string): PlayerProfile {
     const store = this.loadStore();
     if (store.profiles.length <= 1) {
@@ -205,6 +192,13 @@ export class SaveManager {
 
   public static isFullyUnlocked(save: GameSave): boolean {
     return save.maxUnlockedLevel >= this.MAX_LEVEL && save.completedLevels.length >= this.MAX_LEVEL;
+  }
+
+  /**
+   * L'Atelier de l'Horloger est la récompense suprême débloquée dès que le Niveau 7 est validé !
+   */
+  public static isWorkshopUnlocked(save: GameSave): boolean {
+    return save.completedLevels.includes(this.MAX_LEVEL) || this.isFullyUnlocked(save);
   }
 
   public static computeStarsForErrors(totalErrors: number): 1 | 2 | 3 {
@@ -271,4 +265,8 @@ export class SaveManager {
     this.save(fresh);
     return fresh;
   }
+}
+
+function storeActiveId(parsed: Partial<ProfilesStore>): string {
+  return typeof parsed.activeProfileId === 'string' ? parsed.activeProfileId : '';
 }

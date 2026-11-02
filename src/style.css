@@ -7,10 +7,14 @@
   -webkit-tap-highlight-color: transparent;
 }
 
+/* Verrouillage strict 100dvh : zéro scroll inutile et blocage du pull-to-refresh mobile */
 html, body {
   width: 100%;
-  min-height: 100dvh;
-  overflow-x: hidden;
+  height: 100dvh;
+  max-height: 100dvh;
+  overflow: hidden;
+  overscroll-behavior: none;
+  touch-action: manipulation;
   transition: background-color 0.4s ease, color 0.3s ease;
 }
 
@@ -47,10 +51,10 @@ body.theme-night #sky-backdrop {
 
 .sun-orb {
   position: absolute;
-  bottom: 20px;
-  right: 18px;
-  width: 54px;
-  height: 54px;
+  bottom: 16px;
+  right: 16px;
+  width: 50px;
+  height: 50px;
   border-radius: 50%;
   background: radial-gradient(circle, #fef08a 25%, #fbbf24 70%, #f59e0b 100%);
   box-shadow: 0 0 32px 8px rgba(251, 191, 36, 0.45);
@@ -75,17 +79,17 @@ body.theme-night .sun-orb {
   background: rgba(255, 255, 255, 0.72);
   border-radius: 50%;
 }
-.cloud-1 { width: 92px; height: 26px; bottom: 26px; left: 16px; }
-.cloud-1::before { width: 40px; height: 40px; top: -16px; left: 14px; }
-.cloud-1::after { width: 30px; height: 30px; top: -10px; left: 42px; }
+.cloud-1 { width: 88px; height: 24px; bottom: 20px; left: 16px; }
+.cloud-1::before { width: 36px; height: 36px; top: -14px; left: 14px; }
+.cloud-1::after { width: 28px; height: 28px; top: -9px; left: 40px; }
 body.theme-night .cloud { opacity: 0; }
 
 .moon-orb {
   position: absolute;
-  bottom: 22px;
-  right: 20px;
-  width: 46px;
-  height: 46px;
+  bottom: 18px;
+  right: 18px;
+  width: 44px;
+  height: 44px;
   border-radius: 50%;
   box-shadow: inset -13px 4px 0 0 #fef08a;
   filter: drop-shadow(0 0 12px rgba(254, 240, 138, 0.55));
@@ -118,13 +122,13 @@ body.theme-night .stars-layer {
 }
 
 /* ============================================================================
-   2. CONTENEUR PRINCIPAL MOBILE-FIRST
+   2. CONTENEUR PRINCIPAL MOBILE-FIRST (SANS DÉBORDEMENT)
    ============================================================================ */
 body {
   display: flex;
   flex-direction: column;
   align-items: center;
-  justify-content: flex-start;
+  justify-content: center;
 }
 
 #app {
@@ -132,35 +136,44 @@ body {
   z-index: 1;
   width: 100%;
   max-width: 480px;
-  min-height: 100dvh;
-  padding: 10px 16px 14px;
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  justify-content: center;
-}
-
-.view {
-  width: 100%;
-  flex: 1;
-  max-height: 780px;
+  height: 100dvh;
+  max-height: 100dvh;
+  padding: 8px 16px 12px;
   display: flex;
   flex-direction: column;
   align-items: center;
   justify-content: space-between;
+  overflow: hidden;
+}
+
+.view {
+  width: 100%;
+  height: 100%;
+  max-height: 790px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: space-between;
+  overflow: hidden;
 }
 .view.hidden {
   display: none;
 }
 
+#game-screen,
+#workshop-screen {
+  touch-action: none;
+}
+
 /* ============================================================================
-   3. PAGE D'ACCUEIL, PROFILS & ICÔNE SON ÉPURÉE
+   3. PAGE D'ACCUEIL, PROFILS, 7 NIVEAUX & CARTE ATELIER
    ============================================================================ */
 #global-top-bar {
   width: 100%;
   display: flex;
   justify-content: space-between;
   align-items: center;
+  flex-shrink: 0;
 }
 
 .top-left-actions {
@@ -175,9 +188,9 @@ body {
   backdrop-filter: blur(6px);
   color: #f8fafc;
   border: 2px solid rgba(255, 255, 255, 0.35);
-  padding: 5px 12px;
+  padding: 4px 11px;
   border-radius: 20px;
-  font-size: 0.8rem;
+  font-size: 0.78rem;
   font-weight: 700;
   cursor: pointer;
   box-shadow: 0 3px 8px rgba(15, 23, 42, 0.18);
@@ -192,21 +205,19 @@ body {
   border-color: rgba(52, 211, 153, 0.6);
 }
 
-/* Icône du son 100 % épurée en blanc semi-transparent (barrée quand muet) */
 #sound-toggle-btn {
   background: transparent;
   border: none;
   box-shadow: none;
   color: rgba(255, 255, 255, 0.92);
-  width: 40px;
-  height: 40px;
-  padding: 6px;
+  width: 38px;
+  height: 38px;
+  padding: 5px;
   cursor: pointer;
   display: inline-flex;
   align-items: center;
   justify-content: center;
   filter: drop-shadow(0 2px 4px rgba(15, 23, 42, 0.28));
-  transition: transform 0.12s ease, opacity 0.2s ease;
 }
 #sound-toggle-btn:active {
   transform: scale(0.9);
@@ -226,84 +237,92 @@ body {
 
 #main-title-box {
   text-align: center;
-  margin: 2px 0 6px;
+  margin: 0;
   width: 100%;
+  flex-shrink: 0;
 }
 #main-title-box h1 {
-  font-size: 2.2rem;
+  font-size: clamp(1.75rem, 4.5dvh, 2.15rem);
+  line-height: 1.05;
   color: #0f172a;
-  margin-bottom: 1px;
   text-shadow: 0 2px 0 rgba(255, 255, 255, 0.85);
 }
 #main-title-box p {
-  font-size: 0.9rem;
+  font-size: 0.84rem;
   font-weight: 700;
   color: #075985;
 }
 
 #player-progress-bar {
-  margin-top: 5px;
+  margin-top: 4px;
   display: inline-flex;
   align-items: center;
-  gap: 10px;
+  gap: 8px;
   background: rgba(15, 23, 42, 0.82);
-  padding: 5px 14px;
+  padding: 4px 12px;
   border-radius: 20px;
   border: 2px solid rgba(255, 255, 255, 0.32);
-  box-shadow: 0 4px 10px rgba(15, 23, 42, 0.18);
 }
 #player-rank-title {
-  font-size: 0.82rem;
+  font-size: 0.78rem;
   font-weight: 700;
   color: #f8fafc;
 }
 #player-stars-count {
-  font-size: 0.82rem;
+  font-size: 0.78rem;
   font-weight: 700;
   color: #fbbf24;
   background: rgba(251, 191, 36, 0.18);
-  padding: 2px 8px;
+  padding: 1px 7px;
   border-radius: 12px;
 }
 
-/* Grille compacte pour accueillir les 7 niveaux sur un seul écran mobile */
 #levels-grid {
   display: flex;
   flex-direction: column;
-  gap: 7px;
+  justify-content: center;
+  gap: 6px;
   width: 100%;
+  flex: 1;
+  min-height: 0;
 }
 
-.level-rect {
+.level-rect,
+.workshop-rect {
   border: 2px solid rgba(255, 255, 255, 0.35);
-  border-radius: 16px;
-  padding: 9px 14px;
+  border-radius: 15px;
+  padding: clamp(6px, 1.15dvh, 10px) 13px;
   text-align: left;
   cursor: pointer;
-  box-shadow: 0 4px 10px rgba(15, 23, 42, 0.16);
+  box-shadow: 0 3px 8px rgba(15, 23, 42, 0.16);
   transition: transform 0.12s ease;
   display: flex;
   align-items: center;
-  gap: 11px;
+  gap: 10px;
   color: white;
 }
-.level-rect:active:not(.locked) {
+.level-rect:active:not(.locked),
+.workshop-rect:active:not(.locked) {
   transform: scale(0.98);
 }
 
 .lvl-badge {
-  width: 32px;
-  height: 32px;
-  min-width: 32px;
+  width: 28px;
+  height: 28px;
+  min-width: 28px;
   border-radius: 50%;
   background: rgba(255, 255, 255, 0.24);
   border: 2px solid rgba(255, 255, 255, 0.55);
   display: flex;
   align-items: center;
   justify-content: center;
-  font-size: 1rem;
+  font-size: 0.92rem;
   font-weight: 700;
   color: #ffffff;
+}
+.workshop-badge {
+  background: rgba(251, 191, 36, 0.28);
+  border-color: #fde047;
 }
 
 .lvl-content {
@@ -313,7 +332,7 @@ body {
   min-width: 0;
 }
 .lvl-title {
-  font-size: 1.02rem;
+  font-size: clamp(0.92rem, 2.2dvh, 1rem);
   font-weight: 700;
   white-space: nowrap;
   overflow: hidden;
@@ -321,15 +340,15 @@ body {
 }
 
 .lvl-status {
-  width: 32px;
-  height: 32px;
-  min-width: 32px;
+  width: 28px;
+  height: 28px;
+  min-width: 28px;
   flex-shrink: 0;
   border-radius: 50%;
   display: flex;
   align-items: center;
   justify-content: center;
-  font-size: 0.95rem;
+  font-size: 0.88rem;
   font-weight: 700;
 }
 .lvl-status.play {
@@ -338,12 +357,12 @@ body {
 }
 .lvl-status.locked-icon {
   background: rgba(15, 23, 42, 0.3);
-  font-size: 0.85rem;
+  font-size: 0.8rem;
 }
 .lvl-status.stars-badge {
   width: auto;
-  min-width: 62px;
-  padding: 3px 9px;
+  min-width: 58px;
+  padding: 2px 8px;
   border-radius: 12px;
   background: rgba(15, 23, 42, 0.42);
   border: 1.5px solid rgba(255, 255, 255, 0.4);
@@ -351,7 +370,7 @@ body {
   align-items: center;
   justify-content: center;
   gap: 2px;
-  font-size: 0.95rem;
+  font-size: 0.9rem;
   white-space: nowrap;
 }
 .lvl-star-on { color: #fde047; }
@@ -363,9 +382,16 @@ body {
 .level-rect.lvl-4 { background: linear-gradient(135deg, #e11d48, #be123c); }
 .level-rect.lvl-5 { background: linear-gradient(135deg, #7c3aed, #5b21b6); }
 .level-rect.lvl-6 { background: linear-gradient(135deg, #db2777, #9d174d); }
-.level-rect.lvl-7 { background: linear-gradient(135deg, #1e293b, #0f172a); border-color: #fbbf24; }
+.level-rect.lvl-7 { background: linear-gradient(135deg, #1e293b, #0f172a); border-color: #94a3b8; }
 
-.level-rect.locked {
+.workshop-rect {
+  background: linear-gradient(135deg, #b45309, #78350f);
+  border-color: #fde047;
+  box-shadow: 0 4px 14px rgba(245, 158, 11, 0.35);
+}
+
+.level-rect.locked,
+.workshop-rect.locked {
   background: rgba(15, 23, 42, 0.52) !important;
   color: #cbd5e1 !important;
   cursor: not-allowed;
@@ -374,20 +400,23 @@ body {
 }
 
 /* ============================================================================
-   4. ÉCRAN DE JEU (PLACEMENT 100 % AU DOIGT & BOUTON SUIVANT ➔)
+   4. ÉCRAN DE JEU (PILULE AU-DESSUS DE LA QUESTION & ZÉRO SCROLL)
    ============================================================================ */
-#game-top-bar {
+#game-top-bar,
+#workshop-top-bar {
   width: 100%;
+  flex-shrink: 0;
 }
 
-#back-menu-btn {
+#back-menu-btn,
+#workshop-back-btn {
   width: 100%;
   border: 2px solid rgba(255, 255, 255, 0.32);
-  padding: 10px 16px;
+  padding: 9px 15px;
   border-radius: 16px;
   font-weight: 700;
   cursor: pointer;
-  font-size: 1rem;
+  font-size: 0.98rem;
   display: flex;
   justify-content: space-between;
   align-items: center;
@@ -395,29 +424,27 @@ body {
   background: rgba(15, 23, 42, 0.85);
   backdrop-filter: blur(6px);
   box-shadow: 0 4px 12px rgba(15, 23, 42, 0.28);
-  transition: transform 0.12s ease;
-}
-#back-menu-btn:active {
-  transform: scale(0.98);
 }
 
 #phase-badge {
   display: inline-flex;
   align-items: center;
   gap: 3px;
-  font-size: 1.15rem;
+  font-size: 1.12rem;
 }
 .star-on { color: #fbbf24; }
 .star-off { color: #64748b; }
 
-#game-container {
+#game-container,
+#workshop-canvas-wrap {
   background: transparent;
   border-radius: 50%;
   display: flex;
   justify-content: center;
   align-items: center;
-  width: min(100%, 340px, 45dvh);
+  width: min(100%, 315px, 41dvh);
   aspect-ratio: 1;
+  flex-shrink: 0;
   filter: drop-shadow(0 10px 22px rgba(15, 23, 42, 0.24));
 }
 
@@ -436,18 +463,43 @@ canvas:active {
   display: flex;
   flex-direction: column;
   align-items: center;
-  gap: 10px;
+  gap: 6px;
+  width: 100%;
+  flex-shrink: 0;
+}
+
+/* 0. Pilule Matin / Après-midi / Soir / Nuit centrée AU-DESSUS de la question */
+#period-row {
+  height: 28px;
+  min-height: 28px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
   width: 100%;
 }
 
-/* 1. Question fixe avec badge neutre */
+.period-chip {
+  font-size: 0.84rem;
+  font-weight: 700;
+  padding: 3px 12px;
+  border-radius: 14px;
+  background: rgba(15, 23, 42, 0.86);
+  color: #fde68a;
+  border: 1.5px solid rgba(251, 191, 36, 0.55);
+  box-shadow: 0 2px 6px rgba(15, 23, 42, 0.2);
+}
+.period-chip.invisible-chip {
+  visibility: hidden;
+  opacity: 0;
+}
+
+/* 1. Question fixe centrée juste en dessous */
 #instruction {
-  min-height: 42px;
-  font-size: clamp(1.1rem, 4.4vw, 1.3rem);
+  min-height: 36px;
+  font-size: clamp(1.08rem, 4.3vw, 1.26rem);
   font-weight: 700;
   text-align: center;
   display: flex;
-  flex-wrap: wrap;
   align-items: center;
   justify-content: center;
   gap: 7px;
@@ -459,28 +511,15 @@ body.theme-night #instruction {
   text-shadow: 0 2px 8px rgba(0, 0, 0, 0.65);
 }
 
-.period-chip {
-  font-size: 0.84rem;
-  font-weight: 700;
-  padding: 3px 10px;
-  border-radius: 12px;
-  background: rgba(15, 23, 42, 0.86);
-  color: #fde68a;
-  border: 1.5px solid rgba(251, 191, 36, 0.55);
-  text-shadow: none;
-}
-
-/* Badge neutre uniforme (sans distinction orange/bleu) */
 .target-time-badge {
   color: #f8fafc;
   background: #1e293b;
   border: 2px solid rgba(255, 255, 255, 0.4);
-  padding: 2px 12px;
-  border-radius: 12px;
-  font-size: 1.25rem;
+  padding: 1px 11px;
+  border-radius: 11px;
+  font-size: 1.2rem;
   letter-spacing: 0.5px;
   text-shadow: none;
-  box-shadow: 0 3px 8px rgba(15, 23, 42, 0.25);
 }
 
 /* 2. Zone des boutons fixe */
@@ -505,9 +544,9 @@ body.theme-night #instruction {
   background: #1e293b;
   border: 2px solid rgba(255, 255, 255, 0.35);
   color: #ffffff;
-  min-height: 54px;
-  padding: 12px 6px;
-  font-size: clamp(1.12rem, 4.5vw, 1.3rem);
+  min-height: 50px;
+  padding: 10px 6px;
+  font-size: clamp(1.1rem, 4.4vw, 1.26rem);
   font-weight: 700;
   border-radius: 16px;
   cursor: pointer;
@@ -542,12 +581,12 @@ body.theme-night #instruction {
 
 #check-btn {
   width: 100%;
-  height: 54px;
+  height: 50px;
   background: linear-gradient(135deg, #10b981, #059669);
   color: #ffffff;
   border: 2px solid #6ee7b7;
   padding: 0 24px;
-  font-size: 1.24rem;
+  font-size: 1.2rem;
   font-weight: 700;
   border-radius: 16px;
   cursor: pointer;
@@ -563,15 +602,15 @@ body.theme-night #instruction {
 /* 3. Zone de commentaires + Bouton "Suivant ➔" en dessous */
 #help-box {
   width: 100%;
-  min-height: 64px;
+  min-height: 60px;
   display: flex;
   align-items: center;
   justify-content: space-between;
   gap: 10px;
-  padding: 10px 14px;
+  padding: 8px 13px;
   border-radius: 16px;
-  font-size: 0.9rem;
-  line-height: 1.35;
+  font-size: 0.86rem;
+  line-height: 1.32;
   text-align: left;
   transition: opacity 0.2s ease;
 }
@@ -601,15 +640,14 @@ body.theme-night #instruction {
   background: #fbbf24;
   color: #0f172a;
   border: 2px solid #fef08a;
-  padding: 9px 16px;
+  padding: 8px 14px;
   border-radius: 12px;
-  font-size: 0.98rem;
+  font-size: 0.94rem;
   font-weight: 700;
   cursor: pointer;
   white-space: nowrap;
   flex-shrink: 0;
   box-shadow: 0 3px 10px rgba(0, 0, 0, 0.25);
-  transition: transform 0.12s ease;
 }
 #next-question-btn:active {
   transform: scale(0.95);
@@ -619,7 +657,71 @@ body.theme-night #instruction {
 }
 
 /* ============================================================================
-   5. MODALES (PROFILS FRATRIE & PWA)
+   5. VUE 3 : L'ATELIER DE L'HORLOGER
+   ============================================================================ */
+#workshop-progress-badge {
+  font-size: 0.88rem;
+  color: #fbbf24;
+  background: rgba(251, 191, 36, 0.16);
+  padding: 3px 10px;
+  border-radius: 12px;
+}
+
+#workshop-ui {
+  width: 100%;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+#workshop-instruction {
+  background: rgba(15, 23, 42, 0.9);
+  border: 2px solid #fbbf24;
+  color: #fef3c7;
+  padding: 9px 12px;
+  border-radius: 14px;
+  font-size: 0.86rem;
+  line-height: 1.3;
+  text-align: center;
+  min-height: 52px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+#workshop-parts-tray {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 7px;
+  width: 100%;
+}
+
+.workshop-part-btn {
+  background: linear-gradient(135deg, #d97706, #b45309);
+  color: #ffffff;
+  border: 2px solid #fde047;
+  padding: 9px 8px;
+  border-radius: 13px;
+  font-size: 0.82rem;
+  font-weight: 700;
+  cursor: pointer;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.workshop-part-btn:nth-child(5),
+.workshop-part-btn.complete-btn {
+  grid-column: 1 / -1;
+}
+.workshop-part-btn.placed {
+  background: rgba(15, 23, 42, 0.65);
+  border-color: #10b981;
+  color: #6ee7b7;
+  cursor: default;
+}
+
+/* ============================================================================
+   6. MODALES (PROFILS FRATRIE & PWA)
    ============================================================================ */
 .modal {
   position: fixed;

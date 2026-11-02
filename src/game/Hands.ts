@@ -7,9 +7,6 @@ export class Hands {
     this.radius = radius;
   }
 
-  /**
-   * Dessine les aiguilles épurées (sans curseur blanc sur le corps de l'aiguille)
-   */
   public draw(
     hours: number,
     minutes: number,
@@ -18,7 +15,7 @@ export class Hands {
     ghostTarget?: { hours: number; minutes: number }
   ): void {
     const ctx = this.ctx;
-    const hourTip = level === 5 || level === 6 ? this.radius - 118 : this.radius - 96;
+    const hourTip = level === 5 ? this.radius - 118 : this.radius - 96;
     const minuteTip = level >= 2 && level <= 5 ? this.radius - 42 : this.radius - 24;
 
     if (ghostTarget) {

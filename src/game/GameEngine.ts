@@ -6,6 +6,7 @@ import { SaveManager } from './SaveManager';
 import type { GameSave } from './SaveManager';
 import { SoundEngine } from './SoundEngine';
 import { TimeMath } from './TimeMath';
+import { WatchMechanism } from './WatchMechanism';
 
 interface CelebrationParticle {
   x: number;
@@ -25,6 +26,7 @@ export class GameEngine {
   private hands: Hands;
   private questionManager: QuestionManager;
   private soundEngine: SoundEngine;
+  private watchMechanism: WatchMechanism | null = null;
 
   private currentHours: number = 12;
   private currentMinutes: number = 0;
@@ -65,6 +67,23 @@ export class GameEngine {
     this.hands = new Hands(this.ctx, radius);
     this.questionManager = new QuestionManager(1);
 
+    const workshopCanvas = document.getElementById('workshopCanvas') as HTMLCanvasElement | null;
+    if (workshopCanvas) {
+      this.watchMechanism = new WatchMechanism(workshopCanvas, (part, count, total) => {
+        const badge = document.getElementById('workshop-progress-badge');
+        const instr = document.getElementById('workshop-instruction');
+        if (badge) badge.textContent = `${count} / ${total} pièces`;
+        if (instr) {
+          if (count >= total) {
+            instr.innerHTML = `👑 <strong>Bravo Maître Horloger !</strong> Ton mouvement mécanique bat et entraîne les aiguilles !`;
+          } else {
+            instr.innerHTML = `✨ <strong>${part.name}</strong> : ${part.role}`;
+          }
+        }
+        this.renderWorkshopTray();
+      });
+    }
+
     this.initEvents();
     this.updateSoundButtonUI();
     this.updateDevButtonUI();
@@ -80,6 +99,7 @@ export class GameEngine {
 
   public startLevel(level: number): void {
     this.clearPendingAnimations();
+    this.watchMechanism?.stop();
     this.currentLevel = level;
     this.currentPhase = 1;
     this.phaseSuccessCount = 0;
@@ -87,6 +107,7 @@ export class GameEngine {
     this.questionManager.setLevel(level);
 
     document.getElementById('main-menu')?.classList.add('hidden');
+    document.getElementById('workshop-screen')?.classList.add('hidden');
     document.getElementById('game-screen')?.classList.remove('hidden');
 
     const titleDisplay = document.getElementById('level-title-display');
@@ -97,9 +118,68 @@ export class GameEngine {
     this.updateUI();
   }
 
+  private openWorkshop(): void {
+    this.clearPendingAnimations();
+    document.getElementById('main-menu')?.classList.add('hidden');
+    document.getElementById('game-screen')?.classList.add('hidden');
+    document.getElementById('workshop-screen')?.classList.remove('hidden');
+    this.applySkyTheme(false);
+
+    if (this.watchMechanism) {
+      this.watchMechanism.resetAssembly();
+      const badge = document.getElementById('workshop-progress-badge');
+      const instr = document.getElementById('workshop-instruction');
+      if (badge) badge.textContent = `0 / ${this.watchMechanism.parts.length} pièces`;
+      if (instr) {
+        instr.textContent = `Touche chaque pièce dorée en bas pour assembler le cœur de ta montre !`;
+      }
+      this.renderWorkshopTray();
+      this.watchMechanism.start();
+    }
+  }
+
+  private renderWorkshopTray(): void {
+    const tray = document.getElementById('workshop-parts-tray');
+    if (!tray || !this.watchMechanism) return;
+    tray.innerHTML = '';
+
+    if (this.watchMechanism.isComplete()) {
+      const replayBtn = document.createElement('button');
+      replayBtn.type = 'button';
+      replayBtn.className = 'workshop-part-btn complete-btn';
+      replayBtn.textContent = '🔄 Démonter et réassembler le calibre';
+      replayBtn.addEventListener('click', () => {
+        this.soundEngine.playSnap();
+        this.openWorkshop();
+      });
+      tray.appendChild(replayBtn);
+      return;
+    }
+
+    this.watchMechanism.parts.forEach(part => {
+      const btn = document.createElement('button');
+      btn.type = 'button';
+      btn.className = `workshop-part-btn${part.placed ? ' placed' : ''}`;
+      btn.disabled = part.placed;
+      btn.textContent = part.placed ? `✓ ${part.name}` : `⚙️ ${part.name}`;
+      btn.addEventListener('click', () => {
+        if (!this.watchMechanism || part.placed) return;
+        this.watchMechanism.placeNextPart(part.id);
+        if (this.watchMechanism.isComplete()) {
+          this.soundEngine.playLevelComplete();
+        } else {
+          this.soundEngine.playSuccess();
+        }
+      });
+      tray.appendChild(btn);
+    });
+  }
+
   private returnToMenu(): void {
     this.clearPendingAnimations();
+    this.watchMechanism?.stop();
     document.getElementById('game-screen')?.classList.add('hidden');
+    document.getElementById('workshop-screen')?.classList.add('hidden');
     document.getElementById('main-menu')?.classList.remove('hidden');
     this.applySkyTheme(true);
     this.updateDevButtonUI();
@@ -160,6 +240,30 @@ export class GameEngine {
       });
     });
 
+    document.getElementById('workshop-btn')?.addEventListener('click', () => {
+      if (SaveManager.isWorkshopUnlocked(this.saveData)) {
+        this.soundEngine.playSnap();
+        this.openWorkshop();
+      } else {
+        this.soundEngine.playError();
+      }
+    });
+
+    document.getElementById('workshop-back-btn')?.addEventListener('click', () => {
+      this.soundEngine.playSnap();
+      this.returnToMenu();
+    });
+
+    document.getElementById('workshopCanvas')?.addEventListener('click', () => {
+      if (!this.watchMechanism || this.watchMechanism.isComplete()) return;
+      this.watchMechanism.placeNextPart();
+      if (this.watchMechanism.isComplete()) {
+        this.soundEngine.playLevelComplete();
+      } else {
+        this.soundEngine.playSuccess();
+      }
+    });
+
     document.getElementById('back-menu-btn')?.addEventListener('click', () => {
       this.soundEngine.playSnap();
       this.returnToMenu();
@@ -192,7 +296,6 @@ export class GameEngine {
       this.updateMenuUI();
     });
 
-    // --- GESTION MULTI-PROFILS (FRATRIE) ---
     document.getElementById('profile-btn')?.addEventListener('click', () => {
       this.soundEngine.playSnap();
       this.openProfileModal();
@@ -219,7 +322,6 @@ export class GameEngine {
       document.getElementById('profile-modal')?.classList.add('hidden');
     });
 
-    // --- BOUTON "SUIVANT ➔" POUR AVANCER AU RYTHME DE L'ENFANT ---
     document.getElementById('next-question-btn')?.addEventListener('click', () => {
       if (this.isWaitingNext && this.nextActionCallback) {
         this.soundEngine.playSnap();
@@ -230,7 +332,6 @@ export class GameEngine {
       }
     });
 
-    // --- PRÉHENSION 100 % AU DOIGT SUR LE CADRAN ---
     const getPointerPos = (e: MouseEvent | TouchEvent) => {
       const rect = this.canvas.getBoundingClientRect();
       const clientX = 'touches' in e ? e.touches[0].clientX : (e as MouseEvent).clientX;
@@ -428,6 +529,22 @@ export class GameEngine {
         }
       }
     });
+
+    // Mise à jour de la carte Récompense Finale : L'Atelier de l'Horloger
+    const workshopBtn = document.getElementById('workshop-btn');
+    const workshopStatus = document.getElementById('workshop-status');
+    const workshopUnlocked = SaveManager.isWorkshopUnlocked(this.saveData);
+    if (workshopBtn && workshopStatus) {
+      if (workshopUnlocked) {
+        workshopBtn.classList.remove('locked');
+        workshopStatus.textContent = '▶';
+        workshopStatus.className = 'lvl-status play';
+      } else {
+        workshopBtn.classList.add('locked');
+        workshopStatus.textContent = '🔒';
+        workshopStatus.className = 'lvl-status locked-icon';
+      }
+    }
   }
 
   private showFeedback(
@@ -511,12 +628,25 @@ export class GameEngine {
         this.updateMenuUI();
 
         const starsStr = '★'.repeat(earnedStars) + '☆'.repeat(3 - earnedStars);
+        this.playCelebrationAnimation(earnedStars);
+
+        if (this.currentLevel === SaveManager.MAX_LEVEL) {
+          this.showFeedback(
+            `👑 <strong>Niveau 7 validé (${starsStr}) !</strong> L’Atelier de l’Horloger est débloqué !`,
+            'success',
+            () => {
+              this.openWorkshop();
+            },
+            'Atelier ⚙️'
+          );
+          return;
+        }
+
         const msg =
           earnedStars === 3
             ? `🏆 <strong>Niveau ${this.currentLevel} parfait (${starsStr}) !</strong>`
             : `🏆 <strong>Niveau ${this.currentLevel} validé (${starsStr}) !</strong>`;
 
-        this.playCelebrationAnimation(earnedStars);
         this.showFeedback(
           msg,
           'success',
@@ -749,9 +879,6 @@ export class GameEngine {
     else this.handleFailedReadAttempt(selectedChoice);
   }
 
-  /**
-   * Badge d'heure cible neutre (sans distinction de couleur orange/bleu)
-   */
   private formatNeutralTargetHTML(target: TimeTarget): string {
     return `<span class="target-time-badge">${target.text}</span>`;
   }
@@ -767,22 +894,28 @@ export class GameEngine {
   }
 
   private updateUI(): void {
+    const periodChipEl = document.getElementById('period-chip-el');
     const instructionEl = document.getElementById('instruction');
     const placementTools = document.getElementById('placement-tools');
     const choicesContainer = document.getElementById('choices-container');
 
     this.updatePhaseStarsUI();
 
-    const periodChip =
-      this.currentLevel >= 5 && this.targetTime?.periodLabel
-        ? `<span class="period-chip">${this.targetTime.periodLabel}</span>`
-        : '';
+    // Pilule Jour/Nuit affichée au-dessus de la question (emplacement fixe)
+    if (periodChipEl) {
+      if (this.currentLevel >= 5 && this.targetTime?.periodLabel) {
+        periodChipEl.textContent = this.targetTime.periodLabel;
+        periodChipEl.classList.remove('invisible-chip');
+      } else {
+        periodChipEl.classList.add('invisible-chip');
+      }
+    }
 
     if (this.currentPhase === 1) {
       placementTools?.classList.add('hidden');
       choicesContainer?.classList.remove('hidden');
       if (instructionEl) {
-        instructionEl.innerHTML = `${periodChip}<span>Quelle heure est-il ?</span>`;
+        instructionEl.innerHTML = `<span>Quelle heure est-il ?</span>`;
       }
 
       const choiceBtns = document.querySelectorAll('#choices-container .choice-btn');
@@ -793,7 +926,7 @@ export class GameEngine {
       placementTools?.classList.remove('hidden');
       choicesContainer?.classList.add('hidden');
       if (instructionEl) {
-        instructionEl.innerHTML = `${periodChip}<span>Place les aiguilles sur</span> ${this.formatNeutralTargetHTML(this.targetTime)}`;
+        instructionEl.innerHTML = `<span>Place les aiguilles sur</span> ${this.formatNeutralTargetHTML(this.targetTime)}`;
       }
     }
   }

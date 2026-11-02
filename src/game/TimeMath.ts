@@ -40,11 +40,6 @@ export class TimeMath {
     return Math.hypot(px - projX, py - projY);
   }
 
-  /**
-   * Préhension 100 % tactile intelligente :
-   * - Si les deux aiguilles sont proches ou superposées, sélectionne prioritairement celle qui n'est pas encore sur sa cible !
-   * - Permet de glisser le doigt jusqu'à l'extérieur du cadran (effet bras de levier) pour viser à la minute près aux niveaux 6 et 7.
-   */
   public static pickHandFromPointer(
     x: number,
     y: number,
@@ -63,7 +58,8 @@ export class TimeMath {
     const hourAngle = ((hours % 12) * Math.PI) / 6 + (minutes * Math.PI) / 360;
     const minuteAngle = (minutes * Math.PI) / 30;
 
-    const hourLen = level === 5 || level === 6 ? radius - 118 : radius - 96;
+    // Seul le Niveau 5 possède la couronne intérieure 13..00
+    const hourLen = level === 5 ? radius - 118 : radius - 96;
     const minLen = level >= 2 && level <= 5 ? radius - 42 : radius - 24;
 
     const hx = Math.sin(hourAngle) * hourLen;
@@ -177,7 +173,7 @@ export class TimeMath {
         return 'C’est <strong>le midi</strong> : au milieu de la journée, midi s’écrit <strong>12:00</strong> !';
       }
       if (targetHours >= 13) {
-        if (level === 7) {
+        if (level >= 6) {
           return 'C’est <strong>l’après-midi ou le soir</strong> : ajoute 12 à l’heure du matin (ex : 1h ➔ 13h, 4h ➔ 16h) !';
         }
         return 'C’est <strong>l’après-midi ou le soir</strong> : lis le petit nombre <strong>orange</strong> à l’intérieur du cadran !';
@@ -200,7 +196,7 @@ export class TimeMath {
       if (level === 7) {
         return 'Les minutes sont justes ! Aide-toi des repères <strong>12, 3, 6, 9</strong> pour trouver l’heure de la petite aiguille orange.';
       }
-      if (level >= 5 && (targetHours >= 13 || targetHours === 0)) {
+      if (level === 5 && (targetHours >= 13 || targetHours === 0)) {
         return 'Les minutes sont justes ! Pour l’heure, regarde quel nombre <strong>orange</strong> est pointé par la petite aiguille.';
       }
       return 'Les minutes sont justes ! Regarde bien vers quel chiffre pointe la <strong>petite aiguille orange</strong>.';
@@ -257,8 +253,11 @@ export class TimeMath {
       if (level === 7) {
         return 'Les minutes sont bonnes ! Aide-toi des repères <strong>12, 3, 6, 9</strong> pour placer la <strong>petite aiguille orange</strong>.';
       }
-      if (level >= 5 && (targetHours >= 13 || targetHours === 0)) {
+      if (level === 5 && (targetHours >= 13 || targetHours === 0)) {
         return 'Les minutes sont bonnes ! Glisse la <strong>petite aiguille orange</strong> en face du nombre orange demandé.';
+      }
+      if (level === 6 && targetHours >= 13) {
+        return 'Les minutes sont bonnes ! Pour l’après-midi ou le soir, retranche 12 pour trouver le chiffre de la <strong>petite aiguille orange</strong>.';
       }
       return 'Les minutes sont bonnes ! Glisse maintenant la <strong>petite aiguille orange</strong> sur le chiffre des heures demandé.';
     }

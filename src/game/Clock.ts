@@ -101,16 +101,16 @@ export class Clock {
     });
 
     // 6. Chiffres des heures :
-    // - Niveaux 1 à 6 : 1 à 12 (avec couronne intérieure 13..00 aux niveaux 5 et 6)
-    // - Niveau 7 ("L'Horloge des Grands") : uniquement 12, 3, 6, 9 et des index bâtons pour les autres heures !
+    // - Niveaux 1 à 6 : 1 à 12
+    // - Niveau 5 uniquement : couronne intérieure orange 13..00
+    // - Niveau 7 : uniquement 12, 3, 6, 9 et des index bâtons pour les autres heures
     const hour12Radius = showMinuteTrackBand ? r - 66 : r - 52;
-    const hour24Radius = showMinuteTrackBand ? r - 102 : r - 92;
+    const hour24Radius = r - 102;
 
     for (let i = 1; i <= 12; i++) {
       const angle = (i * Math.PI) / 6;
 
       if (level >= 7 && i % 3 !== 0) {
-        // Index bâton horaire sobre pour les heures non cardinales au Niveau 7
         const markerOuter = r - 36;
         const markerInner = r - 56;
         ctx.save();
@@ -131,14 +131,14 @@ export class Clock {
       ctx.save();
       ctx.font = level >= 7 ? '700 32px "Fredoka", sans-serif' : '700 29px "Fredoka", sans-serif';
       ctx.fillStyle = hourNumberColor;
-      ctx.globalAlpha = (level === 5 || level === 6) && is24HourTarget ? 0.45 : 1;
+      ctx.globalAlpha = level === 5 && is24HourTarget ? 0.45 : 1;
       ctx.textAlign = 'center';
       ctx.textBaseline = 'middle';
       ctx.fillText(i.toString(), hx, hy);
       ctx.restore();
 
-      // Heures 24h (13 à 23 et 00) aux Niveaux 5 et 6 uniquement
-      if (level === 5 || level === 6) {
+      // Heures 24h (13 à 23 et 00) au Niveau 5 uniquement
+      if (level === 5) {
         const h24Text = i === 12 ? '00' : (i + 12).toString();
         const x24 = hour24Radius * Math.sin(angle);
         const y24 = -hour24Radius * Math.cos(angle);
