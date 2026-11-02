@@ -3,6 +3,23 @@ import { TimeMath } from './TimeMath';
 import { QuestionManager } from './QuestionManager';
 import { SaveManager } from './SaveManager';
 import { SoundEngine } from './SoundEngine';
+import { WatchMechanism } from './WatchMechanism';
+
+describe('WatchMechanism — Cohérence Cinématique Molette / Ressort / Roue des Heures', () => {
+  it('place la roue du ressort en tangence avec la vis de la molette (y=0) ET avec la roue des heures (0,0)', () => {
+    const { spring, hours } = WatchMechanism.POS;
+
+    // 1. Tangence avec la roue des heures : r_spring + r_hours = 36 + 56 = 92 px (± 1 px)
+    const distSpringToHours = Math.hypot(spring.x - hours.x, spring.y - hours.y);
+    expect(distSpringToHours).toBeGreaterThan(90.5);
+    expect(distSpringToHours).toBeLessThan(93.0);
+
+    // 2. Tangence avec la vis sans fin de la molette (axe y = 0)
+    const bottomPitchY = spring.y + spring.r;
+    expect(bottomPitchY).toBeGreaterThanOrEqual(-7);
+    expect(bottomPitchY).toBeLessThanOrEqual(-3);
+  });
+});
 
 describe('QuestionManager — Mix obligatoire 1 Leurre Heure + 1 Leurre Minute (Niveaux 2 à 7)', () => {
   it('génère toujours un leurre sur l’heure ET un leurre sur les minutes aux niveaux 2 à 7', () => {
@@ -12,13 +29,8 @@ describe('QuestionManager — Mix obligatoire 1 Leurre Heure + 1 Leurre Minute (
       const choices = qm.generateChoices(target);
       expect(choices).toHaveLength(3);
 
-      // Au moins un choix a une minute différente de la cible (oblige à lire les minutes)
-      const hasDifferentMinute = choices.some(c => c.minutes !== target.minutes);
-      // Au moins un choix a une heure différente de la cible (oblige à lire les heures)
-      const hasDifferentHour = choices.some(c => c.hours !== target.hours);
-
-      expect(hasDifferentMinute).toBe(true);
-      expect(hasDifferentHour).toBe(true);
+      expect(choices.some(c => c.minutes !== target.minutes)).toBe(true);
+      expect(choices.some(c => c.hours !== target.hours)).toBe(true);
     }
   });
 
@@ -62,6 +74,7 @@ describe('TimeMath & SaveManager — Pédagogie Niv. 5/6/7 & Atelier', () => {
     save = SaveManager.applyLevelRewards(save, 7, 3);
     expect(SaveManager.isWorkshopUnlocked(save)).toBe(true);
 
+    expect(QuestionManager.formatTimeText(16, 5, 6)).toBe('16:05');
     const sound = new SoundEngine(false);
     expect(() => sound.playWindingClick()).not.toThrow();
   });
