@@ -4,6 +4,8 @@ import { QuestionManager } from './QuestionManager';
 import { SaveManager } from './SaveManager';
 import { SoundEngine } from './SoundEngine';
 import { WatchMechanism } from './WatchMechanism';
+import { Hands } from './Hands';
+import { TutorialOverlay } from './TutorialOverlay';
 
 function createMockCtx(): CanvasRenderingContext2D {
   return {
@@ -25,7 +27,11 @@ function createMockCtx(): CanvasRenderingContext2D {
     fillRect: () => {},
     strokeRect: () => {},
     fill: () => {},
-    stroke: () => {}
+    stroke: () => {},
+    setLineDash: () => {},
+    fillText: () => {},
+    strokeText: () => {},
+    measureText: () => ({ width: 60 })
   } as unknown as CanvasRenderingContext2D;
 }
 
@@ -132,5 +138,16 @@ describe('Progression Pédagogique 8 Niveaux (V41) — QuestionManager, TimeMath
 
     const sound = new SoundEngine(false);
     expect(() => sound.playWindingClick()).not.toThrow();
+  });
+
+  it("fournit et dessine un didacticiel animé sans erreur pour chacun des 8 niveaux", () => {
+    const ctx = createMockCtx();
+    const hands = new Hands(ctx, 200);
+    for (let lvl = 1; lvl <= 8; lvl++) {
+      const info = TutorialOverlay.getInfo(lvl);
+      expect(info.title.length).toBeGreaterThan(5);
+      expect(info.ruleHtml.length).toBeGreaterThan(10);
+      expect(() => TutorialOverlay.draw(ctx, hands, 200, lvl, 1200)).not.toThrow();
+    }
   });
 });

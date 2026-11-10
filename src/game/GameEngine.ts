@@ -6,6 +6,7 @@ import { SaveManager } from './SaveManager';
 import type { GameSave } from './SaveManager';
 import { SoundEngine } from './SoundEngine';
 import { TimeMath } from './TimeMath';
+import { TutorialOverlay } from './TutorialOverlay';
 import { WatchMechanism } from './WatchMechanism';
 import type { WorkshopZoom } from './WatchMechanism';
 
@@ -67,6 +68,9 @@ export class GameEngine {
   private isWaitingNext: boolean = false;
   private nextActionCallback: (() => void) | null = null;
   private celebrationAnimId: number = 0;
+  private isTutorialActive: boolean = false;
+  private tutorialAnimId: number = 0;
+  private tutorialStartTime: number = 0;
   private activeHand: 'hour' | 'minute' = 'hour';
 
   constructor(canvas: HTMLCanvasElement) {
@@ -107,6 +111,8 @@ export class GameEngine {
   private clearPendingAnimations(): void {
     cancelAnimationFrame(this.celebrationAnimId);
     cancelAnimationFrame(this.workshopAnimId);
+    cancelAnimationFrame(this.tutorialAnimId);
+    this.isTutorialActive = false;
     this.isWinding = false;
     this.isWaitingNext = false;
     this.nextActionCallback = null;
@@ -129,8 +135,67 @@ export class GameEngine {
     if (titleDisplay) titleDisplay.textContent = `Niveau ${level}`;
 
     this.initNewQuestion();
-    this.render();
+    this.openTutorial();
+  }
+
+
+  private openTutorial(): void {
+    cancelAnimationFrame(this.tutorialAnimId);
+    this.isTutorialActive = true;
+    this.tutorialStartTime = performance.now();
+
+    const info = TutorialOverlay.getInfo(this.currentLevel);
+    this.applySkyTheme(info.isDay);
+
+    const periodChipEl = document.getElementById("period-chip-el");
+    if (periodChipEl) {
+      if (info.periodLabel) {
+        periodChipEl.textContent = info.periodLabel;
+        periodChipEl.classList.remove("invisible-chip");
+      } else {
+        periodChipEl.classList.add("invisible-chip");
+      }
+    }
+
+    const instructionEl = document.getElementById("instruction");
+    if (instructionEl) {
+      instructionEl.innerHTML = `<span>${info.title}</span>`;
+    }
+
+    document.getElementById("choices-container")?.classList.add("hidden");
+    document.getElementById("placement-tools")?.classList.add("hidden");
+    document.getElementById("tutorial-tools")?.classList.remove("hidden");
+
+    const helpBox = document.getElementById("help-box");
+    const helpText = document.getElementById("help-text");
+    const nextBtn = document.getElementById("next-question-btn");
+    if (helpBox && helpText) {
+      helpText.innerHTML = info.ruleHtml;
+      helpBox.classList.remove("invisible-feedback", "hidden", "feedback-success");
+      helpBox.classList.add("feedback-error");
+      nextBtn?.classList.add("hidden");
+    }
+
+    const loop = (now: number) => {
+      if (!this.isTutorialActive) return;
+      const elapsed = now - this.tutorialStartTime;
+      this.clock.draw(this.currentLevel, info.isDay);
+      TutorialOverlay.draw(this.ctx, this.hands, this.radius, this.currentLevel, elapsed);
+      this.tutorialAnimId = requestAnimationFrame(loop);
+    };
+    this.tutorialAnimId = requestAnimationFrame(loop);
+  }
+
+  private closeTutorial(): void {
+    if (!this.isTutorialActive) return;
+    cancelAnimationFrame(this.tutorialAnimId);
+    this.isTutorialActive = false;
+    document.getElementById("tutorial-tools")?.classList.add("hidden");
+    const showDaySky = TimeMath.is24HourLevel(this.currentLevel) ? this.targetTime.isDay : true;
+    this.applySkyTheme(showDaySky);
+    this.hideHelp();
     this.updateUI();
+    this.render();
   }
 
   private openWorkshop(): void {
@@ -305,6 +370,20 @@ export class GameEngine {
       this.returnToMenu();
     });
 
+    document.getElementById('tutorial-btn')?.addEventListener('click', () => {
+      this.soundEngine.playSnap();
+      if (this.isTutorialActive) {
+        this.closeTutorial();
+      } else {
+        this.openTutorial();
+      }
+    });
+
+    document.getElementById('tutorial-start-btn')?.addEventListener('click', () => {
+      this.soundEngine.playSuccess();
+      this.closeTutorial();
+    });
+
     const soundToggleBtn = document.getElementById('sound-toggle-btn');
     soundToggleBtn?.addEventListener('click', () => {
       this.saveData.muted = !this.saveData.muted;
@@ -400,7 +479,7 @@ export class GameEngine {
     };
 
     const onStart = (e: MouseEvent | TouchEvent) => {
-      if (this.currentPhase === 1 || this.isWaitingNext) return;
+      if (this.isTutorialActive || this.currentPhase === 1 || this.isWaitingNext) return;
       e.preventDefault();
       const pos = getPointerPos(e);
 
@@ -983,6 +1062,7 @@ export class GameEngine {
     const instructionEl = document.getElementById('instruction');
     const placementTools = document.getElementById('placement-tools');
     const choicesContainer = document.getElementById('choices-container');
+    document.getElementById('tutorial-tools')?.classList.add('hidden');
 
     this.updatePhaseStarsUI();
 

@@ -24,3 +24,7 @@
   - **Détente rapide et continue du ressort (`20 s`) :** Le ressort se détend en 20 secondes (`5 % / s`) sans aucun saut angulaire entre la fin du remontage et la reprise de la marche.
   - **Chaîne cinématique à 5 contacts verrouillés en vitesse réelle (`1000 ms`) :** Synchronisation mathématique sans glissement des dents du barillet jusqu'à la trotteuse des secondes, avec maintien du son `Tic-Tac` chaque seconde.
   - **4 boutons de zoom manuels (`⚙️ Ressort / Molette`, `🟠 Heures`, `🔵 Minutes`, `🔴 Secondes`) :** Isolent visuellement l'organe étudié en passant le reste du mouvement en gris transparent (`grayscale(100%)`, `globalAlpha = 0.20`).
+
+## 4. Didacticiel Animé Autonome (`src/game/TutorialOverlay.ts` — Version V42)
+- **Démo interactive au lancement de chaque niveau (et bouton 💡 dans la barre supérieure) :**
+  - Anime directement les aiguilles sur le cadran avec flèches directionnelles, halos cibles et étiquettes explicatives adaptés à chacun des 8 niveaux avant de lancer la première question via le bouton **« C'est parti ! ▶ »**.
