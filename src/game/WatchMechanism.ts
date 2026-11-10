@@ -15,8 +15,8 @@ export class WatchMechanism {
   public zoomMode: WorkshopZoom = 'overview';
   public clutchEngagement: number = 0;
 
-  private currentScale: number = 1.72;
-  private currentFocusX: number = 12;
+  private currentScale: number = 1.62;
+  private currentFocusX: number = 16;
   private currentFocusY: number = 0;
 
   public wormOffset: number = 0;
@@ -46,7 +46,7 @@ export class WatchMechanism {
   };
 
   public static readonly CAMERA_TARGETS: Record<WorkshopZoom, CameraTarget> = {
-    overview: { scale: 1.72, x: 12, y: 0 },
+    overview: { scale: 1.62, x: 16, y: 0 },
     spring: { scale: 2.65, x: 96, y: -18 },
     hours: { scale: 2.45, x: 0, y: -14 },
     minutes: { scale: 2.55, x: 0, y: -38 },

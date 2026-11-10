@@ -23,7 +23,7 @@ export class TutorialOverlay {
           title: '💡 Astuce · Jour, Nuit et 24 Heures',
           ruleHtml:
             '1 jour + 1 nuit = <strong>24 h (2 tours)</strong> ! Matin (1er tour) : lis le chiffre <strong>noir (03 h)</strong> · Après-midi et Soir (2e tour) : lis le nombre <strong style="color:#fb923c">orange (15 h)</strong> !',
-          periodLabel: '☀️ 1er tour : Matin (01h - 12h)',
+          periodLabel: '☀️ 1er tour · Matin (01h - 12h)',
           isDay: true
         };
       case 3:
@@ -108,12 +108,13 @@ export class TutorialOverlay {
           ? 1
           : 1 - this.easeInOut((cycle - 0.85) / 0.15);
 
+    // Niveau 1 : Flèche courbe sur le rayon interne (r - 94) pour ne jamais barrer les chiffres 1, 2, 3
     if (level === 1) {
       const h = 1 + smoothT * 2;
       hands.draw(h, 0, 1, 'hour');
-      this.drawCurvedArrow(ctx, radius - 54, Math.PI / 6, Math.PI / 2, '#ea580c');
+      this.drawCurvedArrow(ctx, radius - 94, Math.PI / 6 + 0.06, Math.PI / 2 - 0.06, '#ea580c');
       this.drawTargetHalo(ctx, radius - 54, Math.PI / 2, 24 + pulse * 4, '#ea580c');
-      this.drawCalloutBadge(ctx, 0, radius * 0.42, '3 heures', '#ea580c');
+      this.drawCalloutBadge(ctx, 0, 62, '3 heures', '#ea580c');
       return;
     }
 
@@ -122,13 +123,14 @@ export class TutorialOverlay {
       return;
     }
 
+    // Niveau 3 : Flèche courbe à r - 52 (sous la piste bleue) pour ne pas rayer 05, 10, 15, 20
     if (level === 3) {
       const m = smoothT * 20;
       hands.draw(12, m, 3, 'minute');
       const endAngle = (20 * Math.PI) / 30;
-      this.drawCurvedArrow(ctx, radius - 25, 0.12, endAngle - 0.14, '#0284c7');
+      this.drawCurvedArrow(ctx, radius - 52, 0.1, endAngle - 0.08, '#0284c7');
       this.drawTargetHalo(ctx, radius - 25, endAngle, 20 + pulse * 4, '#0284c7');
-      this.drawCalloutBadge(ctx, 0, radius * 0.42, '20 minutes', '#0284c7');
+      this.drawCalloutBadge(ctx, 0, 62, '20 minutes', '#0284c7');
       return;
     }
 
@@ -138,7 +140,7 @@ export class TutorialOverlay {
       const midHourAngle = (2.5 * Math.PI) / 6;
       this.drawTargetHalo(ctx, radius - 68, midHourAngle, 22 + pulse * 4, '#ea580c');
       this.drawTargetHalo(ctx, radius - 25, Math.PI, 20 + pulse * 4, '#0284c7');
-      this.drawCalloutBadge(ctx, 0, -radius * 0.38, '2:30 (2 h et demie)', '#0284c7');
+      this.drawCalloutBadge(ctx, 0, -64, '2:30 (2 h et demie)', '#0284c7');
       return;
     }
 
@@ -155,7 +157,7 @@ export class TutorialOverlay {
       this.drawTargetHalo(ctx, radius - 25, a20, 18, '#0284c7');
       this.drawCurvedArrow(ctx, radius - 10, a20, a23, '#10b981');
       this.drawTargetHalo(ctx, radius - 10, a23, 14 + pulse * 3, '#10b981');
-      this.drawCalloutBadge(ctx, 0, -radius * 0.38, '20 + 3 traits = 8:23', '#0284c7');
+      this.drawCalloutBadge(ctx, 0, -64, '20 + 3 traits = 8:23', '#0284c7');
       return;
     }
 
@@ -167,25 +169,21 @@ export class TutorialOverlay {
         const aStep = (step * Math.PI) / 30;
         this.drawSmallDot(ctx, radius - 15, aStep, '#0284c7');
       }
-      this.drawCalloutBadge(ctx, 0, radius * 0.45, '16:20 (5, 10, 15, 20)', '#0284c7');
+      this.drawCalloutBadge(ctx, 0, -56, '16:20 (5, 10, 15, 20)', '#0284c7');
       return;
     }
 
-    // Niveau 8 : Mouvement fluide de 15:00 vers 16:10
     const h8 = 15 + smoothT;
     const m8 = smoothT * 10;
     hands.draw(h8, m8, 8);
     const a4 = (4 * Math.PI) / 6;
-    this.drawCurvedArrow(ctx, radius - 54, Math.PI / 2, a4, '#ea580c');
+    this.drawCurvedArrow(ctx, radius - 90, Math.PI / 2, a4, '#ea580c');
     this.drawTargetHalo(ctx, radius - 28, a4, 18 + pulse * 4, '#ea580c');
-    this.drawCalloutBadge(ctx, 0, radius * 0.44, '4 h + 12 = 16:10', '#ea580c');
+    this.drawCalloutBadge(ctx, 0, 62, '4 h + 12 = 16:10', '#ea580c');
   }
 
   /**
-   * Niveau 2 : Une seule animation continue (8,4 s)
-   * 1) Glisse de 12h à 3h du matin (chiffre noir 3 -> 03 h)
-   * 2) Tourne jusqu'à 12h puis 15h (nombre orange 15 -> 15 h l'après-midi)
-   * 3) Glisse jusqu'à 20h sous le ciel étoilé (nombre orange 20 -> 20 h le soir)
+   * Niveau 2 : Badge centré à y = 56 (au-dessus de 17/18/19) et halos sans flèche rayant le 15
    */
   private static drawLevel2Continuous(
     ctx: CanvasRenderingContext2D,
@@ -202,38 +200,32 @@ export class TutorialOverlay {
     } else if (t < 0.36) {
       h = 3;
     } else if (t < 0.50) {
-      h = 3 + this.easeInOut((t - 0.36) / 0.14) * 12; // Fait un tour complet jusqu'à 15h
+      h = 3 + this.easeInOut((t - 0.36) / 0.14) * 12;
     } else if (t < 0.72) {
       h = 15;
     } else if (t < 0.80) {
-      h = 15 + this.easeInOut((t - 0.72) / 0.08) * 5; // Glisse de 15h à 20h
+      h = 15 + this.easeInOut((t - 0.72) / 0.08) * 5;
     } else if (t < 0.95) {
       h = 20;
     } else {
-      h = 20 + this.easeInOut((t - 0.95) / 0.05) * 4; // Retour par minuit (24h)
+      h = 20 + this.easeInOut((t - 0.95) / 0.05) * 4;
     }
 
     hands.draw(h, 0, 2, 'hour');
     const angleH = ((h % 12) * Math.PI) / 6;
 
     if (t < 0.44) {
-      this.drawRadialArrow(ctx, angleH, radius - 104, radius - 54, '#0284c7');
-      this.drawTargetHalo(ctx, radius - 54, angleH, 23 + pulse * 4, '#0284c7');
-      this.drawCalloutBadge(ctx, 0, radius * 0.44, '☀️ 3 h du matin = 03 h', '#0284c7');
+      this.drawTargetHalo(ctx, radius - 54, angleH, 24 + pulse * 4, '#0284c7');
+      this.drawCalloutBadge(ctx, 0, 56, '☀️ 3 h du matin = 03 h', '#0284c7');
     } else if (t < 0.74) {
-      this.drawRadialArrow(ctx, angleH, radius - 54, radius - 104, '#ea580c');
-      this.drawTargetHalo(ctx, radius - 104, angleH, 21 + pulse * 4, '#ea580c');
-      this.drawCalloutBadge(ctx, 0, radius * 0.44, '🌤️ 3 h après-midi = 15 h', '#ea580c');
+      this.drawTargetHalo(ctx, radius - 104, angleH, 20 + pulse * 4, '#ea580c');
+      this.drawCalloutBadge(ctx, 0, 56, '🌤️ 3 h après-midi = 15 h', '#ea580c');
     } else {
-      this.drawRadialArrow(ctx, angleH, radius - 54, radius - 104, '#ea580c');
-      this.drawTargetHalo(ctx, radius - 104, angleH, 21 + pulse * 4, '#ea580c');
-      this.drawCalloutBadge(ctx, 0, radius * 0.44, '🌙 8 h du soir = 20 h', '#ea580c');
+      this.drawTargetHalo(ctx, radius - 104, angleH, 20 + pulse * 4, '#ea580c');
+      this.drawCalloutBadge(ctx, 0, 56, '🌙 8 h du soir = 20 h', '#ea580c');
     }
   }
 
-  /**
-   * Niveau 5 (Option B) : Une seule animation continue avec paliers à :15 et :45 (7,5 s)
-   */
   private static drawLevel5Continuous(
     ctx: CanvasRenderingContext2D,
     hands: Hands,
@@ -245,15 +237,15 @@ export class TutorialOverlay {
     let m = 15;
 
     if (t < 0.14) {
-      m = this.easeInOut(t / 0.14) * 15; // 4:00 -> 4:15
+      m = this.easeInOut(t / 0.14) * 15;
     } else if (t < 0.45) {
-      m = 15; // Pause sur 4:15
+      m = 15;
     } else if (t < 0.63) {
-      m = 15 + this.easeInOut((t - 0.45) / 0.18) * 30; // Glisse de 4:15 à 4:45
+      m = 15 + this.easeInOut((t - 0.45) / 0.18) * 30;
     } else if (t < 0.93) {
-      m = 45; // Pause sur 4:45
+      m = 45;
     } else {
-      m = 45 - this.easeInOut((t - 0.93) / 0.07) * 45; // Retour doux à 4:00
+      m = 45 - this.easeInOut((t - 0.93) / 0.07) * 45;
     }
 
     hands.draw(4, m, 5);
@@ -261,12 +253,12 @@ export class TutorialOverlay {
     this.drawTargetHalo(ctx, radius - 25, minAngle, 20 + pulse * 4, '#0284c7');
 
     if (m < 30) {
-      this.drawCurvedArrow(ctx, radius - 25, 0.08, Math.max(0.15, minAngle - 0.1), '#0284c7');
-      this.drawCalloutBadge(ctx, 0, -radius * 0.38, '4:15 (4 h et quart)', '#0284c7');
+      this.drawCurvedArrow(ctx, radius - 50, 0.08, Math.max(0.15, minAngle - 0.08), '#0284c7');
+      this.drawCalloutBadge(ctx, 0, -64, '4:15 (4 h et quart)', '#0284c7');
     } else {
       const hAngle = ((4 + m / 60) * Math.PI) / 6;
       this.drawTargetHalo(ctx, radius - 68, hAngle, 20 + pulse * 4, '#ea580c');
-      this.drawCalloutBadge(ctx, 0, -radius * 0.38, '4:45 (5 h moins le quart)', '#ea580c');
+      this.drawCalloutBadge(ctx, 0, -64, '4:45 (5 h moins le quart)', '#ea580c');
     }
   }
 
@@ -338,39 +330,6 @@ export class TutorialOverlay {
     ctx.restore();
   }
 
-  private static drawRadialArrow(
-    ctx: CanvasRenderingContext2D,
-    angle: number,
-    fromR: number,
-    toR: number,
-    color: string
-  ): void {
-    const x1 = fromR * Math.sin(angle);
-    const y1 = -fromR * Math.cos(angle);
-    const x2 = toR * Math.sin(angle);
-    const y2 = -toR * Math.cos(angle);
-
-    ctx.save();
-    ctx.beginPath();
-    ctx.moveTo(x1, y1);
-    ctx.lineTo(x2, y2);
-    ctx.strokeStyle = color;
-    ctx.lineWidth = 3.5;
-    ctx.stroke();
-
-    const dir = Math.atan2(y2 - y1, x2 - x1);
-    ctx.translate(x2, y2);
-    ctx.rotate(dir);
-    ctx.beginPath();
-    ctx.moveTo(0, 0);
-    ctx.lineTo(-9, -5);
-    ctx.lineTo(-9, 5);
-    ctx.closePath();
-    ctx.fillStyle = color;
-    ctx.fill();
-    ctx.restore();
-  }
-
   private static drawCalloutBadge(
     ctx: CanvasRenderingContext2D,
     x: number,
@@ -382,10 +341,10 @@ export class TutorialOverlay {
     ctx.font = '700 15px "Fredoka", sans-serif';
     const padX = 13;
     const w = ctx.measureText(text).width + padX * 2;
-    const h = 32;
+    const h = 30;
 
     ctx.beginPath();
-    ctx.roundRect(x - w / 2, y - h / 2, w, h, 12);
+    ctx.roundRect(x - w / 2, y - h / 2, w, h, 11);
     ctx.fillStyle = 'rgba(15, 23, 42, 0.92)';
     ctx.fill();
     ctx.lineWidth = 2.5;
