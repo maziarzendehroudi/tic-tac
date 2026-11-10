@@ -12,8 +12,8 @@
     <link href="https://fonts.googleapis.com/css2?family=Fredoka:wght@400;600;700&display=swap" rel="stylesheet">
     <link rel="manifest" href="./manifest.json">
     <meta name="theme-color" content="#38bdf8">
-    <script type="module" crossorigin src="/tic-tac/assets/index-BUZ2SStc.js"></script>
-    <link rel="stylesheet" crossorigin href="/tic-tac/assets/index-CthCJXvW.css">
+    <script type="module" crossorigin src="/tic-tac/assets/index-Bqh7lBSg.js"></script>
+    <link rel="stylesheet" crossorigin href="/tic-tac/assets/index-DgkRtdE6.css">
   </head>
   <body class="theme-day">
     <div id="sky-backdrop" aria-hidden="true">
@@ -24,7 +24,7 @@
     </div>
 
     <div id="app">
-      <!-- VUE 1 : MENU PRINCIPAL (8 NIVEAUX EMPILÉS + ATELIER) -->
+      <!-- VUE 1 : MENU PRINCIPAL -->
       <div id="main-menu" class="view">
         <div id="global-top-bar">
           <div class="top-left-actions">
@@ -35,8 +35,7 @@
               </svg>
               <span id="current-profile-name">Joueur 1</span> ▾
             </button>
-            <button id="dev-unlock-btn" type="button" title="Bouton provisoire de test">🔓 Mode Test</button>
-            <button id="force-refresh-btn" type="button" title="Vider le cache PWA et forcer la mise à jour">⚡ Maj v44</button>
+            <button id="force-refresh-btn" type="button" title="Vider le cache PWA et forcer la mise à jour">⚡ Maj v45</button>
           </div>
           <button id="sound-toggle-btn" type="button" aria-pressed="true" aria-label="Activer ou couper le son" title="Son actif">
             <svg viewBox="0 0 24 24" width="26" height="26" fill="none" stroke="currentColor" stroke-width="2.3" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
@@ -133,6 +132,10 @@
             <span id="period-chip-el" class="period-chip invisible-chip">☀️ Matin</span>
           </div>
           <div id="instruction">Quelle heure est-il ?</div>
+          <div id="help-box" class="invisible-feedback">
+            <span id="help-text"></span>
+            <button id="next-question-btn" type="button" class="hidden">Suivant ➔</button>
+          </div>
           <div id="controls-zone">
             <div id="choices-container">
               <button class="choice-btn" type="button" data-index="0">--</button>
@@ -145,10 +148,6 @@
             <div id="tutorial-tools" class="hidden">
               <button id="tutorial-start-btn" type="button">C'est parti ! ▶</button>
             </div>
-          </div>
-          <div id="help-box" class="invisible-feedback">
-            <span id="help-text"></span>
-            <button id="next-question-btn" type="button" class="hidden">Suivant ➔</button>
           </div>
         </div>
       </div>
@@ -178,7 +177,10 @@
             <input id="new-profile-input" type="text" maxlength="16" placeholder="Prénom du nouveau joueur..." autocomplete="off" />
             <button type="submit" id="add-profile-submit">+ Créer</button>
           </form>
-          <button id="profile-close-btn" type="button">Fermer</button>
+          <div class="modal-footer-row">
+            <button id="dev-unlock-btn" type="button" title="Débloquer ou réinitialiser ce profil">🔓 Mode Test</button>
+            <button id="profile-close-btn" type="button">Fermer</button>
+          </div>
         </div>
       </div>
 
