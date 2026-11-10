@@ -1,18 +1,7 @@
-export const ALL_PARTS = [
-  'crown',
-  'spring',
-  'hours',
-  'minutes',
-  'seconds',
-  'escapement'
-] as const;
-
 export interface GameSave {
   maxUnlockedLevel: number;
   completedLevels: number[];
   levelStars: Record<number, number>;
-  unlockedParts: string[];
-  placedParts: string[];
   muted: boolean;
 }
 
@@ -28,19 +17,17 @@ interface ProfilesStore {
 }
 
 export class SaveManager {
-  public static readonly MAX_LEVEL = 7;
-  public static readonly MAX_STARS = 21;
+  public static readonly MAX_LEVEL = 8;
+  public static readonly MAX_STARS = 24;
   private static LEGACY_KEY = 'tic_tac_pedagogy_save';
   private static PROFILES_KEY = 'tic_tac_profiles_v1';
 
   public static createDefaultSave(unlockAll: boolean = false): GameSave {
     if (unlockAll) {
       return {
-        maxUnlockedLevel: 7,
-        completedLevels: [1, 2, 3, 4, 5, 6, 7],
-        levelStars: { 1: 3, 2: 3, 3: 3, 4: 3, 5: 3, 6: 3, 7: 3 },
-        unlockedParts: [...ALL_PARTS],
-        placedParts: [...ALL_PARTS],
+        maxUnlockedLevel: 8,
+        completedLevels: [1, 2, 3, 4, 5, 6, 7, 8],
+        levelStars: { 1: 3, 2: 3, 3: 3, 4: 3, 5: 3, 6: 3, 7: 3, 8: 3 },
         muted: false
       };
     }
@@ -48,8 +35,6 @@ export class SaveManager {
       maxUnlockedLevel: 1,
       completedLevels: [],
       levelStars: {},
-      unlockedParts: [],
-      placedParts: [],
       muted: false
     };
   }
@@ -84,26 +69,16 @@ export class SaveManager {
       if (!levelStars[lvl]) levelStars[lvl] = 2;
     });
 
-    const adjustedMax =
-      completedLevels.includes(6) && maxUnlockedLevel === 6 ? 7 : maxUnlockedLevel;
-
-    const isLvl7Done = completedLevels.includes(7);
-    const unlockedParts = Array.isArray(raw.unlockedParts)
-      ? raw.unlockedParts.filter((p): p is string => typeof p === 'string')
-      : isLvl7Done
-        ? [...ALL_PARTS]
-        : [];
-
-    const placedParts = Array.isArray(raw.placedParts)
-      ? raw.placedParts.filter((p): p is string => typeof p === 'string')
-      : [];
+    const highestCompleted = completedLevels.length > 0 ? Math.max(...completedLevels) : 0;
+    const adjustedMax = Math.min(
+      this.MAX_LEVEL,
+      Math.max(maxUnlockedLevel, highestCompleted + 1)
+    );
 
     return {
       maxUnlockedLevel: adjustedMax,
       completedLevels,
       levelStars,
-      unlockedParts: isLvl7Done ? [...ALL_PARTS] : unlockedParts,
-      placedParts,
       muted: Boolean(raw.muted)
     };
   }
@@ -199,7 +174,7 @@ export class SaveManager {
   public static deleteProfile(profileId: string): PlayerProfile {
     const store = this.loadStore();
     if (store.profiles.length <= 1) {
-      store.profiles[0].save = this.createDefaultSave(store.profiles[0].save.muted);
+      store.profiles[0].save = this.createDefaultSave(false);
       this.saveStore(store);
       return store.profiles[0];
     }
@@ -241,9 +216,9 @@ export class SaveManager {
   }
 
   public static getRankTitle(totalStars: number): string {
-    if (totalStars >= 21) return '👑 Grand Maître du Temps';
-    if (totalStars >= 14) return '🌟 Gardien Jour & Nuit';
-    if (totalStars >= 7) return '🧭 Éclaireur des Aiguilles';
+    if (totalStars >= 24) return '👑 Grand Maître du Temps';
+    if (totalStars >= 16) return '🌟 Gardien Jour & Nuit';
+    if (totalStars >= 8) return '🧭 Éclaireur des Aiguilles';
     return '⏱️ Apprenti du Temps';
   }
 
@@ -261,11 +236,6 @@ export class SaveManager {
     if (completedLevel === save.maxUnlockedLevel && completedLevel < this.MAX_LEVEL) {
       save.maxUnlockedLevel = completedLevel + 1;
     }
-
-    // Lorsque le Niveau 7 est terminé, toutes les pièces de l'Atelier sont débloquées !
-    if (completedLevel === this.MAX_LEVEL) {
-      save.unlockedParts = [...ALL_PARTS];
-    }
     return save;
   }
 
@@ -277,7 +247,6 @@ export class SaveManager {
     if (isDemoMode) {
       return this.createDefaultSave(true);
     }
-
     return this.getActiveProfile().save;
   }
 

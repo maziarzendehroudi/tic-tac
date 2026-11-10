@@ -2,7 +2,7 @@ import { Clock } from './Clock';
 import { Hands } from './Hands';
 import { QuestionManager } from './QuestionManager';
 import type { TimeTarget } from './QuestionManager';
-import { SaveManager, ALL_PARTS } from './SaveManager';
+import { SaveManager } from './SaveManager';
 import type { GameSave } from './SaveManager';
 import { SoundEngine } from './SoundEngine';
 import { TimeMath } from './TimeMath';
@@ -73,10 +73,8 @@ export class GameEngine {
     this.canvas = canvas;
     this.ctx = canvas.getContext('2d')!;
 
-    const width = canvas.width;
-    const height = canvas.height;
-    const centerX = width / 2;
-    const centerY = height / 2;
+    const centerX = canvas.width / 2;
+    const centerY = canvas.height / 2;
     const radius = Math.min(centerX, centerY) - 14;
 
     this.ctx.translate(centerX, centerY);
@@ -142,12 +140,6 @@ export class GameEngine {
     document.getElementById('workshop-screen')?.classList.remove('hidden');
     this.applySkyTheme(false);
 
-    if (this.saveData.unlockedParts.length < ALL_PARTS.length) {
-      this.saveData.unlockedParts = [...ALL_PARTS];
-      this.saveData.placedParts = [...ALL_PARTS];
-      SaveManager.save(this.saveData);
-    }
-
     if (this.watchMechanism) {
       this.watchMechanism.setZoomMode('overview');
     }
@@ -171,8 +163,8 @@ export class GameEngine {
     if (!tray || !this.watchMechanism) return;
 
     const activeZoom = this.watchMechanism.zoomMode;
-
     tray.innerHTML = '';
+
     FOUR_ZOOM_BUTTONS.forEach(mode => {
       const isSelected = activeZoom === mode;
       const btn = document.createElement('button');
@@ -223,18 +215,26 @@ export class GameEngine {
     this.hideHelp();
     this.resetButtonsState();
 
-    const showDaySky = this.currentLevel < 5 ? true : this.targetTime.isDay;
+    const showDaySky = TimeMath.is24HourLevel(this.currentLevel) ? this.targetTime.isDay : true;
     this.applySkyTheme(showDaySky);
 
     if (this.currentPhase === 1) {
       this.currentHours = this.targetTime.hours;
       this.currentMinutes = this.targetTime.minutes;
       this.currentChoices = this.questionManager.generateChoices(this.targetTime);
+    } else if (this.currentLevel <= 2) {
+      const targetH12 = this.targetTime.hours % 12 || 12;
+      this.currentHours = targetH12 === 9 ? 6 : 9;
+      this.currentMinutes = 0;
+      this.activeHand = 'hour';
+    } else if (this.currentLevel === 3) {
+      this.currentHours = 12;
+      this.currentMinutes = this.targetTime.minutes === 0 ? 30 : 0;
+      this.activeHand = 'minute';
     } else {
       const targetH12 = this.targetTime.hours % 12 || 12;
       this.currentHours = targetH12 === 9 ? 6 : 9;
-      this.currentMinutes =
-        this.currentLevel >= 2 && this.targetTime.minutes === 0 ? 30 : 0;
+      this.currentMinutes = this.targetTime.minutes === 0 ? 30 : 0;
       this.activeHand = 'hour';
     }
   }
@@ -665,8 +665,15 @@ export class GameEngine {
     if (this.phaseSuccessCount >= 3) {
       if (this.currentPhase === 1) {
         this.soundEngine.playSuccess();
+        const step2Text =
+          this.currentLevel <= 2
+            ? '🎉 <strong>Bravo !</strong> Étape 2 : à toi de placer la petite aiguille orange !'
+            : this.currentLevel === 3
+              ? '🎉 <strong>Bravo !</strong> Étape 2 : à toi de placer la grande aiguille bleue !'
+              : '🎉 <strong>Bravo !</strong> Étape 2 : à toi de placer les aiguilles avec ton doigt !';
+
         this.showFeedback(
-          '🎉 <strong>Bravo !</strong> Étape 2 : à toi de placer les aiguilles avec ton doigt !',
+          step2Text,
           'success',
           () => {
             this.currentPhase = 2;
@@ -691,7 +698,7 @@ export class GameEngine {
 
         if (this.currentLevel === SaveManager.MAX_LEVEL) {
           this.showFeedback(
-            `👑 <strong>Niveau 7 validé (${starsStr}) !</strong> L’Atelier de l’Horloger est débloqué !`,
+            `👑 <strong>Niveau 8 validé (${starsStr}) !</strong> L’Atelier de l’Horloger est débloqué !`,
             'success',
             () => {
               this.openWorkshop();
@@ -720,8 +727,13 @@ export class GameEngine {
 
     this.soundEngine.playSuccess();
     const spokenSuffix = this.targetTime.spokenText ? ` (<em>${this.targetTime.spokenText}</em>)` : '';
+    const successMsg =
+      this.currentLevel === 3
+        ? `✨ <strong>Bravo ! L’aiguille indique bien ${this.targetTime.text} !</strong>`
+        : `✨ <strong>Bravo ! Il est bien ${this.targetTime.text}${spokenSuffix} !</strong>`;
+
     this.showFeedback(
-      `✨ <strong>Bravo ! Il est bien ${this.targetTime.text}${spokenSuffix} !</strong>`,
+      successMsg,
       'success',
       () => {
         this.initNewQuestion();
@@ -935,12 +947,17 @@ export class GameEngine {
     if (clickedBtn?.hasAttribute('disabled')) return;
 
     const isMinutesExact = selectedChoice.minutes === this.targetTime.minutes;
-    const isHoursExact =
-      this.currentLevel >= 5
-        ? selectedChoice.hours === this.targetTime.hours
-        : (selectedChoice.hours % 12) === (this.targetTime.hours % 12);
+    const isHoursExact = TimeMath.is24HourLevel(this.currentLevel)
+      ? selectedChoice.hours === this.targetTime.hours
+      : (selectedChoice.hours % 12) === (this.targetTime.hours % 12);
 
-    const isCorrect = isHoursExact && isMinutesExact;
+    const isCorrect =
+      this.currentLevel === 3
+        ? isMinutesExact
+        : this.currentLevel <= 2
+          ? isHoursExact
+          : isHoursExact && isMinutesExact;
+
     this.animateButtonFeedback(clickedBtn, isCorrect);
 
     if (isCorrect) this.handleSuccessfulAnswer();
@@ -970,7 +987,7 @@ export class GameEngine {
     this.updatePhaseStarsUI();
 
     if (periodChipEl) {
-      if (this.currentLevel >= 5 && this.targetTime?.periodLabel) {
+      if (TimeMath.is24HourLevel(this.currentLevel) && this.targetTime?.periodLabel) {
         periodChipEl.textContent = this.targetTime.periodLabel;
         periodChipEl.classList.remove('invisible-chip');
       } else {
@@ -982,7 +999,10 @@ export class GameEngine {
       placementTools?.classList.add('hidden');
       choicesContainer?.classList.remove('hidden');
       if (instructionEl) {
-        instructionEl.innerHTML = `<span>Quelle heure est-il ?</span>`;
+        instructionEl.innerHTML =
+          this.currentLevel === 3
+            ? `<span>Combien de minutes indique l’aiguille ?</span>`
+            : `<span>Quelle heure est-il ?</span>`;
       }
 
       const choiceBtns = document.querySelectorAll('#choices-container .choice-btn');
@@ -993,7 +1013,13 @@ export class GameEngine {
       placementTools?.classList.remove('hidden');
       choicesContainer?.classList.add('hidden');
       if (instructionEl) {
-        instructionEl.innerHTML = `<span>Place les aiguilles sur</span> ${this.formatNeutralTargetHTML(this.targetTime)}`;
+        const verbLabel =
+          this.currentLevel <= 2
+            ? 'Place la petite aiguille sur'
+            : this.currentLevel === 3
+              ? 'Place la grande aiguille sur'
+              : 'Place les aiguilles sur';
+        instructionEl.innerHTML = `<span>${verbLabel}</span> ${this.formatNeutralTargetHTML(this.targetTime)}`;
       }
     }
   }
@@ -1003,7 +1029,9 @@ export class GameEngine {
   }
 
   public render(): void {
-    const isDay = this.currentLevel < 5 ? true : (this.targetTime ? this.targetTime.isDay : true);
+    const isDay = TimeMath.is24HourLevel(this.currentLevel)
+      ? (this.targetTime ? this.targetTime.isDay : true)
+      : true;
     this.clock.draw(this.currentLevel, isDay);
 
     const ghostTarget =
