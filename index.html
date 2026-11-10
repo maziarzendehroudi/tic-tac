@@ -7,14 +7,13 @@
     <link rel="apple-touch-icon" sizes="180x180" href="./apple-touch-icon.png" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover" />
     <title>Tic-Tac - Apprendre à lire l'heure</title>
-    
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Fredoka:wght@400;600;700&display=swap" rel="stylesheet">
     <link rel="manifest" href="./manifest.json">
     <meta name="theme-color" content="#38bdf8">
-    <script type="module" crossorigin src="/tic-tac/assets/index-bQO36JeX.js"></script>
-    <link rel="stylesheet" crossorigin href="/tic-tac/assets/index-3nOfL-A_.css">
+    <script type="module" crossorigin src="/tic-tac/assets/index-Ch8kvs_l.js"></script>
+    <link rel="stylesheet" crossorigin href="/tic-tac/assets/index-eZJy1Ioh.css">
   </head>
   <body class="theme-day">
     <div id="sky-backdrop" aria-hidden="true">
@@ -25,7 +24,7 @@
     </div>
 
     <div id="app">
-      <!-- VUE 1 : MENU PRINCIPAL -->
+      <!-- VUE 1 : MENU PRINCIPAL (8 NIVEAUX EMPILÉS + ATELIER) -->
       <div id="main-menu" class="view">
         <div id="global-top-bar">
           <div class="top-left-actions">
@@ -37,7 +36,7 @@
               <span id="current-profile-name">Joueur 1</span> ▾
             </button>
             <button id="dev-unlock-btn" type="button" title="Bouton provisoire de test">🔓 Mode Test</button>
-            <button id="force-refresh-btn" type="button" title="Vider le cache PWA et forcer la mise à jour">⚡ Maj v40</button>
+            <button id="force-refresh-btn" type="button" title="Vider le cache PWA et forcer la mise à jour">⚡ Maj v41</button>
           </div>
           <button id="sound-toggle-btn" type="button" aria-pressed="true" aria-label="Activer ou couper le son" title="Son actif">
             <svg viewBox="0 0 24 24" width="26" height="26" fill="none" stroke="currentColor" stroke-width="2.3" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
@@ -54,79 +53,68 @@
           <p>Apprends à lire l'heure pas à pas !</p>
           <div id="player-progress-bar">
             <span id="player-rank-title">⏱️ Apprenti du Temps</span>
-            <span id="player-stars-count">★ 0 / 21</span>
+            <span id="player-stars-count">★ 0 / 24</span>
           </div>
         </div>
 
         <div id="levels-grid">
           <button class="level-rect lvl-1" data-level="1">
             <span class="lvl-badge">1</span>
-            <div class="lvl-content">
-              <span class="lvl-title">Les Heures Piles</span>
-            </div>
+            <div class="lvl-content"><span class="lvl-title">Les Heures (12h)</span></div>
             <span class="lvl-status play">▶</span>
           </button>
 
           <button class="level-rect lvl-2 locked" data-level="2">
             <span class="lvl-badge">2</span>
-            <div class="lvl-content">
-              <span class="lvl-title">Les Demi-Heures</span>
-            </div>
+            <div class="lvl-content"><span class="lvl-title">Les 24 Heures</span></div>
             <span class="lvl-status locked-icon">🔒</span>
           </button>
 
           <button class="level-rect lvl-3 locked" data-level="3">
             <span class="lvl-badge">3</span>
-            <div class="lvl-content">
-              <span class="lvl-title">Les Quarts d'Heure</span>
-            </div>
+            <div class="lvl-content"><span class="lvl-title">Les Minutes</span></div>
             <span class="lvl-status locked-icon">🔒</span>
           </button>
 
           <button class="level-rect lvl-4 locked" data-level="4">
             <span class="lvl-badge">4</span>
-            <div class="lvl-content">
-              <span class="lvl-title">Les Minutes de 5 en 5</span>
-            </div>
+            <div class="lvl-content"><span class="lvl-title">Les Demi-Heures</span></div>
             <span class="lvl-status locked-icon">🔒</span>
           </button>
 
           <button class="level-rect lvl-5 locked" data-level="5">
             <span class="lvl-badge">5</span>
-            <div class="lvl-content">
-              <span class="lvl-title">Les 24 Heures</span>
-            </div>
+            <div class="lvl-content"><span class="lvl-title">Les Quarts d'Heure</span></div>
             <span class="lvl-status locked-icon">🔒</span>
           </button>
 
           <button class="level-rect lvl-6 locked" data-level="6">
             <span class="lvl-badge">6</span>
-            <div class="lvl-content">
-              <span class="lvl-title">À la Minute près</span>
-            </div>
+            <div class="lvl-content"><span class="lvl-title">À la Minute près</span></div>
             <span class="lvl-status locked-icon">🔒</span>
           </button>
 
           <button class="level-rect lvl-7 locked" data-level="7">
             <span class="lvl-badge">7</span>
-            <div class="lvl-content">
-              <span class="lvl-title">L'Horloge des Grands</span>
-            </div>
+            <div class="lvl-content"><span class="lvl-title">Le Défi Jour &amp; Nuit</span></div>
             <span class="lvl-status locked-icon">🔒</span>
           </button>
 
-          <!-- RÉCOMPENSE FINALE APRÈS LE NIVEAU 7 : L'ATELIER DE L'HORLOGER -->
+          <button class="level-rect lvl-8 locked" data-level="8">
+            <span class="lvl-badge">8</span>
+            <div class="lvl-content"><span class="lvl-title">L'Horloge des Grands</span></div>
+            <span class="lvl-status locked-icon">🔒</span>
+          </button>
+
           <button id="workshop-btn" type="button" class="workshop-rect locked">
             <span class="lvl-badge workshop-badge">⚙️</span>
-            <div class="lvl-content">
-              <span class="lvl-title">L'Atelier de l'Horloger</span>
-            </div>
+            <div class="lvl-content"><span class="lvl-title">L'Atelier de l'Horloger</span></div>
             <span id="workshop-status" class="lvl-status locked-icon">🔒</span>
           </button>
         </div>
       </div>
 
-      <!-- VUE 2 : ÉCRAN DE JEU (100 % FIXE, SANS SCROLL NI PULL-TO-REFRESH) -->
+      <!-- VUE 2 : ÉCRAN DE JEU -->
       <div id="game-screen" class="view hidden">
         <div id="game-top-bar">
           <button id="back-menu-btn" type="button" title="Retour au menu">
@@ -140,28 +128,20 @@
         </div>
 
         <div id="ui-container">
-          <!-- 0. PILULE JOUR/NUIT AU-DESSUS DE LA QUESTION -->
           <div id="period-row">
             <span id="period-chip-el" class="period-chip invisible-chip">☀️ Matin</span>
           </div>
-
-          <!-- 1. QUESTION FIXE -->
           <div id="instruction">Quelle heure est-il ?</div>
-
-          <!-- 2. ZONE DES BOUTONS FIXE -->
           <div id="controls-zone">
             <div id="choices-container">
               <button class="choice-btn" type="button" data-index="0">--</button>
               <button class="choice-btn" type="button" data-index="1">--</button>
               <button class="choice-btn" type="button" data-index="2">--</button>
             </div>
-
             <div id="placement-tools" class="hidden">
               <button id="check-btn" type="button">✓ Vérifier</button>
             </div>
           </div>
-
-          <!-- 3. COMMENTAIRES + BOUTON "SUIVANT ➔" TOUJOURS EN DESSOUS -->
           <div id="help-box" class="invisible-feedback">
             <span id="help-text"></span>
             <button id="next-question-btn" type="button" class="hidden">Suivant ➔</button>
@@ -169,24 +149,22 @@
         </div>
       </div>
 
-      <!-- VUE 3 : L'ATELIER DE L'HORLOGER ÉPURÉ -->
+      <!-- VUE 3 : L'ATELIER DE L'HORLOGER -->
       <div id="workshop-screen" class="view hidden">
         <div id="workshop-top-bar">
           <button id="workshop-back-btn" type="button" title="Retour au menu">
             <span class="back-label">← Menu · ⚙️ L'Atelier de l'Horloger</span>
           </button>
         </div>
-
         <div id="workshop-canvas-wrap">
           <canvas id="workshopCanvas" width="500" height="500"></canvas>
         </div>
-
         <div id="workshop-ui">
           <div id="workshop-parts-tray"></div>
         </div>
       </div>
 
-      <!-- MODALE MULTI-PROFILS (FRATRIE) -->
+      <!-- MODALE MULTI-PROFILS -->
       <div id="profile-modal" class="modal hidden">
         <div class="modal-content profile-modal-content">
           <h2>Qui joue ?</h2>
@@ -207,8 +185,8 @@
           <h2>Installe Tic-Tac !</h2>
           <p id="install-text">Installe l'application sur ton écran pour y jouer sans internet !</p>
           <div class="install-actions">
-            <button id="pwa-install-btn" style="padding: 12px 20px;">Installer</button>
-            <button id="pwa-close-btn" style="background-color: #cbd5e1; color: #334155;">Plus tard</button>
+            <button id="pwa-install-btn">Installer</button>
+            <button id="pwa-close-btn">Plus tard</button>
           </div>
         </div>
       </div>
