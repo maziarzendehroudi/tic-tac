@@ -496,32 +496,33 @@ export class WatchMechanism {
   }
 
   private drawToyBarrel(x: number, y: number, r: number, teeth: number, angle: number, power: number): void {
-    this.drawToyDiscGear(x, y, r, teeth, angle, '#94a3b8', '#475569', '#cbd5e1', 0);
+    this.drawToyDiscGear(x, y, r, teeth, angle, "#94a3b8", "#475569", "#cbd5e1", 0);
 
     this.ctx.save();
     this.ctx.translate(x, y);
     this.ctx.rotate(angle);
 
+    const drumR = r * 0.78;
     this.ctx.beginPath();
-    this.ctx.arc(0, 0, r * 0.78, 0, Math.PI * 2);
-    this.ctx.fillStyle = '#0f172a';
+    this.ctx.arc(0, 0, drumR, 0, Math.PI * 2);
+    this.ctx.fillStyle = "#0f172a";
     this.ctx.fill();
-    this.ctx.strokeStyle = '#334155';
+    this.ctx.strokeStyle = "#334155";
     this.ctx.lineWidth = 2;
     this.ctx.stroke();
 
-    // Spires du ressort très expressives : bien serrées au centre à 100%, largement détendues à 0%
+    // Spires du ressort : extrémité extérieure fixée sur la paroi de la roue (outerR)
     this.ctx.beginPath();
-    const turns = 3.2 + (power / 100) * 1.2;
+    const turns = 4;
     const innerR = 4.5;
+    const outerR = drumR - 1.5;
     const tightness = power / 100;
-    const maxCoilR = r * (0.74 - tightness * 0.28);
-    const exponent = 0.55 + tightness * 1.85;
+    const exponent = 0.42 + tightness * 2.38;
 
-    for (let i = 0; i <= 150; i++) {
-      const t = i / 150;
+    for (let i = 0; i <= 160; i++) {
+      const t = i / 160;
       const theta = t * Math.PI * 2 * turns;
-      const currentR = innerR + (maxCoilR - innerR) * Math.pow(t, exponent);
+      const currentR = innerR + (outerR - innerR) * Math.pow(t, exponent);
 
       const px = Math.cos(theta) * currentR;
       const py = Math.sin(theta) * currentR;
@@ -530,14 +531,24 @@ export class WatchMechanism {
       else this.ctx.lineTo(px, py);
     }
 
-    this.ctx.strokeStyle = power > 5 ? '#f97316' : '#64748b';
-    this.ctx.lineWidth = 3.2;
-    this.ctx.lineCap = 'round';
+    this.ctx.strokeStyle = power > 5 ? "#f97316" : "#64748b";
+    this.ctx.lineWidth = 3.0;
+    this.ctx.lineCap = "round";
     this.ctx.stroke();
 
+    // Point d'attache extérieur du ressort fixé à la paroi de la roue
+    this.ctx.beginPath();
+    this.ctx.arc(outerR, 0, 3.2, 0, Math.PI * 2);
+    this.ctx.fillStyle = power > 5 ? "#f97316" : "#94a3b8";
+    this.ctx.fill();
+    this.ctx.strokeStyle = "#0f172a";
+    this.ctx.lineWidth = 1.2;
+    this.ctx.stroke();
+
+    // Bonde centrale dorée
     this.ctx.beginPath();
     this.ctx.arc(0, 0, 5, 0, Math.PI * 2);
-    this.ctx.fillStyle = '#fbbf24';
+    this.ctx.fillStyle = "#fbbf24";
     this.ctx.fill();
 
     this.ctx.restore();

@@ -7,12 +7,6 @@ export class Hands {
     this.radius = radius;
   }
 
-  /**
-   * Dessine les aiguilles selon le niveau pédagogique :
-   * - Niveaux 1 et 2 : uniquement la petite aiguille orange des heures.
-   * - Niveau 3 : uniquement la grande aiguille bleue des minutes.
-   * - Niveaux 4 à 8 : les deux aiguilles réunies.
-   */
   public draw(
     hours: number,
     minutes: number,
@@ -24,7 +18,7 @@ export class Hands {
     const showHourHand = level !== 3;
     const showMinuteHand = level >= 3;
 
-    const hourTip = level === 2 ? this.radius - 122 : this.radius - 86;
+    const hourTip = level === 2 || level === 7 ? this.radius - 122 : this.radius - 86;
     const minuteTip = level >= 3 && level <= 6 ? this.radius - 36 : this.radius - 18;
 
     if (ghostTarget) {
@@ -61,7 +55,6 @@ export class Hands {
       }
     }
 
-    // 1. Petite aiguille des Heures (Orange #ea580c)
     if (showHourHand) {
       const hourAngle =
         ((hours % 12) * Math.PI) / 6 + (showMinuteHand ? (minutes * Math.PI) / 360 : 0);
@@ -90,7 +83,6 @@ export class Hands {
       ctx.restore();
     }
 
-    // 2. Grande aiguille des Minutes (Bleue #0284c7)
     if (showMinuteHand) {
       const minuteAngle = (minutes * Math.PI) / 30;
       ctx.save();
@@ -118,7 +110,6 @@ export class Hands {
       ctx.restore();
     }
 
-    // 3. Pivot central
     ctx.beginPath();
     ctx.arc(0, 0, 7, 0, 2 * Math.PI);
     ctx.fillStyle = '#0f172a';

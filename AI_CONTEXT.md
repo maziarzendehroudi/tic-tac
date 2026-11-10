@@ -14,8 +14,8 @@
 4. **Niveau 4 — Les Demi-Heures (12h) :** Réunion des 2 aiguilles sur `:00` et `:30` + ligne médiane en pointillés.
 5. **Niveau 5 — Les Quarts d'Heure (12h) :** Les 2 aiguilles sur `:15`, `:30`, `:45` + repères en croix.
 6. **Niveau 6 — À la Minute près (12h) :** Les 2 aiguilles sur les 60 graduations (`00..59`) en conservant les repères bleus `00..55` pour compter les unités depuis le multiple de 5 le plus proche.
-7. **Niveau 7 — Le Défi Jour & Nuit (24h) :** Toutes les minutes + cycle 24h sans la couronne orange ni les repères bleus (calcul mental `+12` grâce à la pilule de période).
-8. **Niveau 8 — L'Horloge des Grands :** Seuls les repères cardinaux `12, 3, 6, 9` sont chiffrés, complétés par 8 index bâtons horlogers.
+7. **Niveau 7 — Le Défi Jour & Nuit (24h) :** Toutes les minutes + cycle 24h avec la couronne intérieure orange `13..00` et la pilule de période (sans les repères bleus des minutes).
+8. **Niveau 8 — L'Horloge des Grands :** Seuls les repères cardinaux `12, 3, 6, 9` sont chiffrés, complétés par 8 index bâtons courts (calcul mental `+12` sans couronne orange).
 
 ## 3. L'Atelier de l'Horloger (`src/game/WatchMechanism.ts` — Version V41)
 - **Récompense finale débloquée après le Niveau 8 :**

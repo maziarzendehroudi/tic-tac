@@ -56,7 +56,7 @@ export class TimeMath {
     const hourAngle = ((hours % 12) * Math.PI) / 6 + (minutes * Math.PI) / 360;
     const minuteAngle = (minutes * Math.PI) / 30;
 
-    const hourLen = radius - 96;
+    const hourLen = level === 7 ? radius - 118 : radius - 96;
     const minLen = level <= 6 ? radius - 42 : radius - 24;
 
     const hx = Math.sin(hourAngle) * hourLen;
@@ -198,7 +198,10 @@ export class TimeMath {
         return 'C’est <strong>le midi</strong> : au milieu de la journée, midi s’écrit <strong>12</strong> !';
       }
       if (targetHours >= 13) {
-        return 'C’est <strong>l’après-midi ou le soir</strong> : ajoute 12 à l’heure du matin (ex : 1h ➔ 13h, 4h ➔ 16h) !';
+        if (level >= 8) {
+          return 'C’est <strong>l’après-midi ou le soir</strong> : ajoute 12 à l’heure du matin (ex : 1h ➔ 13h, 4h ➔ 16h) !';
+        }
+        return 'C’est <strong>l’après-midi ou le soir</strong> : lis le petit nombre <strong>orange</strong> à l’intérieur du cadran !';
       }
       return 'C’est <strong>le matin / la nuit (avant midi)</strong> : lis l’heure entre <strong>01 et 11</strong> !';
     }

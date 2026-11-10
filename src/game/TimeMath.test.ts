@@ -120,7 +120,8 @@ describe('Progression Pédagogique 8 Niveaux (V41) — QuestionManager, TimeMath
 
   it('mentionne les nombres oranges au Niveau 2, le calcul +12 dès le Niveau 7, et débloque l’Atelier au Niveau 8', () => {
     expect(TimeMath.buildReadDiagnosticHint(15, 0, 3, 0, 2)).toContain('orange');
-    expect(TimeMath.buildReadDiagnosticHint(15, 20, 3, 20, 7)).toContain('ajoute 12');
+    expect(TimeMath.buildReadDiagnosticHint(15, 20, 3, 20, 7)).toContain('orange');
+    expect(TimeMath.buildReadDiagnosticHint(15, 20, 3, 20, 8)).toContain('ajoute 12');
 
     let save = SaveManager.load();
     expect(SaveManager.MAX_LEVEL).toBe(8);

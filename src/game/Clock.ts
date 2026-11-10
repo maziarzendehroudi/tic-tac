@@ -56,7 +56,7 @@ export class Clock {
       ctx.restore();
     }
 
-    // 4. Graduations au bord du cadran (12 repères aux niveaux 1-2, 60 graduations dès le niveau 3)
+    // 4. Graduations au bord du cadran
     for (let i = 0; i < 60; i++) {
       const isFiveMark = i % 5 === 0;
       const isQuarterMark = i % 15 === 0;
@@ -97,7 +97,7 @@ export class Clock {
       ctx.fillText(label, mx, my);
     });
 
-    // 6. Chiffres des heures (1..12 aux niveaux 1-7, couronne 24h orange au niveau 2, 12/3/6/9 au niveau 8)
+    // 6. Chiffres des heures (1..12 aux niveaux 1-7, couronne 24h aux niveaux 2 et 7, index courts au niveau 8)
     const hour12Radius = showMinuteTrackBand ? r - 68 : r - 54;
     const hour24Radius = r - 104;
 
@@ -105,13 +105,13 @@ export class Clock {
       const angle = (i * Math.PI) / 6;
 
       if (level >= 8 && i % 3 !== 0) {
-        const markerOuter = r - 20;
-        const markerInner = r - 42;
+        const markerOuter = r - 22;
+        const markerInner = r - 33;
         ctx.save();
         ctx.beginPath();
         ctx.moveTo(markerInner * Math.sin(angle), -markerInner * Math.cos(angle));
         ctx.lineTo(markerOuter * Math.sin(angle), -markerOuter * Math.cos(angle));
-        ctx.lineWidth = 5;
+        ctx.lineWidth = 4.5;
         ctx.strokeStyle = '#1e293b';
         ctx.lineCap = 'round';
         ctx.stroke();
@@ -123,6 +123,9 @@ export class Clock {
       const hy = -hour12Radius * Math.cos(angle);
 
       ctx.save();
+      if (level === 3) {
+        ctx.globalAlpha = 0.20;
+      }
       ctx.font = level >= 8 ? '700 32px "Fredoka", sans-serif' : '700 28px "Fredoka", sans-serif';
       ctx.textAlign = 'center';
       ctx.textBaseline = 'middle';
@@ -133,7 +136,7 @@ export class Clock {
       ctx.fillText(i.toString(), hx, hy);
       ctx.restore();
 
-      if (level === 2) {
+      if (level === 2 || level === 7) {
         const h24Text = i === 12 ? '00' : (i + 12).toString();
         const x24 = hour24Radius * Math.sin(angle);
         const y24 = -hour24Radius * Math.cos(angle);
