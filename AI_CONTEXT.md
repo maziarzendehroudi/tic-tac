@@ -17,7 +17,7 @@
 7. **Niveau 7 — Le Défi Jour & Nuit (24h) :** Toutes les minutes + cycle 24h avec la couronne intérieure orange `13..00` et la pilule de période (sans les repères bleus des minutes).
 8. **Niveau 8 — L'Horloge des Grands :** Seuls les repères cardinaux `12, 3, 6, 9` sont chiffrés, complétés par 8 index bâtons courts (calcul mental `+12` sans couronne orange).
 
-## 3. L'Atelier de l'Horloger (`src/game/WatchMechanism.ts` — Version V41)
+## 3. L'Atelier de l'Horloger (`src/game/WatchMechanism.ts` — Version V44)
 - **Récompense finale débloquée après le Niveau 8 :**
   - Mouvement squelette plein cadre dans un Canvas carré `500×500` (ratio 1:1 sans déformation) avec début de bracelet en haut et en bas.
   - **Molette compacte à droite (`x = 138`) à débrayage automatique :** S'embraye contre le barillet lors du remontage au toucher, s'arrête en bout de course à `100 %`, et s'abaisse automatiquement au relâcher.
@@ -25,6 +25,6 @@
   - **Chaîne cinématique à 5 contacts verrouillés en vitesse réelle (`1000 ms`) :** Synchronisation mathématique sans glissement des dents du barillet jusqu'à la trotteuse des secondes, avec maintien du son `Tic-Tac` chaque seconde.
   - **4 boutons de zoom manuels (`⚙️ Ressort / Molette`, `🟠 Heures`, `🔵 Minutes`, `🔴 Secondes`) :** Isolent visuellement l'organe étudié en passant le reste du mouvement en gris transparent (`grayscale(100%)`, `globalAlpha = 0.20`).
 
-## 4. Didacticiel Animé Autonome (`src/game/TutorialOverlay.ts` — Version V42)
+## 4. Didacticiel Animé Autonome (`src/game/TutorialOverlay.ts` — Version V44)
 - **Démo interactive au lancement de chaque niveau (et bouton 💡 dans la barre supérieure) :**
   - Anime directement les aiguilles sur le cadran avec flèches directionnelles, halos cibles et étiquettes explicatives adaptés à chacun des 8 niveaux avant de lancer la première question via le bouton **« C'est parti ! ▶ »**.

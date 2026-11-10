@@ -64,11 +64,11 @@ export class QuestionManager {
     if (!TimeMath.is24HourLevel(level)) return '';
     const h = ((hours24 % 24) + 24) % 24;
     if (h === 0) return '🌙 Minuit';
-    if (h >= 1 && h < 6) return '🌙 Nuit';
+    if (h >= 1 && h < 6) return '🌙 Nuit (matin)';
     if (h >= 6 && h < 12) return '☀️ Matin';
     if (h === 12) return '☀️ Midi';
     if (h >= 13 && h < 18) return '🌤️ Après-midi';
-    return '🌆 Soir';
+    return '🌆 Soir (nuit)';
   }
 
   public generateQuestion(): TimeTarget {

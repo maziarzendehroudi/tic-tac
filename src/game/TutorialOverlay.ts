@@ -20,10 +20,10 @@ export class TutorialOverlay {
         };
       case 2:
         return {
-          title: '💡 Astuce · Les 24 Heures',
+          title: '💡 Astuce · Jour, Nuit et 24 Heures',
           ruleHtml:
-            'L’après-midi et le soir, lis le petit nombre <strong style="color:#fb923c">orange</strong> à l’intérieur (<strong>3 h ➔ 15 h</strong>) !',
-          periodLabel: '🌤️ Après-midi',
+            '1 jour + 1 nuit = <strong>24 h (2 tours)</strong> ! Matin (1er tour) : lis le chiffre <strong>noir (03 h)</strong> · Après-midi et Soir (2e tour) : lis le nombre <strong style="color:#fb923c">orange (15 h)</strong> !',
+          periodLabel: '☀️ 1er tour : Matin (01h - 12h)',
           isDay: true
         };
       case 3:
@@ -46,7 +46,7 @@ export class TutorialOverlay {
         return {
           title: '💡 Astuce · Les Quarts d’Heure',
           ruleHtml:
-            '<strong>:15</strong> = et quart · <strong>:45</strong> = moins le quart (la petite aiguille s’approche de l’heure suivante sans la dépasser !).',
+            '<strong>:15</strong> = et quart · <strong>:45</strong> = moins le quart (regarde la petite aiguille avancer vers le <strong>5</strong> sans le dépasser !).',
           periodLabel: '',
           isDay: true
         };
@@ -77,6 +77,21 @@ export class TutorialOverlay {
     }
   }
 
+  public static getDynamicFrameState(
+    level: number,
+    elapsedMs: number
+  ): { isDay: boolean; periodLabel: string } | null {
+    if (level !== 2) return null;
+    const t = (elapsedMs % 8400) / 8400;
+    if (t < 0.44) {
+      return { isDay: true, periodLabel: '☀️ 1er tour · Matin (01h - 12h)' };
+    }
+    if (t < 0.74) {
+      return { isDay: true, periodLabel: '🌤️ 2e tour · Après-midi (13h - 17h)' };
+    }
+    return { isDay: false, periodLabel: '🌙 2e tour · Soir & Nuit (18h - 00h)' };
+  }
+
   public static draw(
     ctx: CanvasRenderingContext2D,
     hands: Hands,
@@ -94,7 +109,7 @@ export class TutorialOverlay {
           : 1 - this.easeInOut((cycle - 0.85) / 0.15);
 
     if (level === 1) {
-      const h = 1 + smoothT * 2; // 1h -> 3h
+      const h = 1 + smoothT * 2;
       hands.draw(h, 0, 1, 'hour');
       this.drawCurvedArrow(ctx, radius - 54, Math.PI / 6, Math.PI / 2, '#ea580c');
       this.drawTargetHalo(ctx, radius - 54, Math.PI / 2, 24 + pulse * 4, '#ea580c');
@@ -103,16 +118,12 @@ export class TutorialOverlay {
     }
 
     if (level === 2) {
-      hands.draw(3, 0, 2, 'hour');
-      const angle3 = Math.PI / 2;
-      this.drawRadialArrow(ctx, angle3, radius - 54, radius - 104, '#ea580c');
-      this.drawTargetHalo(ctx, radius - 104, angle3, 20 + pulse * 4, '#ea580c');
-      this.drawCalloutBadge(ctx, 0, radius * 0.45, 'Après-midi : 15 h', '#ea580c');
+      this.drawLevel2Continuous(ctx, hands, radius, elapsedMs, pulse);
       return;
     }
 
     if (level === 3) {
-      const m = smoothT * 20; // 00 -> 20 min
+      const m = smoothT * 20;
       hands.draw(12, m, 3, 'minute');
       const endAngle = (20 * Math.PI) / 30;
       this.drawCurvedArrow(ctx, radius - 25, 0.12, endAngle - 0.14, '#0284c7');
@@ -122,7 +133,7 @@ export class TutorialOverlay {
     }
 
     if (level === 4) {
-      const m = smoothT * 30; // 2:00 -> 2:30
+      const m = smoothT * 30;
       hands.draw(2, m, 4);
       const midHourAngle = (2.5 * Math.PI) / 6;
       this.drawTargetHalo(ctx, radius - 68, midHourAngle, 22 + pulse * 4, '#ea580c');
@@ -132,23 +143,12 @@ export class TutorialOverlay {
     }
 
     if (level === 5) {
-      const isQuarterTo = (elapsedMs % 5000) >= 2500;
-      const m = isQuarterTo ? 45 : 15;
-      hands.draw(4, m, 5);
-      const minAngle = (m * Math.PI) / 30;
-      this.drawTargetHalo(ctx, radius - 25, minAngle, 21 + pulse * 4, '#0284c7');
-      if (isQuarterTo) {
-        const hAngle = (4.75 * Math.PI) / 6;
-        this.drawTargetHalo(ctx, radius - 68, hAngle, 20 + pulse * 4, '#ea580c');
-        this.drawCalloutBadge(ctx, 0, -radius * 0.38, '4:45 (5 h moins le quart)', '#ea580c');
-      } else {
-        this.drawCalloutBadge(ctx, 0, -radius * 0.38, '4:15 (4 h et quart)', '#0284c7');
-      }
+      this.drawLevel5Continuous(ctx, hands, radius, elapsedMs, pulse);
       return;
     }
 
     if (level === 6) {
-      const m = 20 + smoothT * 3; // 20 -> 23 min
+      const m = 20 + smoothT * 3;
       hands.draw(8, m, 6);
       const a20 = (20 * Math.PI) / 30;
       const a23 = (23 * Math.PI) / 30;
@@ -162,23 +162,112 @@ export class TutorialOverlay {
     if (level === 7) {
       const m = smoothT * 20;
       hands.draw(16, m, 7);
-      const aHour = (4 * Math.PI) / 6 + (m * Math.PI) / 360;
       this.drawTargetHalo(ctx, radius - 104, (4 * Math.PI) / 6, 20 + pulse * 4, '#ea580c');
       for (let step = 5; step <= 20; step += 5) {
         const aStep = (step * Math.PI) / 30;
         this.drawSmallDot(ctx, radius - 15, aStep, '#0284c7');
       }
-      void aHour;
       this.drawCalloutBadge(ctx, 0, radius * 0.45, '16:20 (5, 10, 15, 20)', '#0284c7');
       return;
     }
 
-    // Niveau 8 : L'Horloge des Grands
-    hands.draw(16, 10, 8);
+    // Niveau 8 : Mouvement fluide de 15:00 vers 16:10
+    const h8 = 15 + smoothT;
+    const m8 = smoothT * 10;
+    hands.draw(h8, m8, 8);
     const a4 = (4 * Math.PI) / 6;
     this.drawCurvedArrow(ctx, radius - 54, Math.PI / 2, a4, '#ea580c');
     this.drawTargetHalo(ctx, radius - 28, a4, 18 + pulse * 4, '#ea580c');
     this.drawCalloutBadge(ctx, 0, radius * 0.44, '4 h + 12 = 16:10', '#ea580c');
+  }
+
+  /**
+   * Niveau 2 : Une seule animation continue (8,4 s)
+   * 1) Glisse de 12h à 3h du matin (chiffre noir 3 -> 03 h)
+   * 2) Tourne jusqu'à 12h puis 15h (nombre orange 15 -> 15 h l'après-midi)
+   * 3) Glisse jusqu'à 20h sous le ciel étoilé (nombre orange 20 -> 20 h le soir)
+   */
+  private static drawLevel2Continuous(
+    ctx: CanvasRenderingContext2D,
+    hands: Hands,
+    radius: number,
+    elapsedMs: number,
+    pulse: number
+  ): void {
+    const t = (elapsedMs % 8400) / 8400;
+    let h = 3;
+
+    if (t < 0.12) {
+      h = this.easeInOut(t / 0.12) * 3;
+    } else if (t < 0.36) {
+      h = 3;
+    } else if (t < 0.50) {
+      h = 3 + this.easeInOut((t - 0.36) / 0.14) * 12; // Fait un tour complet jusqu'à 15h
+    } else if (t < 0.72) {
+      h = 15;
+    } else if (t < 0.80) {
+      h = 15 + this.easeInOut((t - 0.72) / 0.08) * 5; // Glisse de 15h à 20h
+    } else if (t < 0.95) {
+      h = 20;
+    } else {
+      h = 20 + this.easeInOut((t - 0.95) / 0.05) * 4; // Retour par minuit (24h)
+    }
+
+    hands.draw(h, 0, 2, 'hour');
+    const angleH = ((h % 12) * Math.PI) / 6;
+
+    if (t < 0.44) {
+      this.drawRadialArrow(ctx, angleH, radius - 104, radius - 54, '#0284c7');
+      this.drawTargetHalo(ctx, radius - 54, angleH, 23 + pulse * 4, '#0284c7');
+      this.drawCalloutBadge(ctx, 0, radius * 0.44, '☀️ 3 h du matin = 03 h', '#0284c7');
+    } else if (t < 0.74) {
+      this.drawRadialArrow(ctx, angleH, radius - 54, radius - 104, '#ea580c');
+      this.drawTargetHalo(ctx, radius - 104, angleH, 21 + pulse * 4, '#ea580c');
+      this.drawCalloutBadge(ctx, 0, radius * 0.44, '🌤️ 3 h après-midi = 15 h', '#ea580c');
+    } else {
+      this.drawRadialArrow(ctx, angleH, radius - 54, radius - 104, '#ea580c');
+      this.drawTargetHalo(ctx, radius - 104, angleH, 21 + pulse * 4, '#ea580c');
+      this.drawCalloutBadge(ctx, 0, radius * 0.44, '🌙 8 h du soir = 20 h', '#ea580c');
+    }
+  }
+
+  /**
+   * Niveau 5 (Option B) : Une seule animation continue avec paliers à :15 et :45 (7,5 s)
+   */
+  private static drawLevel5Continuous(
+    ctx: CanvasRenderingContext2D,
+    hands: Hands,
+    radius: number,
+    elapsedMs: number,
+    pulse: number
+  ): void {
+    const t = (elapsedMs % 7500) / 7500;
+    let m = 15;
+
+    if (t < 0.14) {
+      m = this.easeInOut(t / 0.14) * 15; // 4:00 -> 4:15
+    } else if (t < 0.45) {
+      m = 15; // Pause sur 4:15
+    } else if (t < 0.63) {
+      m = 15 + this.easeInOut((t - 0.45) / 0.18) * 30; // Glisse de 4:15 à 4:45
+    } else if (t < 0.93) {
+      m = 45; // Pause sur 4:45
+    } else {
+      m = 45 - this.easeInOut((t - 0.93) / 0.07) * 45; // Retour doux à 4:00
+    }
+
+    hands.draw(4, m, 5);
+    const minAngle = (m * Math.PI) / 30;
+    this.drawTargetHalo(ctx, radius - 25, minAngle, 20 + pulse * 4, '#0284c7');
+
+    if (m < 30) {
+      this.drawCurvedArrow(ctx, radius - 25, 0.08, Math.max(0.15, minAngle - 0.1), '#0284c7');
+      this.drawCalloutBadge(ctx, 0, -radius * 0.38, '4:15 (4 h et quart)', '#0284c7');
+    } else {
+      const hAngle = ((4 + m / 60) * Math.PI) / 6;
+      this.drawTargetHalo(ctx, radius - 68, hAngle, 20 + pulse * 4, '#ea580c');
+      this.drawCalloutBadge(ctx, 0, -radius * 0.38, '4:45 (5 h moins le quart)', '#ea580c');
+    }
   }
 
   private static easeInOut(t: number): number {
@@ -237,9 +326,8 @@ export class TutorialOverlay {
 
     const tipX = r * Math.sin(endAngle);
     const tipY = -r * Math.cos(endAngle);
-    const tangent = endAngle;
     ctx.translate(tipX, tipY);
-    ctx.rotate(tangent);
+    ctx.rotate(endAngle);
     ctx.beginPath();
     ctx.moveTo(0, 0);
     ctx.lineTo(-10, -6);
@@ -291,8 +379,8 @@ export class TutorialOverlay {
     borderColor: string
   ): void {
     ctx.save();
-    ctx.font = '700 16px "Fredoka", sans-serif';
-    const padX = 14;
+    ctx.font = '700 15px "Fredoka", sans-serif';
+    const padX = 13;
     const w = ctx.measureText(text).width + padX * 2;
     const h = 32;
 

@@ -166,6 +166,11 @@ export class GameEngine {
     document.getElementById("placement-tools")?.classList.add("hidden");
     document.getElementById("tutorial-tools")?.classList.remove("hidden");
 
+    const startBtn = document.getElementById("tutorial-start-btn");
+    if (startBtn) {
+      startBtn.textContent = "C'est parti ! ▶";
+    }
+
     const helpBox = document.getElementById("help-box");
     const helpText = document.getElementById("help-text");
     const nextBtn = document.getElementById("next-question-btn");
@@ -179,7 +184,13 @@ export class GameEngine {
     const loop = (now: number) => {
       if (!this.isTutorialActive) return;
       const elapsed = now - this.tutorialStartTime;
-      this.clock.draw(this.currentLevel, info.isDay);
+      const dyn = TutorialOverlay.getDynamicFrameState(this.currentLevel, elapsed);
+      const frameDay = dyn ? dyn.isDay : info.isDay;
+      this.applySkyTheme(frameDay);
+      if (dyn && periodChipEl) {
+        periodChipEl.textContent = dyn.periodLabel;
+      }
+      this.clock.draw(this.currentLevel, frameDay);
       TutorialOverlay.draw(this.ctx, this.hands, this.radius, this.currentLevel, elapsed);
       this.tutorialAnimId = requestAnimationFrame(loop);
     };
