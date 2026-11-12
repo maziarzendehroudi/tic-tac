@@ -33,6 +33,25 @@ const THREE_ZOOM_BUTTONS: Array<Exclude<WorkshopZoom, 'overview'>> = [
   'minutes'
 ];
 
+const LEVEL_TITLES: Record<number, string> = {
+  1: '1 · Les Heures (12h)',
+  2: '2 · Les 24 Heures',
+  3: '3 · Les Minutes',
+  4: '4 · Les Demi-Heures',
+  5: '5 · Les Quarts d’Heure',
+  6: '6 · À la Minute près',
+  7: '7 · Défi Jour & Nuit',
+  8: '8 · L’Horloge des Grands'
+};
+
+const AVATAR_COLORS = [
+  'linear-gradient(135deg, #f97316, #ea580c)',
+  'linear-gradient(135deg, #8b5cf6, #6d28d9)',
+  'linear-gradient(135deg, #0284c7, #0369a1)',
+  'linear-gradient(135deg, #10b981, #047857)',
+  'linear-gradient(135deg, #e11d48, #be123c)'
+];
+
 export class GameEngine {
   private canvas: HTMLCanvasElement;
   private ctx: CanvasRenderingContext2D;
@@ -131,8 +150,15 @@ export class GameEngine {
     document.getElementById('workshop-screen')?.classList.add('hidden');
     document.getElementById('game-screen')?.classList.remove('hidden');
 
+    const headerPill = document.getElementById('level-header-pill');
+    if (headerPill) {
+      headerPill.className = `lvl-${level}`;
+    }
+
     const titleDisplay = document.getElementById('level-title-display');
-    if (titleDisplay) titleDisplay.textContent = `Niveau ${level}`;
+    if (titleDisplay) {
+      titleDisplay.textContent = LEVEL_TITLES[level] || `Niveau ${level}`;
+    }
 
     this.initNewQuestion();
     this.openTutorial();
@@ -161,6 +187,10 @@ export class GameEngine {
     if (instructionEl) {
       instructionEl.classList.add('hidden');
     }
+
+    const calloutRow = document.getElementById('tutorial-callout-row');
+    const calloutPill = document.getElementById('tutorial-callout-pill');
+    calloutRow?.classList.remove('hidden');
 
     document.getElementById('choices-container')?.classList.add('hidden');
     document.getElementById('placement-tools')?.classList.add('hidden');
@@ -194,6 +224,13 @@ export class GameEngine {
       if (dyn && periodChipEl) {
         periodChipEl.textContent = dyn.periodLabel;
       }
+
+      if (calloutPill) {
+        const callout = TutorialOverlay.getCallout(this.currentLevel, elapsed);
+        calloutPill.textContent = callout.text;
+        calloutPill.style.borderColor = callout.color;
+      }
+
       this.clock.draw(this.currentLevel, frameDay);
       TutorialOverlay.draw(this.ctx, this.hands, this.radius, this.currentLevel, elapsed);
       this.tutorialAnimId = requestAnimationFrame(loop);
@@ -206,6 +243,7 @@ export class GameEngine {
     cancelAnimationFrame(this.tutorialAnimId);
     this.isTutorialActive = false;
     document.getElementById('tutorial-tools')?.classList.add('hidden');
+    document.getElementById('tutorial-callout-row')?.classList.add('hidden');
     const showDaySky = TimeMath.is24HourLevel(this.currentLevel) ? this.targetTime.isDay : true;
     this.applySkyTheme(showDaySky);
     this.hideHelp();
@@ -441,8 +479,12 @@ export class GameEngine {
       document.getElementById('profile-modal')?.classList.add('hidden');
     };
 
-    document.getElementById('profile-close-btn')?.addEventListener('click', closeProfileModal);
     document.getElementById('profile-close-top-btn')?.addEventListener('click', closeProfileModal);
+    document.getElementById('profile-modal')?.addEventListener('click', (e) => {
+      if (e.target === e.currentTarget) {
+        closeProfileModal();
+      }
+    });
 
     const addProfileForm = document.getElementById('add-profile-form') as HTMLFormElement | null;
     addProfileForm?.addEventListener('submit', (e) => {
@@ -545,10 +587,12 @@ export class GameEngine {
     const active = SaveManager.getActiveProfile();
 
     listEl.innerHTML = '';
-    profiles.forEach(profile => {
+    profiles.forEach((profile, index) => {
       const isActive = profile.id === active.id;
       const stars = SaveManager.getTotalStars(profile.save);
       const displayName = profile.name === 'Test' ? 'Menu' : profile.name;
+      const initial = (displayName.trim()[0] || 'J').toUpperCase();
+      const avatarBg = AVATAR_COLORS[index % AVATAR_COLORS.length];
 
       const row = document.createElement('div');
       row.className = `profile-item${isActive ? ' active-profile' : ''}`;
@@ -605,10 +649,10 @@ export class GameEngine {
       selectBtn.className = 'profile-select-btn';
       selectBtn.innerHTML = `
         <div class="prof-name-line">
+          <span class="prof-avatar" style="background: ${avatarBg}">${initial}</span>
           <span class="prof-name">${displayName}</span>
-          ${isActive ? '<span class="prof-active-pill">✓</span>' : ''}
         </div>
-        <span class="prof-stars">★ ${stars} / ${SaveManager.MAX_STARS}</span>
+        <span class="prof-stars"><span class="prof-star-icon">★</span> ${stars} / ${SaveManager.MAX_STARS}</span>
       `;
       selectBtn.addEventListener('click', () => {
         this.saveData = SaveManager.switchProfile(profile.id);
@@ -626,7 +670,12 @@ export class GameEngine {
       editBtn.type = 'button';
       editBtn.className = 'profile-action-btn';
       editBtn.title = `Renommer ${displayName}`;
-      editBtn.textContent = '✏️';
+      editBtn.innerHTML = `
+        <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+          <path d="M12 20h9"></path>
+          <path d="M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4L16.5 3.5z"></path>
+        </svg>
+      `;
       editBtn.addEventListener('click', (e) => {
         e.stopPropagation();
         this.confirmingDeleteId = null;
@@ -642,7 +691,12 @@ export class GameEngine {
         const isConfirming = this.confirmingDeleteId === profile.id;
         delBtn.className = `profile-del-btn${isConfirming ? ' confirm-del' : ''}`;
         delBtn.title = isConfirming ? `Confirmer la suppression` : `Supprimer ${displayName}`;
-        delBtn.textContent = isConfirming ? 'Oui ?' : '🗑️';
+        delBtn.innerHTML = isConfirming
+          ? 'Oui ?'
+          : `<svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+               <polyline points="3 6 5 6 21 6"></polyline>
+               <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path>
+             </svg>`;
         delBtn.addEventListener('click', (e) => {
           e.stopPropagation();
           if (this.confirmingDeleteId !== profile.id) {
@@ -679,9 +733,10 @@ export class GameEngine {
     const maxUnlocked = this.saveData.maxUnlockedLevel || 1;
     const activeProfile = SaveManager.getActiveProfile();
 
-    const profileLabel = document.getElementById('current-profile-name');
-    if (profileLabel) {
-      profileLabel.textContent = activeProfile.name === 'Test' ? 'Menu' : activeProfile.name;
+    const profileBtn = document.getElementById('profile-btn');
+    if (profileBtn) {
+      const displayName = activeProfile.name === 'Test' ? 'Menu' : activeProfile.name;
+      profileBtn.setAttribute('title', `Joueur actif : ${displayName}`);
     }
 
     const totalStars = SaveManager.getTotalStars(this.saveData);
@@ -701,7 +756,7 @@ export class GameEngine {
         if (statusEl) {
           if (starsEarned > 0) {
             const starsHtml = [1, 2, 3]
-              .map(s => (s <= starsEarned ? '<span class="lvl-star-on">★</span>' : '<span class="lvl-star-off">☆</span>'))
+              .map(s => (s <= starsEarned ? '<span class="lvl-star-on">★</span>' : '<span class="lvl-star-off">★</span>'))
               .join('');
             statusEl.innerHTML = starsHtml;
             statusEl.className = 'lvl-status stars-badge';
@@ -743,6 +798,7 @@ export class GameEngine {
     const helpBox = document.getElementById('help-box');
     const helpText = document.getElementById('help-text');
     const instructionEl = document.getElementById('instruction');
+    document.getElementById('tutorial-callout-row')?.classList.add('hidden');
     if (!helpBox || !helpText) return;
 
     if (type === 'success' || type === 'step2') {
@@ -775,7 +831,7 @@ export class GameEngine {
         if (!this.isWaitingNext) return;
         this.isWaitingNext = false;
         nextCallback();
-      }, 4000);
+      }, 3000);
     }
   }
 
@@ -793,13 +849,23 @@ export class GameEngine {
     );
   }
 
+  private formatGoldStarsHTML(earnedStars: number): string {
+    return [1, 2, 3]
+      .map(i =>
+        i <= earnedStars
+          ? '<span class="inline-star-gold">★</span>'
+          : '<span class="inline-star-empty">★</span>'
+      )
+      .join('');
+  }
+
   private handleSuccessfulAnswer(): void {
     this.triggerSuccessEffect();
 
     if (this.currentQuestionAssisted) {
       this.soundEngine.playSuccess();
       this.showFeedback(
-        `👍 <strong>Bien vu !</strong> Réussis la suivante du premier coup pour gagner ton étoile ★`,
+        `👍 <strong>Bien vu !</strong> Réussis la suivante du premier coup pour gagner ton étoile <span class="inline-star-gold">★</span>`,
         'success',
         () => {
           this.initNewQuestion();
@@ -842,12 +908,12 @@ export class GameEngine {
         SaveManager.save(this.saveData);
         this.updateMenuUI();
 
-        const starsStr = '★'.repeat(earnedStars) + '☆'.repeat(3 - earnedStars);
+        const starsHtml = this.formatGoldStarsHTML(earnedStars);
         this.playCelebrationAnimation(earnedStars);
 
         if (this.currentLevel === SaveManager.MAX_LEVEL) {
           this.showFeedback(
-            `👑 <strong>Niveau 8 validé (${starsStr}) !</strong> L’Atelier de l’Horloger est débloqué !`,
+            `👑 <strong>Niveau 8 validé (${starsHtml}) !</strong> L’Atelier de l’Horloger est débloqué !`,
             'success',
             () => {
               this.openWorkshop();
@@ -859,8 +925,8 @@ export class GameEngine {
         const nextLvl = this.currentLevel + 1;
         const msg =
           earnedStars === 3
-            ? `🏆 <strong>Niveau ${this.currentLevel} parfait (${starsStr}) !</strong> Passage au Niveau ${nextLvl}...`
-            : `🏆 <strong>Niveau ${this.currentLevel} validé (${starsStr}) !</strong> Passage au Niveau ${nextLvl}...`;
+            ? `🏆 <strong>Niveau ${this.currentLevel} parfait (${starsHtml}) !</strong> Passage au Niveau ${nextLvl}...`
+            : `🏆 <strong>Niveau ${this.currentLevel} validé (${starsHtml}) !</strong> Passage au Niveau ${nextLvl}...`;
 
         this.showFeedback(
           msg,
@@ -1121,7 +1187,7 @@ export class GameEngine {
     if (!phaseBadge) return;
     const totalEarned = (this.currentPhase === 1 ? 0 : 3) + this.phaseSuccessCount;
     const stars = [0, 1, 2, 3, 4, 5]
-      .map(i => (i < totalEarned ? '<span class="star-on">★</span>' : '<span class="star-off">☆</span>'))
+      .map(i => (i < totalEarned ? '<span class="star-on">★</span>' : '<span class="star-off">★</span>'))
       .join('');
     phaseBadge.innerHTML = stars;
   }
@@ -1132,6 +1198,7 @@ export class GameEngine {
     const placementTools = document.getElementById('placement-tools');
     const choicesContainer = document.getElementById('choices-container');
     document.getElementById('tutorial-tools')?.classList.add('hidden');
+    document.getElementById('tutorial-callout-row')?.classList.add('hidden');
     instructionEl?.classList.remove('hidden');
 
     this.updatePhaseStarsUI();

@@ -145,3 +145,13 @@ describe('Progression Pédagogique 8 Niveaux (V47) — Orthographe 1 heure & San
     }
   });
 });
+
+describe('Correctifs V48 — Pilule de didacticiel déportée sous l’horloge', () => {
+  it('fournit une pilule de didacticiel dédiée pour chacun des 8 niveaux', () => {
+    for (let lvl = 1; lvl <= 8; lvl++) {
+      const callout = TutorialOverlay.getCallout(lvl, 1000);
+      expect(callout.text.length).toBeGreaterThan(3);
+      expect(callout.color).toMatch(/^#/);
+    }
+  });
+});

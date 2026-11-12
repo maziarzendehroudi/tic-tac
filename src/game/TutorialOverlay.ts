@@ -7,6 +7,11 @@ export interface TutorialStepInfo {
   isDay: boolean;
 }
 
+export interface TutorialCallout {
+  text: string;
+  color: string;
+}
+
 export class TutorialOverlay {
   public static getInfo(level: number): TutorialStepInfo {
     switch (level) {
@@ -92,6 +97,39 @@ export class TutorialOverlay {
     return { isDay: false, periodLabel: '🌙 2e tour · Soir & Nuit (18h - 00h)' };
   }
 
+  /**
+   * Fournit le texte et la couleur de la pilule d'exemple affichée sous l'horloge pendant le didacticiel
+   */
+  public static getCallout(level: number, elapsedMs: number): TutorialCallout {
+    if (level === 1) {
+      return { text: '3 heures', color: '#ea580c' };
+    }
+    if (level === 2) {
+      const t = (elapsedMs % 8400) / 8400;
+      if (t < 0.44) return { text: '☀️ 3 h du matin = 03 h', color: '#0284c7' };
+      if (t < 0.74) return { text: '🌤️ 3 h après-midi = 15 h', color: '#ea580c' };
+      return { text: '🌙 8 h du soir = 20 h', color: '#ea580c' };
+    }
+    if (level === 3) {
+      return { text: '20 minutes', color: '#0284c7' };
+    }
+    if (level === 4) {
+      return { text: '2:30 (2 h et demie)', color: '#0284c7' };
+    }
+    if (level === 5) {
+      const t = (elapsedMs % 7500) / 7500;
+      if (t < 0.54) return { text: '4:15 (4 h et quart)', color: '#0284c7' };
+      return { text: '4:45 (5 h moins le quart)', color: '#ea580c' };
+    }
+    if (level === 6) {
+      return { text: '20 + 3 traits = 8:23', color: '#0284c7' };
+    }
+    if (level === 7) {
+      return { text: '16:20 (5, 10, 15, 20)', color: '#0284c7' };
+    }
+    return { text: 'Après-midi : 16:10', color: '#ea580c' };
+  }
+
   public static draw(
     ctx: CanvasRenderingContext2D,
     hands: Hands,
@@ -113,7 +151,6 @@ export class TutorialOverlay {
       hands.draw(h, 0, 1, 'hour');
       this.drawCurvedArrow(ctx, radius - 94, Math.PI / 6 + 0.06, Math.PI / 2 - 0.06, '#ea580c');
       this.drawTargetHalo(ctx, radius - 54, Math.PI / 2, 24 + pulse * 4, '#ea580c');
-      this.drawCalloutBadge(ctx, 0, 62, '3 heures', '#ea580c');
       return;
     }
 
@@ -128,7 +165,6 @@ export class TutorialOverlay {
       const endAngle = (20 * Math.PI) / 30;
       this.drawCurvedArrow(ctx, radius - 52, 0.1, endAngle - 0.08, '#0284c7');
       this.drawTargetHalo(ctx, radius - 25, endAngle, 20 + pulse * 4, '#0284c7');
-      this.drawCalloutBadge(ctx, 0, 62, '20 minutes', '#0284c7');
       return;
     }
 
@@ -138,7 +174,6 @@ export class TutorialOverlay {
       const midHourAngle = (2.5 * Math.PI) / 6;
       this.drawTargetHalo(ctx, radius - 68, midHourAngle, 22 + pulse * 4, '#ea580c');
       this.drawTargetHalo(ctx, radius - 25, Math.PI, 20 + pulse * 4, '#0284c7');
-      this.drawCalloutBadge(ctx, 0, -64, '2:30 (2 h et demie)', '#0284c7');
       return;
     }
 
@@ -155,7 +190,6 @@ export class TutorialOverlay {
       this.drawTargetHalo(ctx, radius - 25, a20, 18, '#0284c7');
       this.drawCurvedArrow(ctx, radius - 10, a20, a23, '#10b981');
       this.drawTargetHalo(ctx, radius - 10, a23, 14 + pulse * 3, '#10b981');
-      this.drawCalloutBadge(ctx, 0, -64, '20 + 3 traits = 8:23', '#0284c7');
       return;
     }
 
@@ -167,7 +201,6 @@ export class TutorialOverlay {
         const aStep = (step * Math.PI) / 30;
         this.drawSmallDot(ctx, radius - 15, aStep, '#0284c7');
       }
-      this.drawCalloutBadge(ctx, 0, -56, '16:20 (5, 10, 15, 20)', '#0284c7');
       return;
     }
 
@@ -177,7 +210,6 @@ export class TutorialOverlay {
     const a4 = (4 * Math.PI) / 6;
     this.drawCurvedArrow(ctx, radius - 90, Math.PI / 2, a4, '#ea580c');
     this.drawTargetHalo(ctx, radius - 28, a4, 18 + pulse * 4, '#ea580c');
-    this.drawCalloutBadge(ctx, 0, 62, 'Après-midi : 16:10', '#ea580c');
   }
 
   private static drawLevel2Continuous(
@@ -211,13 +243,8 @@ export class TutorialOverlay {
 
     if (t < 0.44) {
       this.drawTargetHalo(ctx, radius - 54, angleH, 24 + pulse * 4, '#0284c7');
-      this.drawCalloutBadge(ctx, 0, 56, '☀️ 3 h du matin = 03 h', '#0284c7');
-    } else if (t < 0.74) {
-      this.drawTargetHalo(ctx, radius - 104, angleH, 20 + pulse * 4, '#ea580c');
-      this.drawCalloutBadge(ctx, 0, 56, '🌤️ 3 h après-midi = 15 h', '#ea580c');
     } else {
       this.drawTargetHalo(ctx, radius - 104, angleH, 20 + pulse * 4, '#ea580c');
-      this.drawCalloutBadge(ctx, 0, 56, '🌙 8 h du soir = 20 h', '#ea580c');
     }
   }
 
@@ -249,11 +276,9 @@ export class TutorialOverlay {
 
     if (m < 30) {
       this.drawCurvedArrow(ctx, radius - 50, 0.08, Math.max(0.15, minAngle - 0.08), '#0284c7');
-      this.drawCalloutBadge(ctx, 0, -64, '4:15 (4 h et quart)', '#0284c7');
     } else {
       const hAngle = ((4 + m / 60) * Math.PI) / 6;
       this.drawTargetHalo(ctx, radius - 68, hAngle, 20 + pulse * 4, '#ea580c');
-      this.drawCalloutBadge(ctx, 0, -64, '4:45 (5 h moins le quart)', '#ea580c');
     }
   }
 
@@ -322,34 +347,6 @@ export class TutorialOverlay {
     ctx.closePath();
     ctx.fillStyle = color;
     ctx.fill();
-    ctx.restore();
-  }
-
-  private static drawCalloutBadge(
-    ctx: CanvasRenderingContext2D,
-    x: number,
-    y: number,
-    text: string,
-    borderColor: string
-  ): void {
-    ctx.save();
-    ctx.font = '700 15px "Fredoka", sans-serif';
-    const padX = 13;
-    const w = ctx.measureText(text).width + padX * 2;
-    const h = 30;
-
-    ctx.beginPath();
-    ctx.roundRect(x - w / 2, y - h / 2, w, h, 11);
-    ctx.fillStyle = 'rgba(15, 23, 42, 0.92)';
-    ctx.fill();
-    ctx.lineWidth = 2.5;
-    ctx.strokeStyle = borderColor;
-    ctx.stroke();
-
-    ctx.fillStyle = '#ffffff';
-    ctx.textAlign = 'center';
-    ctx.textBaseline = 'middle';
-    ctx.fillText(text, x, y + 1);
     ctx.restore();
   }
 }
