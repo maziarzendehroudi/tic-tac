@@ -34,7 +34,7 @@
                 <path d="M16 3.13a4 4 0 0 1 0 7.75"></path>
               </svg>
             </button>
-            <button id="force-refresh-btn" type="button" title="Vider le cache PWA et forcer la mise à jour">⚡ Maj v54</button>
+            <button id="force-refresh-btn" type="button" title="Vider le cache PWA et forcer la mise à jour">⚡ Maj v55</button>
           </div>
           <button id="sound-toggle-btn" type="button" aria-pressed="true" aria-label="Activer ou couper le son" title="Son actif">
             <svg viewBox="0 0 24 24" width="24" height="24" fill="none" stroke="currentColor" stroke-width="2.3" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
@@ -58,55 +58,55 @@
         <div id="levels-grid">
           <button class="level-rect lvl-1" data-level="1">
             <span class="lvl-badge">1</span>
-            <div class="lvl-content"><span class="lvl-title">Les Heures (12h)</span></div>
+            <div class="lvl-content"><span class="lvl-title">Les 12 heures</span></div>
             <span class="lvl-status play">▶</span>
           </button>
 
           <button class="level-rect lvl-2 locked" data-level="2">
             <span class="lvl-badge">2</span>
-            <div class="lvl-content"><span class="lvl-title">Les 24 Heures</span></div>
+            <div class="lvl-content"><span class="lvl-title">Les 24 heures</span></div>
             <span class="lvl-status locked-icon">🔒</span>
           </button>
 
           <button class="level-rect lvl-3 locked" data-level="3">
             <span class="lvl-badge">3</span>
-            <div class="lvl-content"><span class="lvl-title">Les Minutes</span></div>
+            <div class="lvl-content"><span class="lvl-title">Les minutes</span></div>
             <span class="lvl-status locked-icon">🔒</span>
           </button>
 
           <button class="level-rect lvl-4 locked" data-level="4">
             <span class="lvl-badge">4</span>
-            <div class="lvl-content"><span class="lvl-title">Les Demi-Heures</span></div>
+            <div class="lvl-content"><span class="lvl-title">Les demi-heures</span></div>
             <span class="lvl-status locked-icon">🔒</span>
           </button>
 
           <button class="level-rect lvl-5 locked" data-level="5">
             <span class="lvl-badge">5</span>
-            <div class="lvl-content"><span class="lvl-title">Les Quarts d'Heure</span></div>
+            <div class="lvl-content"><span class="lvl-title">Les quarts d'heure</span></div>
             <span class="lvl-status locked-icon">🔒</span>
           </button>
 
           <button class="level-rect lvl-6 locked" data-level="6">
             <span class="lvl-badge">6</span>
-            <div class="lvl-content"><span class="lvl-title">À la Minute près</span></div>
+            <div class="lvl-content"><span class="lvl-title">À la minute près</span></div>
             <span class="lvl-status locked-icon">🔒</span>
           </button>
 
           <button class="level-rect lvl-7 locked" data-level="7">
             <span class="lvl-badge">7</span>
-            <div class="lvl-content"><span class="lvl-title">Le Défi Jour &amp; Nuit</span></div>
+            <div class="lvl-content"><span class="lvl-title">Le défi jour &amp; nuit</span></div>
             <span class="lvl-status locked-icon">🔒</span>
           </button>
 
           <button class="level-rect lvl-8 locked" data-level="8">
             <span class="lvl-badge">8</span>
-            <div class="lvl-content"><span class="lvl-title">L'Horloge des Grands</span></div>
+            <div class="lvl-content"><span class="lvl-title">L'horloge des grands</span></div>
             <span class="lvl-status locked-icon">🔒</span>
           </button>
 
           <button id="workshop-btn" type="button" class="workshop-rect locked">
             <span class="lvl-badge workshop-badge">⚙️</span>
-            <div class="lvl-content"><span class="lvl-title">L'Atelier de l'Horloger</span></div>
+            <div class="lvl-content"><span class="lvl-title">L'atelier de l'horloger</span></div>
             <span id="workshop-status" class="lvl-status locked-icon">🔒</span>
           </button>
         </div>
@@ -122,7 +122,7 @@
             </svg>
           </button>
           <div id="level-header-pill" class="lvl-1">
-            <span id="level-title-display">Niveau 1</span>
+            <span id="level-title-display">1 · Les 12 heures</span>
             <span id="phase-badge" class="stars-group"></span>
           </div>
           <button id="tutorial-btn" type="button" class="top-square-btn" title="Revoir l'explication du niveau">💡</button>
@@ -139,7 +139,7 @@
         <div id="ui-container">
           <div id="message-stage">
             <div id="tutorial-callout-row" class="hidden">
-              <span id="tutorial-callout-pill">3 heures</span>
+              <span id="tutorial-callout-pill">C'est la nuit</span>
             </div>
             <div id="instruction">Quelle heure est-il ?</div>
             <div id="help-box" class="invisible-feedback">
@@ -172,34 +172,25 @@
             </svg>
           </button>
           <div id="workshop-header-pill" class="workshop-rect">
-            <span>⚙️ L'Atelier de l'Horloger</span>
+            <span>⚙️ L'atelier de l'horloger</span>
           </div>
         </div>
         <div id="workshop-canvas-wrap">
           <canvas id="workshopCanvas" width="500" height="500"></canvas>
         </div>
         <div id="workshop-ui">
+          <p id="workshop-instruction">Tourne la molette pour remonter la montre et voir le mécanisme !</p>
           <div id="workshop-parts-tray"></div>
         </div>
       </div>
 
-      <!-- MODALE JOUEURS DESIGN SOIGNÉ -->
+      <!-- MODALE JOUEURS JOYEUSE & CLIC LONG -->
       <div id="profile-modal" class="modal hidden">
         <div class="modal-content profile-modal-content">
           <div class="modal-header-row">
-            <div class="modal-title-group">
-              <div class="modal-title-icon">
-                <svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
-                  <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"></path>
-                  <circle cx="9" cy="7" r="4"></circle>
-                  <path d="M23 21v-2a4 4 0 0 0-3-3.87"></path>
-                  <path d="M16 3.13a4 4 0 0 1 0 7.75"></path>
-                </svg>
-              </div>
-              <div>
-                <h2>Qui joue ?</h2>
-                <p class="profile-subtitle">Choisis ton profil ou ajoute un joueur</p>
-              </div>
+            <div>
+              <h2>Qui joue ?</h2>
+              <p class="profile-subtitle">Touche ton prénom (appui long pour modifier)</p>
             </div>
             <button id="profile-close-top-btn" type="button" class="modal-icon-close" aria-label="Fermer">✕</button>
           </div>

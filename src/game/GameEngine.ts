@@ -34,23 +34,15 @@ const THREE_ZOOM_BUTTONS: Array<Exclude<WorkshopZoom, 'overview'>> = [
 ];
 
 const LEVEL_TITLES: Record<number, string> = {
-  1: '1 · Les Heures (12h)',
-  2: '2 · Les 24 Heures',
-  3: '3 · Les Minutes',
-  4: '4 · Les Demi-Heures',
-  5: '5 · Les Quarts d’Heure',
-  6: '6 · À la Minute près',
-  7: '7 · Défi Jour & Nuit',
-  8: '8 · L’Horloge des Grands'
+  1: '1 · Les 12 heures',
+  2: '2 · Les 24 heures',
+  3: '3 · Les minutes',
+  4: '4 · Les demi-heures',
+  5: '5 · Les quarts d’heure',
+  6: '6 · À la minute près',
+  7: '7 · Le défi jour & nuit',
+  8: '8 · L’horloge des grands'
 };
-
-const AVATAR_COLORS = [
-  'linear-gradient(135deg, #f97316, #ea580c)',
-  'linear-gradient(135deg, #8b5cf6, #6d28d9)',
-  'linear-gradient(135deg, #0284c7, #0369a1)',
-  'linear-gradient(135deg, #10b981, #047857)',
-  'linear-gradient(135deg, #e11d48, #be123c)'
-];
 
 export class GameEngine {
   private canvas: HTMLCanvasElement;
@@ -90,6 +82,7 @@ export class GameEngine {
   private tutorialStartTime: number = 0;
   private activeHand: 'hour' | 'minute' = 'hour';
 
+  private unlockedEditProfileId: string | null = null;
   private editingProfileId: string | null = null;
   private confirmingDeleteId: string | null = null;
 
@@ -221,7 +214,7 @@ export class GameEngine {
         'compact-tutorial-text'
       );
       helpBox.classList.add('feedback-tutorial');
-      if (this.currentLevel === 2) {
+      if (this.currentLevel === 2 || this.currentLevel === 5) {
         helpBox.classList.add('compact-tutorial-text');
       }
     }
@@ -285,6 +278,7 @@ export class GameEngine {
     this.applySkyTheme(false);
 
     if (this.watchMechanism) {
+      this.watchMechanism.power = 0;
       this.watchMechanism.setZoomMode('overview');
     }
 
@@ -499,6 +493,7 @@ export class GameEngine {
     });
 
     const closeProfileModal = () => {
+      this.unlockedEditProfileId = null;
       this.editingProfileId = null;
       this.confirmingDeleteId = null;
       this.soundEngine.playSnap();
@@ -521,6 +516,7 @@ export class GameEngine {
       const created = SaveManager.createProfile(name, this.saveData.muted);
       this.saveData = created.save;
       if (input) input.value = '';
+      this.unlockedEditProfileId = null;
       this.editingProfileId = null;
       this.confirmingDeleteId = null;
       this.soundEngine.playSuccess();
@@ -600,6 +596,7 @@ export class GameEngine {
   }
 
   private openProfileModal(): void {
+    this.unlockedEditProfileId = null;
     this.editingProfileId = null;
     this.confirmingDeleteId = null;
     this.renderProfilesList();
@@ -613,12 +610,11 @@ export class GameEngine {
     const active = SaveManager.getActiveProfile();
 
     listEl.innerHTML = '';
-    profiles.forEach((profile, index) => {
+    profiles.forEach(profile => {
       const isActive = profile.id === active.id;
+      const isEditUnlocked = this.unlockedEditProfileId === profile.id;
       const stars = SaveManager.getTotalStars(profile.save);
       const displayName = profile.name === 'Test' ? 'Menu' : profile.name;
-      const initial = (displayName.trim()[0] || 'J').toUpperCase();
-      const avatarBg = AVATAR_COLORS[index % AVATAR_COLORS.length];
 
       const row = document.createElement('div');
       row.className = `profile-item${isActive ? ' active-profile' : ''}`;
@@ -657,6 +653,7 @@ export class GameEngine {
             this.soundEngine.playSuccess();
           }
           this.editingProfileId = null;
+          this.unlockedEditProfileId = null;
           this.renderProfilesList();
           this.updateMenuUI();
         });
@@ -674,16 +671,58 @@ export class GameEngine {
       selectBtn.type = 'button';
       selectBtn.className = 'profile-select-btn';
       selectBtn.innerHTML = `
-        <div class="prof-name-line">
-          <span class="prof-avatar" style="background: ${avatarBg}">${initial}</span>
-          <span class="prof-name">${displayName}</span>
-        </div>
+        <span class="prof-name">${displayName}</span>
         <span class="prof-stars"><span class="prof-star-icon">★</span> ${stars} / ${SaveManager.MAX_STARS}</span>
       `;
+
+      // Détection du clic long (500 ms) pour afficher les boutons d'édition
+      let pressTimer = 0;
+      let longPressTriggered = false;
+
+      const clearPress = () => {
+        if (pressTimer) {
+          clearTimeout(pressTimer);
+          pressTimer = 0;
+        }
+      };
+
+      const startPress = () => {
+        clearPress();
+        longPressTriggered = false;
+        pressTimer = window.setTimeout(() => {
+          longPressTriggered = true;
+          this.confirmingDeleteId = null;
+          this.unlockedEditProfileId =
+            this.unlockedEditProfileId === profile.id ? null : profile.id;
+          this.soundEngine.playSnap();
+          this.renderProfilesList();
+        }, 500);
+      };
+
+      selectBtn.addEventListener('pointerdown', startPress);
+      selectBtn.addEventListener('pointerup', clearPress);
+      selectBtn.addEventListener('pointerleave', clearPress);
+      selectBtn.addEventListener('pointercancel', clearPress);
+      selectBtn.addEventListener('contextmenu', (e) => {
+        e.preventDefault();
+        clearPress();
+        longPressTriggered = true;
+        this.confirmingDeleteId = null;
+        this.unlockedEditProfileId =
+          this.unlockedEditProfileId === profile.id ? null : profile.id;
+        this.soundEngine.playSnap();
+        this.renderProfilesList();
+      });
+
       selectBtn.addEventListener('click', () => {
+        if (longPressTriggered) {
+          longPressTriggered = false;
+          return;
+        }
         this.saveData = SaveManager.switchProfile(profile.id);
         this.soundEngine.setMuted(this.saveData.muted);
         this.soundEngine.playSnap();
+        this.unlockedEditProfileId = null;
         this.confirmingDeleteId = null;
         this.renderProfilesList();
         this.updateSoundButtonUI();
@@ -692,53 +731,56 @@ export class GameEngine {
 
       row.appendChild(selectBtn);
 
-      const editBtn = document.createElement('button');
-      editBtn.type = 'button';
-      editBtn.className = 'profile-action-btn';
-      editBtn.title = `Renommer ${displayName}`;
-      editBtn.innerHTML = `
-        <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
-          <path d="M12 20h9"></path>
-          <path d="M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4L16.5 3.5z"></path>
-        </svg>
-      `;
-      editBtn.addEventListener('click', (e) => {
-        e.stopPropagation();
-        this.confirmingDeleteId = null;
-        this.editingProfileId = profile.id;
-        this.soundEngine.playSnap();
-        this.renderProfilesList();
-      });
-      row.appendChild(editBtn);
-
-      if (profiles.length > 1) {
-        const delBtn = document.createElement('button');
-        delBtn.type = 'button';
-        const isConfirming = this.confirmingDeleteId === profile.id;
-        delBtn.className = `profile-del-btn${isConfirming ? ' confirm-del' : ''}`;
-        delBtn.title = isConfirming ? `Confirmer la suppression` : `Supprimer ${displayName}`;
-        delBtn.innerHTML = isConfirming
-          ? 'Oui ?'
-          : `<svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
-               <polyline points="3 6 5 6 21 6"></polyline>
-               <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path>
-             </svg>`;
-        delBtn.addEventListener('click', (e) => {
+      if (isEditUnlocked) {
+        const editBtn = document.createElement('button');
+        editBtn.type = 'button';
+        editBtn.className = 'profile-action-btn';
+        editBtn.title = `Renommer ${displayName}`;
+        editBtn.innerHTML = `
+          <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+            <path d="M12 20h9"></path>
+            <path d="M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4L16.5 3.5z"></path>
+          </svg>
+        `;
+        editBtn.addEventListener('click', (e) => {
           e.stopPropagation();
-          if (this.confirmingDeleteId !== profile.id) {
-            this.confirmingDeleteId = profile.id;
-            this.soundEngine.playSnap();
-            this.renderProfilesList();
-            return;
-          }
           this.confirmingDeleteId = null;
-          const updatedActive = SaveManager.deleteProfile(profile.id);
-          this.saveData = updatedActive.save;
+          this.editingProfileId = profile.id;
           this.soundEngine.playSnap();
           this.renderProfilesList();
-          this.updateMenuUI();
         });
-        row.appendChild(delBtn);
+        row.appendChild(editBtn);
+
+        if (profiles.length > 1) {
+          const delBtn = document.createElement('button');
+          delBtn.type = 'button';
+          const isConfirming = this.confirmingDeleteId === profile.id;
+          delBtn.className = `profile-del-btn${isConfirming ? ' confirm-del' : ''}`;
+          delBtn.title = isConfirming ? `Confirmer la suppression` : `Supprimer ${displayName}`;
+          delBtn.innerHTML = isConfirming
+            ? 'Oui ?'
+            : `<svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                 <polyline points="3 6 5 6 21 6"></polyline>
+                 <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path>
+               </svg>`;
+          delBtn.addEventListener('click', (e) => {
+            e.stopPropagation();
+            if (this.confirmingDeleteId !== profile.id) {
+              this.confirmingDeleteId = profile.id;
+              this.soundEngine.playSnap();
+              this.renderProfilesList();
+              return;
+            }
+            this.confirmingDeleteId = null;
+            this.unlockedEditProfileId = null;
+            const updatedActive = SaveManager.deleteProfile(profile.id);
+            this.saveData = updatedActive.save;
+            this.soundEngine.playSnap();
+            this.renderProfilesList();
+            this.updateMenuUI();
+          });
+          row.appendChild(delBtn);
+        }
       }
 
       listEl.appendChild(row);
@@ -941,7 +983,7 @@ export class GameEngine {
 
         if (this.currentLevel === SaveManager.MAX_LEVEL) {
           this.showFeedback(
-            `👑 <strong>Niveau 8 validé (${starsHtml}) !</strong> L’Atelier de l’Horloger est débloqué !`,
+            `👑 <strong>Niveau 8 validé (${starsHtml}) !</strong> L’atelier de l’horloger est débloqué !`,
             'success',
             () => {
               this.openWorkshop();
@@ -953,8 +995,8 @@ export class GameEngine {
         const nextLvl = this.currentLevel + 1;
         const msg =
           earnedStars === 3
-            ? `🏆 <strong>Niveau ${this.currentLevel} parfait (${starsHtml}) !</strong> Passage au Niveau ${nextLvl}...`
-            : `🏆 <strong>Niveau ${this.currentLevel} validé (${starsHtml}) !</strong> Passage au Niveau ${nextLvl}...`;
+            ? `🏆 <strong>Niveau ${this.currentLevel} parfait (${starsHtml}) !</strong> Passage au niveau ${nextLvl}...`
+            : `🏆 <strong>Niveau ${this.currentLevel} validé (${starsHtml}) !</strong> Passage au niveau ${nextLvl}...`;
 
         this.showFeedback(
           msg,

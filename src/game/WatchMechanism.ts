@@ -11,7 +11,7 @@ export class WatchMechanism {
   private width: number;
   private height: number;
 
-  public power: number = 100;
+  public power: number = 0;
   public zoomMode: WorkshopZoom = 'overview';
   public clutchEngagement: number = 0;
 

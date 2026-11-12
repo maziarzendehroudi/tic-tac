@@ -1,5 +1,4 @@
 import { describe, it, expect, beforeEach } from 'vitest';
-import { TimeMath } from './TimeMath';
 import { SaveManager } from './SaveManager';
 import { SoundEngine } from './SoundEngine';
 import { WatchMechanism } from './WatchMechanism';
@@ -35,11 +34,12 @@ function createMockCtx(): CanvasRenderingContext2D {
   } as unknown as CanvasRenderingContext2D;
 }
 
-describe('WatchMechanism V54 — Continuité du Ressort, Détente Rapide (20s), Cinématique 5 Contacts & 3 Zooms', () => {
-  it('ne provoque aucun saut de position du barillet lorsque le ressort est chargé et repart en détente', () => {
+describe('WatchMechanism V55 — Ressort à 0 par défaut, Continuité du Ressort, Détente Rapide (20s) & Cinématique 5 Contacts', () => {
+  it('démarre avec le ressort à 0 par défaut et ne provoque aucun saut de position après remontage', () => {
     const wm = new WatchMechanism(createMockCtx(), 500, 500);
-    wm.power = 50;
+    expect(wm.power).toBe(0);
 
+    wm.power = 50;
     wm.update(400, true);
     const angleAtEndOfWinding = wm.angleBarrel;
 
@@ -93,7 +93,7 @@ describe('WatchMechanism V54 — Continuité du Ressort, Détente Rapide (20s), 
   });
 });
 
-describe('Progression Pédagogique 8 Niveaux (V54) — 6 repères quotidiens du Niveau 2', () => {
+describe('Progression Pédagogique 8 Niveaux (V55) — Rotation continue Niveau 2 + Pause 3s à minuit & Niveau 5 complet', () => {
   beforeEach(() => {
     const store: Record<string, string> = {};
     globalThis.localStorage = {
@@ -106,56 +106,53 @@ describe('Progression Pédagogique 8 Niveaux (V54) — 6 repères quotidiens du 
     };
   });
 
-  it('accorde "1 heure" au singulier et retire la mention entre parenthèses au Niveau 5', () => {
-    expect(TimeMath.formatSpokenTime(1, 0, 1)).toBe('1 heure');
-    expect(TimeMath.formatSpokenTime(2, 0, 1)).toBe('2 heures');
-    expect(TimeMath.formatSpokenTime(1, 0, 2)).toBe('1 heure');
-    expect(TimeMath.formatSpokenTime(1, 30, 4)).toBe('1 heure et demie');
-    expect(TimeMath.formatSpokenTime(4, 15, 5)).toBe('');
-    expect(TimeMath.formatSpokenTime(4, 45, 5)).toBe('');
+  it('nomme le Niveau 1 "Les 12 heures" et affiche 0 / 15 / 30 / 45 au Niveau 5', () => {
+    expect(TutorialOverlay.getInfo(1).title).toBe('Les 12 heures');
+    const info5 = TutorialOverlay.getInfo(5).ruleHtml;
+    expect(info5).toContain('heure pile');
+    expect(info5).toContain('demie heure');
+    expect(info5).toContain('un quart d’heure');
+    expect(info5).toContain('trois quarts d’heure');
   });
 
-  it('parcourt les 6 repères de la journée (Minuit 00h, 03h, 09h école, 12h repas, 17h fin école, 21h dodo)', () => {
-    // 1. Minuit (00h) : on change de jour (t = 500 ms)
-    const step00 = TutorialOverlay.getLevel2Timeline(500);
-    expect(step00.hours24).toBe(0);
-    expect(step00.isDay).toBe(false);
-    expect(step00.calloutText).toContain('on change de jour');
+  it('anime le Niveau 2 sans arrêt intermédiaire et marque une pause de 3 secondes à minuit', () => {
+    // 1. C'est la nuit (vers 3h00 => t = 1500 ms)
+    const night = TutorialOverlay.getLevel2Timeline(1500);
+    expect(night.hours24).toBeCloseTo(3, 2);
+    expect(night.calloutText).toBe('C’est la nuit');
+    expect(night.isDay).toBe(false);
 
-    // 2. 03 h : On dort (t = 3000 ms)
-    const step03 = TutorialOverlay.getLevel2Timeline(3000);
-    expect(step03.hours24).toBe(3);
-    expect(step03.isDay).toBe(false);
-    expect(step03.tourBlend).toBe(0);
-    expect(step03.calloutText).toContain('03 h');
+    // 2. Le jour se lève (vers 8h00 => t = 4000 ms)
+    const morning = TutorialOverlay.getLevel2Timeline(4000);
+    expect(morning.hours24).toBeCloseTo(8, 2);
+    expect(morning.calloutText).toBe('Le jour se lève');
+    expect(morning.isDay).toBe(true);
 
-    // 3. 09 h : L’école (t = 6000 ms)
-    const step09 = TutorialOverlay.getLevel2Timeline(6000);
-    expect(step09.hours24).toBe(9);
-    expect(step09.isDay).toBe(true);
-    expect(step09.tourBlend).toBe(0);
-    expect(step09.calloutText).toContain('09 h · L’école');
+    // 3. Repas de midi (à 12h00 => t = 6000 ms)
+    const noon = TutorialOverlay.getLevel2Timeline(6000);
+    expect(noon.hours24).toBeCloseTo(12, 2);
+    expect(noon.calloutText).toBe('Repas de midi');
+    expect(noon.isDay).toBe(true);
 
-    // 4. 12 h : Midi : le repas (t = 8500 ms)
-    const step12 = TutorialOverlay.getLevel2Timeline(8500);
-    expect(step12.hours24).toBe(12);
-    expect(step12.isDay).toBe(true);
-    expect(step12.tourBlend).toBe(0);
-    expect(step12.calloutText).toContain('Midi : le repas');
+    // 4. Le goûter (à 16h00 => t = 8000 ms)
+    const snack = TutorialOverlay.getLevel2Timeline(8000);
+    expect(snack.hours24).toBeCloseTo(16, 2);
+    expect(snack.calloutText).toBe('Le goûter');
+    expect(snack.isDay).toBe(true);
 
-    // 5. 17 h : La fin de l’école (t = 11500 ms)
-    const step17 = TutorialOverlay.getLevel2Timeline(11500);
-    expect(step17.hours24).toBe(17);
-    expect(step17.isDay).toBe(true);
-    expect(step17.tourBlend).toBe(1);
-    expect(step17.calloutText).toContain('17 h · La fin de l’école');
+    // 5. Repas du soir (vers 20h00 => t = 10000 ms)
+    const dinner = TutorialOverlay.getLevel2Timeline(10000);
+    expect(dinner.hours24).toBeCloseTo(20, 2);
+    expect(dinner.calloutText).toBe('Repas du soir');
+    expect(dinner.isDay).toBe(false);
 
-    // 6. 21 h : Le dodo (t = 14000 ms)
-    const step21 = TutorialOverlay.getLevel2Timeline(14000);
-    expect(step21.hours24).toBe(21);
-    expect(step21.isDay).toBe(false);
-    expect(step21.tourBlend).toBe(1);
-    expect(step21.calloutText).toContain('21 h · Le dodo');
+    // 6. Pause de 3 secondes à minuit (entre 12000 ms et 15000 ms)
+    const midnightStart = TutorialOverlay.getLevel2Timeline(12100);
+    const midnightEnd = TutorialOverlay.getLevel2Timeline(14800);
+    expect(midnightStart.hours24).toBe(0);
+    expect(midnightEnd.hours24).toBe(0);
+    expect(midnightStart.calloutText).toBe('Minuit : on change de jour');
+    expect(midnightEnd.calloutText).toBe('Minuit : on change de jour');
   });
 
   it('dessine le cadran et le didacticiel sans erreur pour chacun des 8 niveaux', () => {
