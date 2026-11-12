@@ -576,9 +576,8 @@ body.theme-night #instruction {
 #help-text { flex: 1; }
 #help-box.invisible-feedback { display: none; }
 
-/* Didacticiels et bonnes réponses : typographie noire agrandie sans contour blanc */
-#help-box.feedback-tutorial,
-#help-box.feedback-success {
+/* Didacticiels : typographie noire agrandie sans contour blanc */
+#help-box.feedback-tutorial {
   background: transparent;
   border: none;
   box-shadow: none;
@@ -587,6 +586,19 @@ body.theme-night #instruction {
   font-size: clamp(1.14rem, 4.5vw, 1.34rem);
   font-weight: 700;
   line-height: 1.28;
+  text-shadow: none;
+}
+
+/* Confirmations des bonnes réponses : même taille de typographie que les questions ("Quelle heure est-il ?") */
+#help-box.feedback-success {
+  background: transparent;
+  border: none;
+  box-shadow: none;
+  padding: 2px 6px;
+  color: #0f172a;
+  font-size: clamp(1.3rem, 5.2vw, 1.55rem);
+  font-weight: 700;
+  line-height: 1.25;
   text-shadow: none;
 }
 body.theme-night #help-box.feedback-tutorial,
@@ -1384,4 +1396,85 @@ body.theme-night .recap-learned {
 @keyframes transProgress5s {
   0% { width: 0%; }
   100% { width: 100%; }
+}
+
+/* Styles V59 pour l'écran simplifié Étape 2 et les boutons Commencer / Continuer */
+.trans-level-reminder {
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+  padding: 8px 18px;
+  border-radius: 20px;
+  border: 2.5px solid rgba(255, 255, 255, 0.65);
+  color: #ffffff;
+  font-size: 1.05rem;
+  font-weight: 700;
+  box-shadow: 0 8px 20px rgba(15, 23, 42, 0.35);
+}
+.trans-reminder-name {
+  white-space: nowrap;
+}
+.trans-reminder-stars {
+  color: #fde047;
+  background: rgba(15, 23, 42, 0.35);
+  padding: 2px 10px;
+  border-radius: 12px;
+  font-size: 0.96rem;
+}
+
+.trans-step2-center-box {
+  background: rgba(255, 255, 255, 0.96);
+  color: #0f172a;
+  border: 4px solid #fde047;
+  border-radius: 28px;
+  padding: 28px 22px;
+  width: 100%;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 14px;
+  box-shadow: 0 18px 40px rgba(15, 23, 42, 0.42);
+  animation: transPopScale 0.5s cubic-bezier(0.34, 1.56, 0.64, 1) forwards;
+}
+
+.trans-step2-badge {
+  background: linear-gradient(135deg, #f97316, #ea580c);
+  color: #ffffff;
+  font-size: 1.05rem;
+  font-weight: 700;
+  padding: 5px 18px;
+  border-radius: 16px;
+  box-shadow: 0 4px 12px rgba(234, 88, 12, 0.35);
+}
+
+.trans-step2-main-msg {
+  font-size: clamp(1.55rem, 5.8vw, 2rem);
+  font-weight: 700;
+  line-height: 1.22;
+  color: #0f172a;
+}
+
+.trans-action-wrap {
+  width: 100%;
+  padding-top: 4px;
+}
+
+.trans-action-btn {
+  width: 100%;
+  height: 58px;
+  background: linear-gradient(135deg, #10b981, #059669);
+  color: #ffffff;
+  border: 3px solid #fde047;
+  border-radius: 20px;
+  font-size: clamp(1.25rem, 4.8vw, 1.45rem);
+  font-weight: 700;
+  cursor: pointer;
+  box-shadow: 0 8px 22px rgba(16, 185, 129, 0.45);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: transform 0.12s ease;
+}
+.trans-action-btn:active {
+  transform: scale(0.97);
 }

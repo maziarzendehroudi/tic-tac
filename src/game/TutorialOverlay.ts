@@ -31,20 +31,32 @@ export interface Level5TimelineState {
 }
 
 export class TutorialOverlay {
-  public static readonly LEVEL2_MOVE_MS = 12000;
-  public static readonly LEVEL2_MIDNIGHT_PAUSE_MS = 3000;
-  public static readonly LEVEL2_CYCLE_MS =
-    TutorialOverlay.LEVEL2_MOVE_MS + TutorialOverlay.LEVEL2_MIDNIGHT_PAUSE_MS;
+  /**
+   * Niveau 2 — Cycle complet de 15 200 ms :
+   * - [0 .. 2600[     : déplacement continu 0h -> 8h sans arrêt à 3h ("C’est la nuit")
+   * - [2600 .. 3600[  : pause de 1s à 8h ("Le jour se lève")
+   * - [3600 .. 5000[  : déplacement 8h -> 12h
+   * - [5000 .. 6000[  : pause de 1s à 12h ("Repas de midi")
+   * - [6000 .. 7400[  : déplacement 12h -> 16h
+   * - [7400 .. 8400[  : pause de 1s à 16h ("Le goûter")
+   * - [8400 .. 9800[  : déplacement 16h -> 20h
+   * - [9800 .. 10800[ : pause de 1s à 20h ("Repas du soir")
+   * - [10800 .. 12200[: déplacement 20h -> 24h (00h)
+   * - [12200 .. 15200[: pause de 3s à minuit 00h ("Minuit : on change de jour")
+   */
+  public static readonly LEVEL2_CYCLE_MS = 15200;
 
   /**
-   * Niveau 5 :
-   * - 8 000 ms de rotation fluide et continue sur 60 minutes
-   * - 2 400 ms de pause sur l'heure pile (00) avant de recommencer le cycle
+   * Niveau 5 — Cycle complet de 9 600 ms (4 étapes × [1000 ms pause + 1400 ms déplacement]) :
+   * - Pause de 1s à 00 ("Heure pile"), puis déplacement vers 15
+   * - Pause de 1s à 15 ("Quart d’heure"), puis déplacement vers 30
+   * - Pause de 1s à 30 ("Demi-heure"), puis déplacement vers 45
+   * - Pause de 1s à 45 ("Trois quarts d’heure"), puis déplacement vers 00
    */
-  public static readonly LEVEL5_MOVE_MS = 8000;
-  public static readonly LEVEL5_TOP_PAUSE_MS = 2400;
+  public static readonly LEVEL5_STEP_PAUSE_MS = 1000;
+  public static readonly LEVEL5_STEP_MOVE_MS = 1400;
   public static readonly LEVEL5_CYCLE_MS =
-    TutorialOverlay.LEVEL5_MOVE_MS + TutorialOverlay.LEVEL5_TOP_PAUSE_MS;
+    4 * (TutorialOverlay.LEVEL5_STEP_PAUSE_MS + TutorialOverlay.LEVEL5_STEP_MOVE_MS);
 
   public static getInfo(level: number): TutorialStepInfo {
     switch (level) {
@@ -117,149 +129,152 @@ export class TutorialOverlay {
 
   public static getLevel2Timeline(elapsedMs: number): Level2TimelineState {
     const total = this.LEVEL2_CYCLE_MS;
-    const cycleTime = ((elapsedMs % total) + total) % total;
+    const t = ((elapsedMs % total) + total) % total;
 
-    const isMidnightPause = cycleTime >= this.LEVEL2_MOVE_MS;
-    const h = isMidnightPause ? 0 : (cycleTime / this.LEVEL2_MOVE_MS) * 24;
+    let h = 0;
+    let dwellFactor = 0.55;
+    let calloutText = 'C’est la nuit';
+    let calloutColor = '#38bdf8';
 
+    if (t < 2600) {
+      // 0h -> 8h sans arrêt à 3h00
+      h = this.easeInOutSine(t / 2600) * 8;
+      dwellFactor = 0.65;
+      calloutText = 'C’est la nuit';
+      calloutColor = '#38bdf8';
+    } else if (t < 3600) {
+      // Pause de 1 seconde à 8h00
+      h = 8;
+      dwellFactor = 1;
+      calloutText = 'Le jour se lève';
+      calloutColor = '#0284c7';
+    } else if (t < 5000) {
+      // Déplacement 8h -> 12h
+      h = 8 + this.easeInOutSine((t - 3600) / 1400) * 4;
+      dwellFactor = 0.5;
+      calloutText = 'Le jour se lève';
+      calloutColor = '#0284c7';
+    } else if (t < 6000) {
+      // Pause de 1 seconde à 12h00
+      h = 12;
+      dwellFactor = 1;
+      calloutText = 'Repas de midi';
+      calloutColor = '#0284c7';
+    } else if (t < 7400) {
+      // Déplacement 12h -> 16h
+      h = 12 + this.easeInOutSine((t - 6000) / 1400) * 4;
+      dwellFactor = 0.5;
+      calloutText = 'Repas de midi';
+      calloutColor = '#0284c7';
+    } else if (t < 8400) {
+      // Pause de 1 seconde à 16h00
+      h = 16;
+      dwellFactor = 1;
+      calloutText = 'Le goûter';
+      calloutColor = '#ea580c';
+    } else if (t < 9800) {
+      // Déplacement 16h -> 20h
+      h = 16 + this.easeInOutSine((t - 8400) / 1400) * 4;
+      dwellFactor = 0.5;
+      calloutText = 'Le goûter';
+      calloutColor = '#ea580c';
+    } else if (t < 10800) {
+      // Pause de 1 seconde à 20h00
+      h = 20;
+      dwellFactor = 1;
+      calloutText = 'Repas du soir';
+      calloutColor = '#ea580c';
+    } else if (t < 12200) {
+      // Déplacement 20h -> 24h (00h)
+      h = 20 + this.easeInOutSine((t - 10800) / 1400) * 4;
+      dwellFactor = 0.5;
+      calloutText = 'Repas du soir';
+      calloutColor = '#ea580c';
+    } else {
+      // Pause de 3 secondes à Minuit (00h00)
+      h = 0;
+      dwellFactor = 1;
+      calloutText = 'Minuit : on change de jour';
+      calloutColor = '#fbbf24';
+    }
+
+    // Fondu entre le 1er tour (0 = chiffres noirs) et le 2e tour (1 = chiffres orange)
     let tourBlend = 0;
-    if (isMidnightPause) {
-      const pauseElapsed = cycleTime - this.LEVEL2_MOVE_MS;
-      tourBlend =
-        pauseElapsed > this.LEVEL2_MIDNIGHT_PAUSE_MS - 600
-          ? 1 - (pauseElapsed - (this.LEVEL2_MIDNIGHT_PAUSE_MS - 600)) / 600
-          : 1;
-    } else if (h >= 11.4 && h <= 12.6) {
-      tourBlend = this.smoothstep(11.4, 12.6, h);
-    } else if (h > 12.6) {
+    if (t >= 12200) {
+      const pauseElapsed = t - 12200;
+      tourBlend = pauseElapsed > 2400 ? 1 - (pauseElapsed - 2400) / 600 : 1;
+    } else if (t >= 6000 && t < 6700) {
+      tourBlend = this.smoothstep(6000, 6700, t);
+    } else if (t >= 6700) {
       tourBlend = 1;
     }
 
     const activeTour: 1 | 2 = tourBlend >= 0.5 ? 2 : 1;
+    const isDay = t < 12200 && h >= 6 && h < 18;
 
-    if (isMidnightPause || h >= 23) {
-      return {
-        hours24: h,
-        isDay: false,
-        activeTour,
-        tourBlend,
-        dwellFactor: isMidnightPause ? 1 : 0.75,
-        periodLabel: '🌙 Minuit',
-        calloutText: 'Minuit : on change de jour',
-        calloutColor: '#fbbf24'
-      };
-    }
-
-    if (h < 6) {
-      return {
-        hours24: h,
-        isDay: false,
-        activeTour,
-        tourBlend,
-        dwellFactor: 0.65,
-        periodLabel: '🌙 Nuit (matin)',
-        calloutText: 'C’est la nuit',
-        calloutColor: '#38bdf8'
-      };
-    }
-
-    if (h < 11) {
-      return {
-        hours24: h,
-        isDay: true,
-        activeTour,
-        tourBlend,
-        dwellFactor: 0.65,
-        periodLabel: '☀️ Matin',
-        calloutText: 'Le jour se lève',
-        calloutColor: '#0284c7'
-      };
-    }
-
-    if (h < 14.5) {
-      return {
-        hours24: h,
-        isDay: true,
-        activeTour,
-        tourBlend,
-        dwellFactor: 0.65,
-        periodLabel: h < 12 ? '☀️ Midi' : '🌤️ Après-midi',
-        calloutText: 'Repas de midi',
-        calloutColor: '#0284c7'
-      };
-    }
-
-    if (h < 18.5) {
-      return {
-        hours24: h,
-        isDay: true,
-        activeTour,
-        tourBlend,
-        dwellFactor: 0.65,
-        periodLabel: '🌤️ Après-midi',
-        calloutText: 'Le goûter',
-        calloutColor: '#ea580c'
-      };
+    let periodLabel = '🌙 Nuit (matin)';
+    if (t >= 12200) {
+      periodLabel = '🌙 Minuit';
+    } else if (h >= 6 && h < 12) {
+      periodLabel = '☀️ Matin';
+    } else if (h >= 12 && h < 13) {
+      periodLabel = '☀️ Midi';
+    } else if (h >= 13 && h < 18) {
+      periodLabel = '🌤️ Après-midi';
+    } else if (h >= 18) {
+      periodLabel = '🌙 Soir';
     }
 
     return {
-      hours24: h,
-      isDay: false,
+      hours24: h % 24,
+      isDay,
       activeTour,
       tourBlend,
-      dwellFactor: 0.65,
-      periodLabel: '🌙 Soir',
-      calloutText: 'Repas du soir',
-      calloutColor: '#ea580c'
+      dwellFactor,
+      periodLabel,
+      calloutText,
+      calloutColor
     };
   }
 
   /**
-   * Calcule la progression continue du Niveau 5 (rotation fluide sur 60 minutes) :
-   * - [0 .. 7.5[ ou [52.5 .. 60] + pause en haut : "Heure pile"
-   * - [7.5 .. 22.5[  (autour de 15) : "Quart d'heure"
-   * - [22.5 .. 37.5[ (autour de 30) : "Demi-heure"
-   * - [37.5 .. 52.5[ (autour de 45) : "Trois quarts d'heure"
+   * Niveau 5 — Pause de 1 seconde (1000 ms) sur 00, 15, 30 et 45 :
+   * la pilule s'affiche au moment exact où l'aiguille s'arrête sur chaque quart d'heure.
    */
   public static getLevel5Timeline(elapsedMs: number): Level5TimelineState {
     const total = this.LEVEL5_CYCLE_MS;
     const cycleTime = ((elapsedMs % total) + total) % total;
 
-    const isTopPause = cycleTime >= this.LEVEL5_MOVE_MS;
-    const minutes = isTopPause ? 0 : (cycleTime / this.LEVEL5_MOVE_MS) * 60;
+    const stepDuration = this.LEVEL5_STEP_PAUSE_MS + this.LEVEL5_STEP_MOVE_MS; // 2400 ms
+    const stepIndex = Math.min(3, Math.floor(cycleTime / stepDuration));
+    const localTime = cycleTime - stepIndex * stepDuration;
 
-    if (isTopPause || minutes < 7.5 || minutes >= 52.5) {
-      return {
-        minutes,
-        dwellFactor: isTopPause ? 1 : 0.75,
-        calloutText: 'Heure pile',
-        calloutColor: '#10b981'
-      };
-    }
+    const steps: Array<{ targetMin: number; text: string; color: string }> = [
+      { targetMin: 0, text: 'Heure pile', color: '#10b981' },
+      { targetMin: 15, text: 'Quart d’heure', color: '#0284c7' },
+      { targetMin: 30, text: 'Demi-heure', color: '#8b5cf6' },
+      { targetMin: 45, text: 'Trois quarts d’heure', color: '#ea580c' }
+    ];
 
-    if (minutes < 22.5) {
-      return {
-        minutes,
-        dwellFactor: 0.7,
-        calloutText: 'Quart d’heure',
-        calloutColor: '#0284c7'
-      };
-    }
+    const current = steps[stepIndex];
+    const isPaused = localTime < this.LEVEL5_STEP_PAUSE_MS;
 
-    if (minutes < 37.5) {
-      return {
-        minutes,
-        dwellFactor: 0.7,
-        calloutText: 'Demi-heure',
-        calloutColor: '#8b5cf6'
-      };
+    let minutes = current.targetMin;
+    let dwellFactor = 1;
+
+    if (!isPaused) {
+      const moveProgress = this.easeInOutSine(
+        (localTime - this.LEVEL5_STEP_PAUSE_MS) / this.LEVEL5_STEP_MOVE_MS
+      );
+      minutes = (current.targetMin + moveProgress * 15) % 60;
+      dwellFactor = 0.45;
     }
 
     return {
       minutes,
-      dwellFactor: 0.7,
-      calloutText: 'Trois quarts d’heure',
-      calloutColor: '#ea580c'
+      dwellFactor,
+      calloutText: current.text,
+      calloutColor: current.color
     };
   }
 
@@ -390,7 +405,7 @@ export class TutorialOverlay {
     const haloColor = state.tourBlend < 0.5 ? '#0284c7' : '#ea580c';
 
     ctx.save();
-    ctx.globalAlpha = 0.55 + 0.45 * state.dwellFactor;
+    ctx.globalAlpha = 0.45 + 0.55 * state.dwellFactor;
     this.drawTargetHalo(ctx, orbitR, angleH, baseHaloR + pulse * 3.5, haloColor);
     ctx.restore();
   }
@@ -409,7 +424,7 @@ export class TutorialOverlay {
     const minAngle = (m * Math.PI) / 30;
 
     ctx.save();
-    ctx.globalAlpha = 0.55 + 0.45 * state.dwellFactor;
+    ctx.globalAlpha = 0.45 + 0.55 * state.dwellFactor;
     this.drawTargetHalo(ctx, radius - 25, minAngle, 20 + pulse * 3.5, state.calloutColor);
     ctx.restore();
   }

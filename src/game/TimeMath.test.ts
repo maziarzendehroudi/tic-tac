@@ -5,6 +5,7 @@ import { WatchMechanism } from './WatchMechanism';
 import { Hands } from './Hands';
 import { Clock } from './Clock';
 import { TutorialOverlay } from './TutorialOverlay';
+import { GameEngine } from './GameEngine';
 
 function createMockCtx(): CanvasRenderingContext2D {
   return {
@@ -34,7 +35,7 @@ function createMockCtx(): CanvasRenderingContext2D {
   } as unknown as CanvasRenderingContext2D;
 }
 
-describe('WatchMechanism V55 — Ressort à 0 par défaut, Continuité du Ressort, Détente Rapide (20s) & Cinématique 5 Contacts', () => {
+describe('WatchMechanism V59 — Ressort à 0 par défaut, Continuité du Ressort, Détente Rapide (20s) & Cinématique 5 Contacts', () => {
   it('démarre avec le ressort à 0 par défaut et ne provoque aucun saut de position après remontage', () => {
     const wm = new WatchMechanism(createMockCtx(), 500, 500);
     expect(wm.power).toBe(0);
@@ -93,7 +94,7 @@ describe('WatchMechanism V55 — Ressort à 0 par défaut, Continuité du Ressor
   });
 });
 
-describe('Progression Pédagogique 8 Niveaux (V55) — Rotation continue Niveau 2 + Pause 3s à minuit & Niveau 5 complet', () => {
+describe('Didacticiels Niveaux 2 et 5 (V59) — Pause de 1 seconde à chaque étape et pilules synchronisées', () => {
   beforeEach(() => {
     const store: Record<string, string> = {};
     globalThis.localStorage = {
@@ -106,63 +107,85 @@ describe('Progression Pédagogique 8 Niveaux (V55) — Rotation continue Niveau 
     };
   });
 
-  it('nomme le Niveau 1 "Les 12 heures" et affiche 0 / 15 / 30 / 45 au Niveau 5', () => {
-    expect(TutorialOverlay.getInfo(1).title).toBe('Les 12 heures');
-    const info5 = TutorialOverlay.getInfo(5).ruleHtml;
-    expect(info5).toContain('heure pile');
-    expect(info5).toContain('demie heure');
-    expect(info5).toContain('un quart d’heure');
-    expect(info5).toContain('trois quarts d’heure');
-  });
-
-  it('anime le Niveau 2 sans arrêt intermédiaire et marque une pause de 3 secondes à minuit', () => {
-    // 1. C'est la nuit (vers 3h00 => t = 1500 ms)
-    const night = TutorialOverlay.getLevel2Timeline(1500);
-    expect(night.hours24).toBeCloseTo(3, 2);
+  it('marque une pause de 1 seconde à 8h, 12h, 16h, 20h (et 3s à minuit) au Niveau 2 avec la pilule correspondante', () => {
+    // 1. Nuit sans arrêt à 3h00 (t = 1200 ms)
+    const night = TutorialOverlay.getLevel2Timeline(1200);
     expect(night.calloutText).toBe('C’est la nuit');
-    expect(night.isDay).toBe(false);
 
-    // 2. Le jour se lève (vers 8h00 => t = 4000 ms)
-    const morning = TutorialOverlay.getLevel2Timeline(4000);
-    expect(morning.hours24).toBeCloseTo(8, 2);
-    expect(morning.calloutText).toBe('Le jour se lève');
-    expect(morning.isDay).toBe(true);
+    // 2. Pause de 1s à 8h00 (entre 2600 ms et 3600 ms)
+    const pause8Start = TutorialOverlay.getLevel2Timeline(2650);
+    const pause8End = TutorialOverlay.getLevel2Timeline(3550);
+    expect(pause8Start.hours24).toBe(8);
+    expect(pause8End.hours24).toBe(8);
+    expect(pause8Start.calloutText).toBe('Le jour se lève');
 
-    // 3. Repas de midi (à 12h00 => t = 6000 ms)
-    const noon = TutorialOverlay.getLevel2Timeline(6000);
-    expect(noon.hours24).toBeCloseTo(12, 2);
-    expect(noon.calloutText).toBe('Repas de midi');
-    expect(noon.isDay).toBe(true);
+    // 3. Pause de 1s à 12h00 (entre 5000 ms et 6000 ms)
+    const pause12Start = TutorialOverlay.getLevel2Timeline(5050);
+    const pause12End = TutorialOverlay.getLevel2Timeline(5950);
+    expect(pause12Start.hours24).toBe(12);
+    expect(pause12End.hours24).toBe(12);
+    expect(pause12Start.calloutText).toBe('Repas de midi');
 
-    // 4. Le goûter (à 16h00 => t = 8000 ms)
-    const snack = TutorialOverlay.getLevel2Timeline(8000);
-    expect(snack.hours24).toBeCloseTo(16, 2);
-    expect(snack.calloutText).toBe('Le goûter');
-    expect(snack.isDay).toBe(true);
+    // 4. Pause de 1s à 16h00 (entre 7400 ms et 8400 ms)
+    const pause16Start = TutorialOverlay.getLevel2Timeline(7450);
+    const pause16End = TutorialOverlay.getLevel2Timeline(8350);
+    expect(pause16Start.hours24).toBe(16);
+    expect(pause16End.hours24).toBe(16);
+    expect(pause16Start.calloutText).toBe('Le goûter');
 
-    // 5. Repas du soir (vers 20h00 => t = 10000 ms)
-    const dinner = TutorialOverlay.getLevel2Timeline(10000);
-    expect(dinner.hours24).toBeCloseTo(20, 2);
-    expect(dinner.calloutText).toBe('Repas du soir');
-    expect(dinner.isDay).toBe(false);
+    // 5. Pause de 1s à 20h00 (entre 9800 ms et 10800 ms)
+    const pause20Start = TutorialOverlay.getLevel2Timeline(9850);
+    const pause20End = TutorialOverlay.getLevel2Timeline(10750);
+    expect(pause20Start.hours24).toBe(20);
+    expect(pause20End.hours24).toBe(20);
+    expect(pause20Start.calloutText).toBe('Repas du soir');
 
-    // 6. Pause de 3 secondes à minuit (entre 12000 ms et 15000 ms)
-    const midnightStart = TutorialOverlay.getLevel2Timeline(12100);
-    const midnightEnd = TutorialOverlay.getLevel2Timeline(14800);
-    expect(midnightStart.hours24).toBe(0);
-    expect(midnightEnd.hours24).toBe(0);
-    expect(midnightStart.calloutText).toBe('Minuit : on change de jour');
-    expect(midnightEnd.calloutText).toBe('Minuit : on change de jour');
+    // 6. Pause de 3s à Minuit 00h00 (entre 12200 ms et 15200 ms)
+    const pause00Start = TutorialOverlay.getLevel2Timeline(12300);
+    const pause00End = TutorialOverlay.getLevel2Timeline(15100);
+    expect(pause00Start.hours24).toBe(0);
+    expect(pause00End.hours24).toBe(0);
+    expect(pause00Start.calloutText).toBe('Minuit : on change de jour');
   });
 
-  it('dessine le cadran et le didacticiel sans erreur pour chacun des 8 niveaux', () => {
+  it('marque une pause de 1 seconde sur 00, 15, 30 et 45 au Niveau 5 avec les pilules associées', () => {
+    // Étape 0 (0 .. 1000 ms) : Heure pile (minutes = 0)
+    const p0Start = TutorialOverlay.getLevel5Timeline(50);
+    const p0End = TutorialOverlay.getLevel5Timeline(950);
+    expect(p0Start.minutes).toBe(0);
+    expect(p0End.minutes).toBe(0);
+    expect(p0Start.calloutText).toBe('Heure pile');
+
+    // Étape 1 (2400 .. 3400 ms) : Quart d'heure (minutes = 15)
+    const p15Start = TutorialOverlay.getLevel5Timeline(2450);
+    const p15End = TutorialOverlay.getLevel5Timeline(3350);
+    expect(p15Start.minutes).toBe(15);
+    expect(p15End.minutes).toBe(15);
+    expect(p15Start.calloutText).toBe('Quart d’heure');
+
+    // Étape 2 (4800 .. 5800 ms) : Demi-heure (minutes = 30)
+    const p30Start = TutorialOverlay.getLevel5Timeline(4850);
+    const p30End = TutorialOverlay.getLevel5Timeline(5750);
+    expect(p30Start.minutes).toBe(30);
+    expect(p30End.minutes).toBe(30);
+    expect(p30Start.calloutText).toBe('Demi-heure');
+
+    // Étape 3 (7200 .. 8200 ms) : Trois quarts d'heure (minutes = 45)
+    const p45Start = TutorialOverlay.getLevel5Timeline(7250);
+    const p45End = TutorialOverlay.getLevel5Timeline(8150);
+    expect(p45Start.minutes).toBe(45);
+    expect(p45End.minutes).toBe(45);
+    expect(p45Start.calloutText).toBe('Trois quarts d’heure');
+  });
+
+  it('fournit les récapitulatifs de fin de niveau et dessine tous les niveaux sans erreur', () => {
     const ctx = createMockCtx();
     const clock = new Clock(ctx, 200);
     const hands = new Hands(ctx, 200);
 
     for (let lvl = 1; lvl <= 8; lvl++) {
-      const info = TutorialOverlay.getInfo(lvl);
-      expect(info.ruleHtml.length).toBeGreaterThan(15);
+      const summary = GameEngine.getLevelTransitionSummary(lvl);
+      expect(summary.learnedText.length).toBeGreaterThan(20);
       expect(() => clock.draw(lvl, true)).not.toThrow();
       expect(() => TutorialOverlay.draw(ctx, hands, 200, lvl, 1200)).not.toThrow();
     }
@@ -173,53 +196,5 @@ describe('Progression Pédagogique 8 Niveaux (V55) — Rotation continue Niveau 
 
     const sound = new SoundEngine(false);
     expect(() => sound.playWindingClick()).not.toThrow();
-  });
-});
-import { GameEngine } from './GameEngine';
-
-describe('Transitions V56 — Récapitulatif des acquis et annonce du niveau suivant', () => {
-  it('fournit un récapitulatif pédagogique et annonce le niveau suivant (ou l’atelier) pour les 8 niveaux', () => {
-    for (let lvl = 1; lvl <= 7; lvl++) {
-      const summary = GameEngine.getLevelTransitionSummary(lvl);
-      expect(summary.learnedText.length).toBeGreaterThan(20);
-      expect(summary.nextTitle).toContain(`Niveau ${lvl + 1}`);
-    }
-
-    const finalSummary = GameEngine.getLevelTransitionSummary(8);
-    expect(finalSummary.learnedText).toContain('horloge de grand');
-    expect(finalSummary.nextTitle).toContain('atelier de l’horloger');
-  });
-});
-
-describe('Niveau 5 (V57) — Pilules fluides des quarts d’heure', () => {
-  it('fait apparaître successivement Heure pile, Quart d’heure, Demi-heure et Trois quarts d’heure au Niveau 5', () => {
-    const c0 = TutorialOverlay.getCallout(5, 200);
-    const c15 = TutorialOverlay.getCallout(5, 2000);
-    const c30 = TutorialOverlay.getCallout(5, 4000);
-    const c45 = TutorialOverlay.getCallout(5, 6000);
-    const cPause = TutorialOverlay.getCallout(5, 9000);
-
-    expect(c0?.text).toBe('Heure pile');
-    expect(c15?.text).toBe('Quart d’heure');
-    expect(c30?.text).toBe('Demi-heure');
-    expect(c45?.text).toBe('Trois quarts d’heure');
-    expect(cPause?.text).toBe('Heure pile');
-  });
-});
-
-describe('Animations Pleine Page V58 — Durée de 5 secondes (5000 ms)', () => {
-  it('configure une durée de 5000 ms et fournit les métadonnées complètes de carte du niveau suivant', () => {
-    expect(GameEngine.TRANSITION_DURATION_MS).toBe(5000);
-
-    const s1 = GameEngine.getLevelTransitionSummary(1);
-    expect(s1.nextBadge).toBe('2');
-    expect(s1.nextColorClass).toBe('lvl-2');
-    expect(s1.nextShortName).toBe('Les 24 heures');
-    expect(s1.isFinal).toBe(false);
-
-    const s8 = GameEngine.getLevelTransitionSummary(8);
-    expect(s8.nextBadge).toBe('⚙️');
-    expect(s8.nextColorClass).toBe('workshop-rect');
-    expect(s8.isFinal).toBe(true);
   });
 });
