@@ -1478,3 +1478,144 @@ body.theme-night .recap-learned {
 .trans-action-btn:active {
   transform: scale(0.97);
 }
+
+/* ============================================================================
+   AMÉLIORATIONS V60 : UX, BOUTONS TACTILES 3D, ÉTOILES SVG & ÉQUILIBRAGE TEXTE
+   ============================================================================ */
+
+/* 1. Équilibrage typographique automatique (évite les mots orphelins sur une ligne) */
+#instruction,
+#help-text,
+#workshop-instruction,
+.trans-step2-main-msg,
+.trans-learned-body {
+  text-wrap: balance;
+}
+
+/* 2. Mots-clés surlignés dans les didacticiels */
+.kw-orange {
+  color: #c2410c;
+  background: rgba(255, 237, 213, 0.85);
+  padding: 0 6px;
+  border-radius: 7px;
+}
+body.theme-night .kw-orange {
+  color: #fdba74;
+  background: rgba(154, 52, 18, 0.45);
+}
+
+.kw-blue {
+  color: #0369a1;
+  background: rgba(224, 242, 254, 0.9);
+  padding: 0 6px;
+  border-radius: 7px;
+}
+body.theme-night .kw-blue {
+  color: #7dd3fc;
+  background: rgba(3, 105, 161, 0.45);
+}
+
+/* 3. Pastille du joueur actif sur le menu principal & badge Atelier débloqué */
+#active-player-pill {
+  font-size: 0.8rem;
+  font-weight: 700;
+  color: #0f172a;
+  background: #7dd3fc;
+  padding: 2px 9px;
+  border-radius: 12px;
+}
+
+.workshop-open-badge {
+  background: rgba(15, 23, 42, 0.55) !important;
+  border-color: #fde047 !important;
+  padding: 2px 10px !important;
+}
+
+/* 4. Séparateur entre les 3 étoiles de lecture et les 3 étoiles de manipulation */
+.phase-sep {
+  color: rgba(255, 255, 255, 0.55);
+  margin: 0 2px;
+  font-weight: 700;
+}
+
+/* 5. Effet tactile 3D sur les boutons de réponse et d'action */
+.choice-btn {
+  border-bottom-width: 5px;
+  border-bottom-color: rgba(148, 163, 184, 0.55);
+}
+.choice-btn:active {
+  transform: translateY(2px) scale(0.98);
+}
+
+#check-btn {
+  border-bottom-width: 5px;
+  border-bottom-color: #047857;
+}
+#tutorial-start-btn {
+  border-bottom-width: 5px;
+  border-bottom-color: #b45309;
+}
+.trans-action-btn {
+  border-bottom-width: 5px;
+  border-bottom-color: #047857;
+}
+
+/* 6. Médaillon d'horloge animé et centrage harmonieux sur l'écran Étape 2 */
+#transition-screen.step2-theme .transition-stage {
+  justify-content: center;
+  gap: 24px;
+}
+
+.trans-step2-emblem {
+  width: 96px;
+  height: 96px;
+  border-radius: 50%;
+  background: #e0f2fe;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  box-shadow: 0 8px 20px rgba(15, 23, 42, 0.18);
+}
+
+@keyframes emblemHandSwing {
+  0%, 100% { transform: rotate(-18deg); }
+  50% { transform: rotate(28deg); }
+}
+.emblem-hand-group {
+  transform-origin: 60px 60px;
+  animation: emblemHandSwing 2.2s ease-in-out infinite;
+}
+
+/* 7. Grandes étoiles SVG 3D sur l'écran de fin de niveau */
+.trans-star-svg {
+  width: clamp(68px, 18vw, 82px);
+  height: clamp(68px, 18vw, 82px);
+  overflow: visible;
+  transform: scale(0);
+}
+.trans-star-svg.is-earned {
+  filter: drop-shadow(0 0 18px rgba(251, 191, 36, 0.75)) drop-shadow(0 6px 12px rgba(0, 0, 0, 0.4));
+}
+.trans-star-svg.slot-1 {
+  animation: transStarBounce 0.6s 0.15s cubic-bezier(0.34, 1.56, 0.64, 1) forwards;
+}
+.trans-star-svg.slot-2 {
+  width: clamp(82px, 22vw, 98px);
+  height: clamp(82px, 22vw, 98px);
+  margin-top: -12px;
+  animation: transStarBounce 0.6s 0.45s cubic-bezier(0.34, 1.56, 0.64, 1) forwards;
+}
+.trans-star-svg.slot-3 {
+  animation: transStarBounce 0.6s 0.75s cubic-bezier(0.34, 1.56, 0.64, 1) forwards;
+}
+
+/* Carte du niveau suivant interactive / cliquable */
+button.trans-next-level-card {
+  cursor: pointer;
+  text-align: left;
+  border-bottom-width: 5px;
+  transition: transform 0.12s ease;
+}
+button.trans-next-level-card:active {
+  transform: translateY(2px) scale(0.98);
+}

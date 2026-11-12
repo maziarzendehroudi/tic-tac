@@ -439,6 +439,19 @@ export class WatchMechanism {
 
     this.ctx.save();
     this.ctx.translate(pushOutX, 0);
+
+    // Halo pulsant d'invitation lorsque le ressort est à 0%
+    if (this.power <= 0 && !isActivelyWinding) {
+      const pulse = 0.5 + 0.5 * Math.sin(performance.now() * 0.006);
+      this.ctx.save();
+      this.ctx.beginPath();
+      this.ctx.roundRect(-10 - pulse * 4, -23 - pulse * 4, 28 + pulse * 8, 46 + pulse * 8, 11);
+      this.ctx.strokeStyle = `rgba(253, 224, 71, ${0.35 + 0.55 * pulse})`;
+      this.ctx.lineWidth = 2.8;
+      this.ctx.stroke();
+      this.ctx.restore();
+    }
+
     if (isActivelyWinding) {
       this.ctx.shadowColor = '#fbbf24';
       this.ctx.shadowBlur = 14;

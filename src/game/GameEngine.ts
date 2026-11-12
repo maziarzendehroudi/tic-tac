@@ -43,6 +43,13 @@ const THREE_ZOOM_BUTTONS: Array<Exclude<WorkshopZoom, 'overview'>> = [
   'minutes'
 ];
 
+export const WORKSHOP_EXPLANATIONS: Record<WorkshopZoom, string> = {
+  overview: 'La montre est en marche ! Touche un bouton ci-dessous pour explorer les engrenages.',
+  spring: '⚙️ Le ressort se déroule doucement et transmet son énergie à toute la montre.',
+  hours: '🟠 La roue dorée tourne lentement pour entraîner la petite aiguille des heures.',
+  minutes: '🔵 Les roues bleues accélèrent le mouvement pour faire tourner la grande aiguille des minutes.'
+};
+
 export const LEVEL_TITLES: Record<number, string> = {
   1: '1 · Les 12 heures',
   2: '2 · Les 24 heures',
@@ -77,8 +84,6 @@ export const LEVEL_RECAPS: Record<number, string> = {
 };
 
 export class GameEngine {
-  public static readonly TRANSITION_DURATION_MS = 5000;
-
   private canvas: HTMLCanvasElement;
   private ctx: CanvasRenderingContext2D;
   private clock: Clock;
@@ -91,6 +96,7 @@ export class GameEngine {
   private workshopAnimId: number = 0;
   private lastWorkshopTime: number = 0;
   private isWinding: boolean = false;
+  private lastWorkshopHintText: string = '';
 
   private currentHours: number = 12;
   private currentMinutes: number = 0;
@@ -120,6 +126,23 @@ export class GameEngine {
   private editingProfileId: string | null = null;
   private confirmingDeleteId: string | null = null;
 
+  public static getStep2PromptForLevel(level: number): string {
+    if (level <= 2) {
+      return 'Maintenant, à toi de bouger la petite aiguille orange !';
+    }
+    if (level === 3) {
+      return 'Maintenant, à toi de bouger la grande aiguille bleue !';
+    }
+    return 'Maintenant, à toi de bouger les aiguilles !';
+  }
+
+  public static getWorkshopInstructionText(power: number, zoomMode: WorkshopZoom): string {
+    if (power <= 0) {
+      return 'Tourne la molette dorée à droite pour remonter la montre et voir le mécanisme !';
+    }
+    return WORKSHOP_EXPLANATIONS[zoomMode];
+  }
+
   public static getLevelTransitionSummary(completedLevel: number): LevelTransitionSummary {
     const learnedText =
       LEVEL_RECAPS[completedLevel] || 'Tu maîtrises une nouvelle étape de l’horloge !';
@@ -139,6 +162,32 @@ export class GameEngine {
       nextColorClass: isFinal ? 'workshop-rect' : `lvl-${nextLvl}`,
       isFinal
     };
+  }
+
+  private static buildStarSvg(index: number, isEarned: boolean): string {
+    const gradId = `starGrad_${index}`;
+    if (!isEarned) {
+      return `
+        <svg class="trans-star-svg is-empty slot-${index}" viewBox="0 0 100 100" aria-hidden="true">
+          <path d="M50 7 L63 34 L93 38 L71 59 L76 89 L50 75 L24 89 L29 59 L7 38 L37 34 Z"
+                fill="rgba(30, 41, 59, 0.65)" stroke="rgba(148, 163, 184, 0.45)" stroke-width="5" stroke-linejoin="round" stroke-dasharray="6 4" />
+        </svg>
+      `;
+    }
+    return `
+      <svg class="trans-star-svg is-earned slot-${index}" viewBox="0 0 100 100" aria-hidden="true">
+        <defs>
+          <linearGradient id="${gradId}" x1="0" y1="0" x2="0" y2="1">
+            <stop offset="0%" stop-color="#fef08a" />
+            <stop offset="55%" stop-color="#fbbf24" />
+            <stop offset="100%" stop-color="#d97706" />
+          </linearGradient>
+        </defs>
+        <path d="M50 7 L63 34 L93 38 L71 59 L76 89 L50 75 L24 89 L29 59 L7 38 L37 34 Z"
+              fill="url(#${gradId})" stroke="#ffffff" stroke-width="5.5" stroke-linejoin="round" />
+        <ellipse cx="42" cy="30" rx="10" ry="5" transform="rotate(-22 42 30)" fill="rgba(255, 255, 255, 0.55)" />
+      </svg>
+    `;
   }
 
   constructor(canvas: HTMLCanvasElement) {
@@ -173,6 +222,15 @@ export class GameEngine {
     this.updateSoundButtonUI();
     this.updateMenuUI();
     this.applySkyTheme(true);
+  }
+
+  private setSystemBarColor(hexColor: string): void {
+    document.documentElement.style.backgroundColor = hexColor;
+    document.body.style.backgroundColor = hexColor;
+    const metaTheme = document.querySelector('meta[name="theme-color"]');
+    if (metaTheme) {
+      metaTheme.setAttribute('content', hexColor);
+    }
   }
 
   private clearPendingAnimations(): void {
@@ -213,6 +271,8 @@ export class GameEngine {
       titleDisplay.textContent = LEVEL_TITLES[level] || `Niveau ${level}`;
     }
 
+    // Réinitialise immédiatement les étoiles du haut avant d'ouvrir le didacticiel
+    this.updatePhaseStarsUI();
     this.initNewQuestion();
     this.openTutorial();
   }
@@ -223,6 +283,8 @@ export class GameEngine {
     clearTimeout(this.autoNextTimerId);
     this.isTutorialActive = true;
     this.tutorialStartTime = performance.now();
+
+    this.updatePhaseStarsUI();
 
     const info = TutorialOverlay.getInfo(this.currentLevel);
     this.applySkyTheme(info.isDay);
@@ -335,6 +397,19 @@ export class GameEngine {
     this.render();
   }
 
+  private updateWorkshopInstructionDOM(): void {
+    if (!this.watchMechanism) return;
+    const nextText = GameEngine.getWorkshopInstructionText(
+      this.watchMechanism.power,
+      this.watchMechanism.zoomMode
+    );
+    if (nextText !== this.lastWorkshopHintText) {
+      this.lastWorkshopHintText = nextText;
+      const el = document.getElementById('workshop-instruction');
+      if (el) el.textContent = nextText;
+    }
+  }
+
   private openWorkshop(): void {
     this.clearPendingAnimations();
     document.getElementById('main-menu')?.classList.add('hidden');
@@ -347,7 +422,10 @@ export class GameEngine {
       this.watchMechanism.setZoomMode('overview');
     }
 
+    this.lastWorkshopHintText = '';
+    this.updateWorkshopInstructionDOM();
     this.renderWorkshopUI();
+
     this.lastWorkshopTime = performance.now();
     const loop = (now: number) => {
       const dt = Math.min(50, now - this.lastWorkshopTime);
@@ -355,6 +433,7 @@ export class GameEngine {
       if (this.watchMechanism) {
         this.watchMechanism.update(dt, this.isWinding);
         this.watchMechanism.draw(this.isWinding);
+        this.updateWorkshopInstructionDOM();
       }
       this.workshopAnimId = requestAnimationFrame(loop);
     };
@@ -379,6 +458,7 @@ export class GameEngine {
         const nextMode: WorkshopZoom = this.watchMechanism.zoomMode === mode ? 'overview' : mode;
         this.watchMechanism.setZoomMode(nextMode);
         this.soundEngine.playSnap();
+        this.updateWorkshopInstructionDOM();
         this.renderWorkshopUI();
       });
       tray.appendChild(btn);
@@ -400,10 +480,7 @@ export class GameEngine {
     document.body.classList.toggle('theme-day', isDay);
     document.body.classList.toggle('theme-night', !isDay);
 
-    const metaTheme = document.querySelector('meta[name="theme-color"]');
-    if (metaTheme) {
-      metaTheme.setAttribute('content', isDay ? '#38bdf8' : '#0b132b');
-    }
+    this.setSystemBarColor(isDay ? '#38bdf8' : '#0b132b');
   }
 
   private initNewQuestion(): void {
@@ -495,6 +572,7 @@ export class GameEngine {
           e.preventDefault();
           this.watchMechanism.setZoomMode('overview');
           this.soundEngine.playSnap();
+          this.updateWorkshopInstructionDOM();
           this.renderWorkshopUI();
         }
       };
@@ -855,11 +933,16 @@ export class GameEngine {
     const levelRects = document.querySelectorAll('.level-rect');
     const maxUnlocked = this.saveData.maxUnlockedLevel || 1;
     const activeProfile = SaveManager.getActiveProfile();
+    const displayName = activeProfile.name === 'Test' ? 'Joueur 1' : activeProfile.name;
 
     const profileBtn = document.getElementById('profile-btn');
     if (profileBtn) {
-      const displayName = activeProfile.name === 'Test' ? 'Menu' : activeProfile.name;
       profileBtn.setAttribute('title', `Joueur actif : ${displayName}`);
+    }
+
+    const activePlayerPill = document.getElementById('active-player-pill');
+    if (activePlayerPill) {
+      activePlayerPill.textContent = displayName;
     }
 
     const totalStars = SaveManager.getTotalStars(this.saveData);
@@ -903,8 +986,8 @@ export class GameEngine {
     if (workshopBtn && workshopStatus) {
       if (workshopUnlocked) {
         workshopBtn.classList.remove('locked');
-        workshopStatus.textContent = '🔍';
-        workshopStatus.className = 'lvl-status play';
+        workshopStatus.innerHTML = '<span class="lvl-star-on">✨ Ouvrir</span>';
+        workshopStatus.className = 'lvl-status stars-badge workshop-open-badge';
       } else {
         workshopBtn.classList.add('locked');
         workshopStatus.textContent = '🔒';
@@ -1018,10 +1101,22 @@ export class GameEngine {
         this.updateMenuUI();
 
         const summary = GameEngine.getLevelTransitionSummary(this.currentLevel);
+        const nextLvl = this.currentLevel + 1;
 
-        this.playLevelUpFullPageAnimation(earnedStars, summary, () => {
-          this.returnToMenu();
-        });
+        this.playLevelUpFullPageAnimation(
+          earnedStars,
+          summary,
+          () => {
+            this.returnToMenu();
+          },
+          () => {
+            if (summary.isFinal) {
+              this.openWorkshop();
+            } else {
+              this.startLevel(nextLvl);
+            }
+          }
+        );
         return;
       }
     }
@@ -1045,7 +1140,7 @@ export class GameEngine {
   }
 
   /**
-   * PLEINE PAGE 1 : Animation épurée de passage à l'Étape 2 avec bouton "Commencer"
+   * PLEINE PAGE 1 : Animation de passage à l'Étape 2 avec médaillon d'horloge animé et bouton "Commencer"
    */
   private playStep2FullPageAnimation(onComplete: () => void): void {
     cancelAnimationFrame(this.celebrationAnimId);
@@ -1062,8 +1157,10 @@ export class GameEngine {
 
     screen.classList.remove('hidden', 'levelup-theme');
     screen.classList.add('step2-theme');
+    this.setSystemBarColor('#2e1065');
 
     const levelBadgeTitle = LEVEL_SHORT_NAMES[this.currentLevel] || `Niveau ${this.currentLevel}`;
+    const step2Prompt = GameEngine.getStep2PromptForLevel(this.currentLevel);
 
     content.innerHTML = `
       <div class="trans-top-group">
@@ -1075,8 +1172,22 @@ export class GameEngine {
       </div>
 
       <div class="trans-step2-center-box">
+        <div class="trans-step2-emblem" aria-hidden="true">
+          <svg viewBox="0 0 120 120" width="92" height="92">
+            <circle cx="60" cy="60" r="52" fill="#ffffff" stroke="#0284c7" stroke-width="8" />
+            <circle cx="60" cy="20" r="4" fill="#0284c7" />
+            <circle cx="100" cy="60" r="4" fill="#ea580c" />
+            <circle cx="60" cy="100" r="4" fill="#94a3b8" />
+            <circle cx="20" cy="60" r="4" fill="#94a3b8" />
+            <g class="emblem-hand-group">
+              <line x1="60" y1="60" x2="60" y2="26" stroke="#0284c7" stroke-width="7" stroke-linecap="round" />
+              <line x1="60" y1="60" x2="88" y2="60" stroke="#ea580c" stroke-width="8" stroke-linecap="round" />
+            </g>
+            <circle cx="60" cy="60" r="6" fill="#0f172a" stroke="#ffffff" stroke-width="2" />
+          </svg>
+        </div>
         <div class="trans-step2-badge">Étape 2</div>
-        <h2 class="trans-step2-main-msg">Maintenant, à toi de bouger les aiguilles !</h2>
+        <h2 class="trans-step2-main-msg">${step2Prompt}</h2>
       </div>
 
       <div class="trans-action-wrap">
@@ -1092,6 +1203,8 @@ export class GameEngine {
       this.soundEngine.playSuccess();
       screen.classList.add('hidden');
       screen.classList.remove('step2-theme');
+      const showDaySky = TimeMath.is24HourLevel(this.currentLevel) ? this.targetTime.isDay : true;
+      this.applySkyTheme(showDaySky);
       onComplete();
     });
 
@@ -1145,12 +1258,13 @@ export class GameEngine {
   }
 
   /**
-   * PLEINE PAGE 2 : Animation de fin de niveau, récapitulatif & bouton "Continuer" vers le menu principal
+   * PLEINE PAGE 2 : Animation de fin de niveau avec 3 vraies étoiles SVG, carte cliquable du niveau suivant & bouton "Continuer"
    */
   private playLevelUpFullPageAnimation(
     earnedStars: 1 | 2 | 3,
     summary: LevelTransitionSummary,
-    onComplete: () => void
+    onReturnMenu: () => void,
+    onLaunchNext: () => void
   ): void {
     cancelAnimationFrame(this.celebrationAnimId);
     clearTimeout(this.autoNextTimerId);
@@ -1160,12 +1274,13 @@ export class GameEngine {
     const content = document.getElementById('transition-content');
     const bgCanvas = document.getElementById('transitionBgCanvas') as HTMLCanvasElement | null;
     if (!screen || !content || !bgCanvas) {
-      onComplete();
+      onReturnMenu();
       return;
     }
 
     screen.classList.remove('hidden', 'step2-theme');
     screen.classList.add('levelup-theme');
+    this.setSystemBarColor('#090d16');
 
     const completedName = LEVEL_SHORT_NAMES[this.currentLevel] || `Niveau ${this.currentLevel}`;
     const bannerTitle =
@@ -1180,9 +1295,9 @@ export class GameEngine {
       </div>
 
       <div class="trans-stars-showcase">
-        <div class="trans-star-orb star-slot-1 ${earnedStars >= 1 ? 'is-earned' : 'is-empty'}">★</div>
-        <div class="trans-star-orb star-slot-2 ${earnedStars >= 2 ? 'is-earned' : 'is-empty'}">★</div>
-        <div class="trans-star-orb star-slot-3 ${earnedStars >= 3 ? 'is-earned' : 'is-empty'}">★</div>
+        ${GameEngine.buildStarSvg(1, earnedStars >= 1)}
+        ${GameEngine.buildStarSvg(2, earnedStars >= 2)}
+        ${GameEngine.buildStarSvg(3, earnedStars >= 3)}
       </div>
 
       <div class="trans-learned-card">
@@ -1190,28 +1305,39 @@ export class GameEngine {
         <p class="trans-learned-body">${summary.learnedText}</p>
       </div>
 
-      <div class="trans-next-level-card ${summary.nextColorClass}">
+      <button id="levelup-next-card-btn" type="button" class="trans-next-level-card ${summary.nextColorClass}">
         <span class="trans-next-overline">${summary.isFinal ? '🔓 Récompense finale débloquée' : '🔓 Niveau suivant débloqué'}</span>
         <div class="trans-next-main-row">
           <span class="lvl-badge">${summary.nextBadge}</span>
           <span class="trans-next-name">${summary.nextShortName}</span>
+          <span class="trans-next-go">▶</span>
         </div>
-      </div>
+      </button>
 
       <div class="trans-action-wrap">
         <button id="levelup-continue-btn" type="button" class="trans-action-btn">Continuer ▶</button>
       </div>
     `;
 
-    const continueBtn = document.getElementById('levelup-continue-btn');
-    continueBtn?.addEventListener('click', () => {
-      if (!this.isWaitingNext) return;
+    const closeTransition = () => {
       this.isWaitingNext = false;
       cancelAnimationFrame(this.celebrationAnimId);
-      this.soundEngine.playSnap();
       screen.classList.add('hidden');
       screen.classList.remove('levelup-theme');
-      onComplete();
+    };
+
+    document.getElementById('levelup-next-card-btn')?.addEventListener('click', () => {
+      if (!this.isWaitingNext) return;
+      closeTransition();
+      this.soundEngine.playSnap();
+      onLaunchNext();
+    });
+
+    document.getElementById('levelup-continue-btn')?.addEventListener('click', () => {
+      if (!this.isWaitingNext) return;
+      closeTransition();
+      this.soundEngine.playSnap();
+      onReturnMenu();
     });
 
     const bgCtx = bgCanvas.getContext('2d')!;
@@ -1461,10 +1587,13 @@ export class GameEngine {
     const phaseBadge = document.getElementById('phase-badge');
     if (!phaseBadge) return;
     const totalEarned = (this.currentPhase === 1 ? 0 : 3) + this.phaseSuccessCount;
-    const stars = [0, 1, 2, 3, 4, 5]
+    const step1Html = [0, 1, 2]
       .map(i => (i < totalEarned ? '<span class="star-on">★</span>' : '<span class="star-off">★</span>'))
       .join('');
-    phaseBadge.innerHTML = stars;
+    const step2Html = [3, 4, 5]
+      .map(i => (i < totalEarned ? '<span class="star-on">★</span>' : '<span class="star-off">★</span>'))
+      .join('');
+    phaseBadge.innerHTML = `${step1Html}<span class="phase-sep">·</span>${step2Html}`;
   }
 
   private updateUI(): void {

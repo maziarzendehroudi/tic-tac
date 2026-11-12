@@ -198,3 +198,20 @@ describe('Didacticiels Niveaux 2 et 5 (V59) — Pause de 1 seconde à chaque ét
     expect(() => sound.playWindingClick()).not.toThrow();
   });
 });
+
+describe('Améliorations UX & Design V60 — Consignes adaptatives Étape 2 & Atelier de l’horloger', () => {
+  it('adapte le message de l’Étape 2 à l’aiguille du niveau en cours', () => {
+    expect(GameEngine.getStep2PromptForLevel(1)).toContain('petite aiguille orange');
+    expect(GameEngine.getStep2PromptForLevel(2)).toContain('petite aiguille orange');
+    expect(GameEngine.getStep2PromptForLevel(3)).toContain('grande aiguille bleue');
+    expect(GameEngine.getStep2PromptForLevel(4)).toContain('bouger les aiguilles');
+  });
+
+  it('met à jour dynamiquement le texte explicatif de l’Atelier selon l’énergie du ressort et le zoom', () => {
+    expect(GameEngine.getWorkshopInstructionText(0, 'overview')).toContain('Tourne la molette');
+    expect(GameEngine.getWorkshopInstructionText(80, 'overview')).toContain('Touche un bouton');
+    expect(GameEngine.getWorkshopInstructionText(80, 'spring')).toContain('Le ressort');
+    expect(GameEngine.getWorkshopInstructionText(80, 'hours')).toContain('roue dorée');
+    expect(GameEngine.getWorkshopInstructionText(80, 'minutes')).toContain('roues bleues');
+  });
+});

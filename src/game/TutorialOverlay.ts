@@ -64,7 +64,7 @@ export class TutorialOverlay {
         return {
           title: 'Les 12 heures',
           ruleHtml:
-            'La <strong>petite aiguille orange</strong> indique les heures : regarde le chiffre qu’elle pointe : il est <strong>3 heures</strong>.',
+            'La <strong class="kw-orange">petite aiguille orange</strong> indique les heures : regarde le chiffre qu’elle pointe : il est <strong>3 heures</strong>.',
           periodLabel: '',
           isDay: true
         };
@@ -72,7 +72,7 @@ export class TutorialOverlay {
         return {
           title: 'Les 24 heures',
           ruleHtml:
-            'Chaque jour commence à minuit. Entre minuit et midi, on lit les <strong>chiffres noirs</strong>. Après midi, et jusqu’à minuit, on lit les <strong>chiffres orange</strong>.',
+            'Chaque jour commence à minuit. Entre minuit et midi, on lit les <strong>chiffres noirs</strong>. Après midi et jusqu’à minuit, on lit les <strong class="kw-orange">chiffres orange</strong>.',
           periodLabel: '🌙 Nuit (matin)',
           isDay: false
         };
@@ -80,7 +80,7 @@ export class TutorialOverlay {
         return {
           title: 'Les minutes',
           ruleHtml:
-            'La <strong>grande aiguille bleue</strong> indique les minutes (de 5 en 5) : lis les nombres bleus : <strong>20 minutes</strong>.',
+            'La <strong class="kw-blue">grande aiguille bleue</strong> indique les minutes (de 5 en 5) : lis les nombres bleus : <strong>20 minutes</strong>.',
           periodLabel: '',
           isDay: true
         };
@@ -88,7 +88,7 @@ export class TutorialOverlay {
         return {
           title: 'Les demi-heures',
           ruleHtml:
-            'En haut c’est <strong>l’heure pile</strong>, en bas c’est <strong>la demie</strong>. Regarde l’aiguille orange des heures qui montre qu’il est entre <strong>2h et 3h</strong>.',
+            'En haut c’est <strong>l’heure pile</strong>, en bas c’est <strong>la demie</strong>. L’<strong class="kw-orange">aiguille orange</strong> montre qu’il est entre <strong>2h et 3h</strong>.',
           periodLabel: '',
           isDay: true
         };
