@@ -283,6 +283,9 @@ export class GameEngine {
           calloutRow.classList.remove('hidden');
           calloutPill.textContent = callout.text;
           calloutPill.style.borderColor = callout.color;
+          calloutPill.classList.remove('pill-pop-transition');
+          void calloutPill.offsetWidth;
+          calloutPill.classList.add('pill-pop-transition');
         }
       } else if (lastCalloutText !== '') {
         lastCalloutText = '';
@@ -479,15 +482,6 @@ export class GameEngine {
     document.getElementById('back-menu-btn')?.addEventListener('click', () => {
       this.soundEngine.playSnap();
       this.returnToMenu();
-    });
-
-    document.getElementById('tutorial-btn')?.addEventListener('click', () => {
-      this.soundEngine.playSnap();
-      if (this.isTutorialActive) {
-        this.closeTutorial();
-      } else {
-        this.openTutorial();
-      }
     });
 
     document.getElementById('tutorial-start-btn')?.addEventListener('click', () => {
@@ -1053,8 +1047,8 @@ export class GameEngine {
     const spokenSuffix = this.targetTime.spokenText ? ` (<em>${this.targetTime.spokenText}</em>)` : '';
     const successMsg =
       this.currentLevel === 3
-        ? `✨ <strong>Bravo ! L’aiguille indique bien ${this.targetTime.text} !</strong>`
-        : `✨ <strong>Bravo ! Il est bien ${this.targetTime.text}${spokenSuffix} !</strong>`;
+        ? `<strong>Bravo ! L’aiguille indique bien ${this.targetTime.text} !</strong>`
+        : `<strong>Bravo ! Il est bien ${this.targetTime.text}${spokenSuffix} !</strong>`;
 
     this.showFeedback(
       successMsg,
@@ -1332,7 +1326,7 @@ export class GameEngine {
       this.currentLevel
     );
 
-    this.showFeedback(`💡 ${diagnosticHint}`, 'error');
+    this.showFeedback(diagnosticHint, 'error');
   }
 
   private handleFailedPlaceAttempt(): void {
@@ -1350,7 +1344,7 @@ export class GameEngine {
 
     if (this.showGhostGuide) {
       this.showFeedback(
-        '💡 Aide-toi du modèle en pointillés sur l’horloge, puis clique sur <strong>✓ Vérifier</strong> !',
+        'Aide-toi du modèle en pointillés sur l’horloge, puis clique sur <strong>✓ Vérifier</strong> !',
         'error'
       );
     } else {
@@ -1361,7 +1355,7 @@ export class GameEngine {
         this.targetTime.minutes,
         this.currentLevel
       );
-      this.showFeedback(`💡 ${placeHint}`, 'error');
+      this.showFeedback(placeHint, 'error');
     }
   }
 

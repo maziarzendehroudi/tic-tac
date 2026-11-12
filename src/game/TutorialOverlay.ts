@@ -23,16 +23,28 @@ export interface Level2TimelineState {
   calloutColor: string;
 }
 
+export interface Level5TimelineState {
+  minutes: number;
+  dwellFactor: number;
+  calloutText: string;
+  calloutColor: string;
+}
+
 export class TutorialOverlay {
-  /**
-   * Niveau 2 :
-   * - 12 000 ms de rotation fluide et continue sur 24h (sans aucun arrêt intermédiaire)
-   * - 3 000 ms d'arrêt à minuit (00h) avant de recommencer le cycle
-   */
   public static readonly LEVEL2_MOVE_MS = 12000;
   public static readonly LEVEL2_MIDNIGHT_PAUSE_MS = 3000;
   public static readonly LEVEL2_CYCLE_MS =
     TutorialOverlay.LEVEL2_MOVE_MS + TutorialOverlay.LEVEL2_MIDNIGHT_PAUSE_MS;
+
+  /**
+   * Niveau 5 :
+   * - 8 000 ms de rotation fluide et continue sur 60 minutes
+   * - 2 400 ms de pause sur l'heure pile (00) avant de recommencer le cycle
+   */
+  public static readonly LEVEL5_MOVE_MS = 8000;
+  public static readonly LEVEL5_TOP_PAUSE_MS = 2400;
+  public static readonly LEVEL5_CYCLE_MS =
+    TutorialOverlay.LEVEL5_MOVE_MS + TutorialOverlay.LEVEL5_TOP_PAUSE_MS;
 
   public static getInfo(level: number): TutorialStepInfo {
     switch (level) {
@@ -103,16 +115,6 @@ export class TutorialOverlay {
     }
   }
 
-  /**
-   * Calcule la progression continue du Niveau 2 :
-   * - Rotation fluide sans arrêt de 0h à 24h pendant 12 secondes :
-   *   1. [0h .. 6h[     : "C'est la nuit" (passe par 3h00 sans s'arrêter)
-   *   2. [6h .. 11h[    : "Le jour se lève" (vers 8h00)
-   *   3. [11h .. 14h30[ : "Repas de midi" (autour de 12h00)
-   *   4. [14h30 .. 18h30[: "Le goûter" (autour de 16h00)
-   *   5. [18h30 .. 23h[ : "Repas du soir" (vers 20h00)
-   *   6. [23h .. 24h] + pause de 3 secondes à 00h : "Minuit : on change de jour"
-   */
   public static getLevel2Timeline(elapsedMs: number): Level2TimelineState {
     const total = this.LEVEL2_CYCLE_MS;
     const cycleTime = ((elapsedMs % total) + total) % total;
@@ -212,6 +214,55 @@ export class TutorialOverlay {
     };
   }
 
+  /**
+   * Calcule la progression continue du Niveau 5 (rotation fluide sur 60 minutes) :
+   * - [0 .. 7.5[ ou [52.5 .. 60] + pause en haut : "Heure pile"
+   * - [7.5 .. 22.5[  (autour de 15) : "Quart d'heure"
+   * - [22.5 .. 37.5[ (autour de 30) : "Demi-heure"
+   * - [37.5 .. 52.5[ (autour de 45) : "Trois quarts d'heure"
+   */
+  public static getLevel5Timeline(elapsedMs: number): Level5TimelineState {
+    const total = this.LEVEL5_CYCLE_MS;
+    const cycleTime = ((elapsedMs % total) + total) % total;
+
+    const isTopPause = cycleTime >= this.LEVEL5_MOVE_MS;
+    const minutes = isTopPause ? 0 : (cycleTime / this.LEVEL5_MOVE_MS) * 60;
+
+    if (isTopPause || minutes < 7.5 || minutes >= 52.5) {
+      return {
+        minutes,
+        dwellFactor: isTopPause ? 1 : 0.75,
+        calloutText: 'Heure pile',
+        calloutColor: '#10b981'
+      };
+    }
+
+    if (minutes < 22.5) {
+      return {
+        minutes,
+        dwellFactor: 0.7,
+        calloutText: 'Quart d’heure',
+        calloutColor: '#0284c7'
+      };
+    }
+
+    if (minutes < 37.5) {
+      return {
+        minutes,
+        dwellFactor: 0.7,
+        calloutText: 'Demi-heure',
+        calloutColor: '#8b5cf6'
+      };
+    }
+
+    return {
+      minutes,
+      dwellFactor: 0.7,
+      calloutText: 'Trois quarts d’heure',
+      calloutColor: '#ea580c'
+    };
+  }
+
   public static getDynamicFrameState(
     level: number,
     elapsedMs: number
@@ -227,12 +278,21 @@ export class TutorialOverlay {
   }
 
   public static getCallout(level: number, elapsedMs: number): TutorialCallout | null {
-    if (level !== 2) return null;
-    const state = this.getLevel2Timeline(elapsedMs);
-    return {
-      text: state.calloutText,
-      color: state.calloutColor
-    };
+    if (level === 2) {
+      const state = this.getLevel2Timeline(elapsedMs);
+      return {
+        text: state.calloutText,
+        color: state.calloutColor
+      };
+    }
+    if (level === 5) {
+      const state = this.getLevel5Timeline(elapsedMs);
+      return {
+        text: state.calloutText,
+        color: state.calloutColor
+      };
+    }
+    return null;
   }
 
   public static draw(
@@ -307,7 +367,6 @@ export class TutorialOverlay {
       return;
     }
 
-    // Niveau 8 : uniquement les aiguilles (sans cercle pointillé ni flèche orange)
     const h8 = 15 + smoothT;
     const m8 = smoothT * 10;
     hands.draw(h8, m8, 8);
@@ -343,29 +402,16 @@ export class TutorialOverlay {
     elapsedMs: number,
     pulse: number
   ): void {
-    const t = (elapsedMs % 7200) / 7200;
-    let m = 15;
+    const state = this.getLevel5Timeline(elapsedMs);
+    const m = state.minutes;
 
-    if (t < 0.35) {
-      m = 15;
-    } else if (t < 0.50) {
-      m = 15 + this.easeInOutSine((t - 0.35) / 0.15) * 30;
-    } else if (t < 0.85) {
-      m = 45;
-    } else {
-      m = 45 - this.easeInOutSine((t - 0.85) / 0.15) * 30;
-    }
-
-    hands.draw(4, m, 5);
+    hands.draw(4, m, 5, 'minute');
     const minAngle = (m * Math.PI) / 30;
-    this.drawTargetHalo(ctx, radius - 25, minAngle, 20 + pulse * 4, '#0284c7');
 
-    if (m < 30) {
-      this.drawCurvedArrow(ctx, radius - 50, 0.08, Math.max(0.15, minAngle - 0.08), '#0284c7');
-    } else {
-      const hAngle = ((4 + m / 60) * Math.PI) / 6;
-      this.drawTargetHalo(ctx, radius - 68, hAngle, 20 + pulse * 4, '#ea580c');
-    }
+    ctx.save();
+    ctx.globalAlpha = 0.55 + 0.45 * state.dwellFactor;
+    this.drawTargetHalo(ctx, radius - 25, minAngle, 20 + pulse * 3.5, state.calloutColor);
+    ctx.restore();
   }
 
   private static easeInOutSine(t: number): number {

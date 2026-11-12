@@ -374,10 +374,6 @@ body {
   transition: transform 0.12s ease;
 }
 .top-square-btn:active { transform: scale(0.94); }
-#tutorial-btn {
-  border-color: rgba(251, 191, 36, 0.72);
-  color: #fde047;
-}
 
 #level-header-pill, #workshop-header-pill {
   flex: 1;
@@ -527,6 +523,14 @@ canvas:active { cursor: grabbing; }
   font-size: 0.96rem;
   font-weight: 700;
   box-shadow: 0 3px 8px rgba(15, 23, 42, 0.22);
+  transition: border-color 0.35s ease;
+}
+@keyframes pillPopFade {
+  0% { opacity: 0.35; transform: translateY(3px) scale(0.95); }
+  100% { opacity: 1; transform: translateY(0) scale(1); }
+}
+#tutorial-callout-pill.pill-pop-transition {
+  animation: pillPopFade 0.28s cubic-bezier(0.22, 1, 0.36, 1) forwards;
 }
 
 #instruction {

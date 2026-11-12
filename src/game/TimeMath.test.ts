@@ -190,3 +190,19 @@ describe('Transitions V56 — Récapitulatif des acquis et annonce du niveau sui
     expect(finalSummary.nextTitle).toContain('atelier de l’horloger');
   });
 });
+
+describe('Niveau 5 (V57) — Pilules fluides des quarts d’heure', () => {
+  it('fait apparaître successivement Heure pile, Quart d’heure, Demi-heure et Trois quarts d’heure au Niveau 5', () => {
+    const c0 = TutorialOverlay.getCallout(5, 200);
+    const c15 = TutorialOverlay.getCallout(5, 2000);
+    const c30 = TutorialOverlay.getCallout(5, 4000);
+    const c45 = TutorialOverlay.getCallout(5, 6000);
+    const cPause = TutorialOverlay.getCallout(5, 9000);
+
+    expect(c0?.text).toBe('Heure pile');
+    expect(c15?.text).toBe('Quart d’heure');
+    expect(c30?.text).toBe('Demi-heure');
+    expect(c45?.text).toBe('Trois quarts d’heure');
+    expect(cPause?.text).toBe('Heure pile');
+  });
+});
