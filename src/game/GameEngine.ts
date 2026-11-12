@@ -1097,20 +1097,35 @@ export class GameEngine {
 
     this.phaseSuccessCount++;
     this.updatePhaseStarsUI();
+    this.soundEngine.playSuccess();
+
+    const spokenSuffix = this.targetTime.spokenText ? ` (<em>${this.targetTime.spokenText}</em>)` : '';
+    const successMsg =
+      this.currentLevel === 3
+        ? `<strong>Bravo ! L’aiguille indique bien ${this.targetTime.text} !</strong>`
+        : `<strong>Bravo ! Il est bien ${this.targetTime.text}${spokenSuffix} !</strong>`;
 
     if (this.phaseSuccessCount >= 3) {
       if (this.currentPhase === 1) {
-        this.soundEngine.playSuccess();
-        this.playStep2FullPageAnimation(() => {
-          this.currentPhase = 2;
-          this.phaseSuccessCount = 0;
-          this.initNewQuestion();
-          this.updateUI();
-          this.render();
-        });
+        // Affiche d'abord "Bravo ! Il est bien..." pendant 3 secondes avant de lancer l'écran Étape 2
+        this.showFeedback(
+          successMsg,
+          'success',
+          () => {
+            this.soundEngine.playSuccess();
+            this.playStep2FullPageAnimation(() => {
+              this.currentPhase = 2;
+              this.phaseSuccessCount = 0;
+              this.initNewQuestion();
+              this.updateUI();
+              this.render();
+            });
+          },
+          3000
+        );
         return;
       } else {
-        this.soundEngine.playLevelComplete();
+        // Sauvegarde immédiate des étoiles acquises puis affichage de "Bravo ! Il est bien..." pendant 3 secondes
         const earnedStars = SaveManager.computeStarsForErrors(this.levelTotalErrors);
         SaveManager.applyLevelRewards(this.saveData, this.currentLevel, earnedStars);
         SaveManager.save(this.saveData);
@@ -1119,30 +1134,31 @@ export class GameEngine {
         const summary = GameEngine.getLevelTransitionSummary(this.currentLevel);
         const nextLvl = this.currentLevel + 1;
 
-        this.playLevelUpFullPageAnimation(
-          earnedStars,
-          summary,
+        this.showFeedback(
+          successMsg,
+          'success',
           () => {
-            this.returnToMenu();
+            this.soundEngine.playLevelComplete();
+            this.playLevelUpFullPageAnimation(
+              earnedStars,
+              summary,
+              () => {
+                this.returnToMenu();
+              },
+              () => {
+                if (summary.isFinal) {
+                  this.openWorkshop();
+                } else {
+                  this.startLevel(nextLvl);
+                }
+              }
+            );
           },
-          () => {
-            if (summary.isFinal) {
-              this.openWorkshop();
-            } else {
-              this.startLevel(nextLvl);
-            }
-          }
+          3000
         );
         return;
       }
     }
-
-    this.soundEngine.playSuccess();
-    const spokenSuffix = this.targetTime.spokenText ? ` (<em>${this.targetTime.spokenText}</em>)` : '';
-    const successMsg =
-      this.currentLevel === 3
-        ? `<strong>Bravo ! L’aiguille indique bien ${this.targetTime.text} !</strong>`
-        : `<strong>Bravo ! Il est bien ${this.targetTime.text}${spokenSuffix} !</strong>`;
 
     this.showFeedback(
       successMsg,
@@ -1151,7 +1167,8 @@ export class GameEngine {
         this.initNewQuestion();
         this.updateUI();
         this.render();
-      }
+      },
+      3000
     );
   }
 
