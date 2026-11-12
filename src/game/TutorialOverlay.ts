@@ -12,7 +12,18 @@ export interface TutorialCallout {
   color: string;
 }
 
+export interface Level2TimelineState {
+  hours24: number;
+  isDay: boolean;
+  activeTour: 1 | 2;
+  periodLabel: string;
+  calloutText: string;
+  calloutColor: string;
+}
+
 export class TutorialOverlay {
+  private static readonly LEVEL2_CYCLE_MS = 12000;
+
   public static getInfo(level: number): TutorialStepInfo {
     switch (level) {
       case 1:
@@ -28,7 +39,7 @@ export class TutorialOverlay {
           title: 'Les 24 Heures',
           ruleHtml:
             'Chaque jour commence à minuit. Entre minuit et midi, on lit les <strong>chiffres noirs</strong>. Après midi, et jusqu’à minuit, on lit les <strong>chiffres orange</strong>.',
-          periodLabel: '🌙 Nuit (matin)',
+          periodLabel: '🌙 1er tour · Nuit (matin)',
           isDay: false
         };
       case 3:
@@ -82,28 +93,100 @@ export class TutorialOverlay {
     }
   }
 
+  /**
+   * Calcule l'état continu des 2 tours d'horloge (00h -> 12h -> 24h) avec 4 pauses :
+   * 1. 03 h (Nuit, 1er tour noir) : "🌙 03 h · On dort"
+   * 2. 08 h (Matin, 1er tour noir, après le lever du soleil à 06 h) : "☀️ 08 h · L’école"
+   * 3. 15 h (Après-midi, 2e tour orange, après la bascule de midi à 12 h) : "🌤️ 15 h · L’après-midi"
+   * 4. 20 h (Soir, 2e tour orange, après le coucher du soleil à 18 h) : "🌙 20 h · Le soir"
+   */
+  public static getLevel2Timeline(elapsedMs: number): Level2TimelineState {
+    const t = ((elapsedMs % this.LEVEL2_CYCLE_MS) + this.LEVEL2_CYCLE_MS) % this.LEVEL2_CYCLE_MS / this.LEVEL2_CYCLE_MS;
+    let h = 3;
+
+    if (t < 0.06) {
+      h = this.easeInOut(t / 0.06) * 3;
+    } else if (t < 0.25) {
+      h = 3;
+    } else if (t < 0.33) {
+      h = 3 + this.easeInOut((t - 0.25) / 0.08) * 5;
+    } else if (t < 0.50) {
+      h = 8;
+    } else if (t < 0.60) {
+      h = 8 + this.easeInOut((t - 0.50) / 0.10) * 7;
+    } else if (t < 0.75) {
+      h = 15;
+    } else if (t < 0.82) {
+      h = 15 + this.easeInOut((t - 0.75) / 0.07) * 5;
+    } else if (t < 0.94) {
+      h = 20;
+    } else {
+      h = 20 + this.easeInOut((t - 0.94) / 0.06) * 4;
+    }
+
+    const isDay = h >= 6 && h < 18;
+    const activeTour: 1 | 2 = h < 12 || h >= 23.95 ? 1 : 2;
+
+    if (t < 0.25) {
+      return {
+        hours24: h,
+        isDay,
+        activeTour,
+        periodLabel: '🌙 1er tour · Nuit (matin)',
+        calloutText: '🌙 03 h · On dort',
+        calloutColor: '#38bdf8'
+      };
+    }
+    if (t < 0.50) {
+      return {
+        hours24: h,
+        isDay,
+        activeTour,
+        periodLabel: isDay ? '☀️ 1er tour · Matin' : '🌙 1er tour · Nuit (matin)',
+        calloutText: '☀️ 08 h · L’école',
+        calloutColor: '#0284c7'
+      };
+    }
+    if (t < 0.75) {
+      return {
+        hours24: h,
+        isDay,
+        activeTour,
+        periodLabel: activeTour === 2 ? '🌤️ 2e tour · Après-midi' : '☀️ 1er tour · Matin',
+        calloutText: '🌤️ 15 h · L’après-midi',
+        calloutColor: '#ea580c'
+      };
+    }
+    return {
+      hours24: h,
+      isDay,
+      activeTour,
+      periodLabel: isDay ? '🌤️ 2e tour · Après-midi' : '🌙 2e tour · Soir',
+      calloutText: '🌙 20 h · Le soir',
+      calloutColor: '#ea580c'
+    };
+  }
+
   public static getDynamicFrameState(
     level: number,
     elapsedMs: number
-  ): { isDay: boolean; periodLabel: string } | null {
+  ): { isDay: boolean; periodLabel: string; activeTour: 1 | 2 } | null {
     if (level !== 2) return null;
-    const t = (elapsedMs % 7200) / 7200;
-    if (t < 0.5) {
-      return { isDay: false, periodLabel: '🌙 Nuit (matin)' };
-    }
-    return { isDay: true, periodLabel: '🌤️ Après-midi' };
+    const state = this.getLevel2Timeline(elapsedMs);
+    return {
+      isDay: state.isDay,
+      periodLabel: state.periodLabel,
+      activeTour: state.activeTour
+    };
   }
 
-  /**
-   * Pilule affichée sous l'horloge uniquement pour le Niveau 2 ("le matin : 3h" / "l'après-midi : 15h")
-   */
   public static getCallout(level: number, elapsedMs: number): TutorialCallout | null {
     if (level !== 2) return null;
-    const t = (elapsedMs % 7200) / 7200;
-    if (t < 0.5) {
-      return { text: 'le matin : 3h', color: '#38bdf8' };
-    }
-    return { text: 'l’après-midi : 15h', color: '#ea580c' };
+    const state = this.getLevel2Timeline(elapsedMs);
+    return {
+      text: state.calloutText,
+      color: state.calloutColor
+    };
   }
 
   public static draw(
@@ -193,23 +276,13 @@ export class TutorialOverlay {
     elapsedMs: number,
     pulse: number
   ): void {
-    const t = (elapsedMs % 7200) / 7200;
-    let h = 3;
-
-    if (t < 0.14) {
-      h = this.easeInOut(t / 0.14) * 3;
-    } else if (t < 0.46) {
-      h = 3;
-    } else if (t < 0.64) {
-      h = 3 + this.easeInOut((t - 0.46) / 0.18) * 12;
-    } else {
-      h = 15;
-    }
+    const state = this.getLevel2Timeline(elapsedMs);
+    const h = state.hours24;
 
     hands.draw(h, 0, 2, 'hour');
     const angleH = ((h % 12) * Math.PI) / 6;
 
-    if (t < 0.5) {
+    if (state.activeTour === 1) {
       this.drawTargetHalo(ctx, radius - 54, angleH, 24 + pulse * 4, '#0284c7');
     } else {
       this.drawTargetHalo(ctx, radius - 104, angleH, 20 + pulse * 4, '#ea580c');

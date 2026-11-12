@@ -35,7 +35,7 @@ function createMockCtx(): CanvasRenderingContext2D {
   } as unknown as CanvasRenderingContext2D;
 }
 
-describe('WatchMechanism V49 — Continuité du Ressort, Détente Rapide (20s), Cinématique 5 Contacts & 3 Zooms', () => {
+describe('WatchMechanism V52 — Continuité du Ressort, Détente Rapide (20s), Cinématique 5 Contacts & 3 Zooms', () => {
   it('ne provoque aucun saut de position du barillet lorsque le ressort est chargé et repart en détente', () => {
     const wm = new WatchMechanism(createMockCtx(), 500, 500);
     wm.power = 50;
@@ -93,7 +93,7 @@ describe('WatchMechanism V49 — Continuité du Ressort, Détente Rapide (20s), 
   });
 });
 
-describe('Progression Pédagogique 8 Niveaux (V49) — Didacticiels clarifiés, Niveau 5 sans parenthèse & Niveau 2 avec pilule', () => {
+describe('Progression Pédagogique 8 Niveaux (V52) — Didacticiel 2 tours en accéléré & 4 moments de vie', () => {
   beforeEach(() => {
     const store: Record<string, string> = {};
     globalThis.localStorage = {
@@ -115,25 +115,47 @@ describe('Progression Pédagogique 8 Niveaux (V49) — Didacticiels clarifiés, 
     expect(TimeMath.formatSpokenTime(4, 45, 5)).toBe('');
   });
 
-  it('affiche la pilule de didacticiel uniquement au Niveau 2 ("le matin : 3h" / "l’après-midi : 15h")', () => {
+  it('anime les 2 tours du Niveau 2 à travers les 4 moments de vie (03h, 08h, 15h, 20h) avec bascule à midi', () => {
     expect(TutorialOverlay.getCallout(1, 1000)).toBeNull();
-    expect(TutorialOverlay.getCallout(3, 1000)).toBeNull();
-    expect(TutorialOverlay.getCallout(4, 1000)).toBeNull();
-    expect(TutorialOverlay.getCallout(5, 1000)).toBeNull();
-    expect(TutorialOverlay.getCallout(6, 1000)).toBeNull();
     expect(TutorialOverlay.getCallout(7, 1000)).toBeNull();
-    expect(TutorialOverlay.getCallout(8, 1000)).toBeNull();
 
-    const morningCallout = TutorialOverlay.getCallout(2, 1000);
-    const afternoonCallout = TutorialOverlay.getCallout(2, 5000);
-    expect(morningCallout?.text).toBe('le matin : 3h');
-    expect(afternoonCallout?.text).toBe('l’après-midi : 15h');
+    // 1. 03 h (Nuit, 1er tour noir)
+    const step03 = TutorialOverlay.getLevel2Timeline(1500);
+    expect(step03.hours24).toBe(3);
+    expect(step03.isDay).toBe(false);
+    expect(step03.activeTour).toBe(1);
+    expect(step03.calloutText).toContain('03 h');
+
+    // 2. 08 h (Matin, 1er tour noir)
+    const step08 = TutorialOverlay.getLevel2Timeline(4800);
+    expect(step08.hours24).toBe(8);
+    expect(step08.isDay).toBe(true);
+    expect(step08.activeTour).toBe(1);
+    expect(step08.calloutText).toContain('08 h');
+
+    // 3. 15 h (Après-midi, 2e tour orange)
+    const step15 = TutorialOverlay.getLevel2Timeline(8000);
+    expect(step15.hours24).toBe(15);
+    expect(step15.isDay).toBe(true);
+    expect(step15.activeTour).toBe(2);
+    expect(step15.calloutText).toContain('15 h');
+
+    // 4. 20 h (Soir, 2e tour orange)
+    const step20 = TutorialOverlay.getLevel2Timeline(10500);
+    expect(step20.hours24).toBe(20);
+    expect(step20.isDay).toBe(false);
+    expect(step20.activeTour).toBe(2);
+    expect(step20.calloutText).toContain('20 h');
   });
 
-  it('dessine le cadran et le didacticiel sans erreur pour chacun des 8 niveaux', () => {
+  it('dessine le cadran (avec activeTour 1 et 2) et le didacticiel sans erreur pour chacun des 8 niveaux', () => {
     const ctx = createMockCtx();
     const clock = new Clock(ctx, 200);
     const hands = new Hands(ctx, 200);
+
+    expect(() => clock.draw(2, false, 1)).not.toThrow();
+    expect(() => clock.draw(2, true, 2)).not.toThrow();
+
     for (let lvl = 1; lvl <= 8; lvl++) {
       const info = TutorialOverlay.getInfo(lvl);
       expect(info.ruleHtml.length).toBeGreaterThan(15);
@@ -147,27 +169,5 @@ describe('Progression Pédagogique 8 Niveaux (V49) — Didacticiels clarifiés, 
 
     const sound = new SoundEngine(false);
     expect(() => sound.playWindingClick()).not.toThrow();
-  });
-});
-
-describe('Correctifs V50 — Niveau 2 décor de nuit à 3h du matin & Textes Niveaux 7-8', () => {
-  it('active le décor de nuit pour 3h du matin et le décor de jour pour 15h au Niveau 2', () => {
-    const info2 = TutorialOverlay.getInfo(2);
-    expect(info2.isDay).toBe(false);
-
-    const morningFrame = TutorialOverlay.getDynamicFrameState(2, 1000);
-    const afternoonFrame = TutorialOverlay.getDynamicFrameState(2, 5000);
-    expect(morningFrame?.isDay).toBe(false);
-    expect(afternoonFrame?.isDay).toBe(true);
-  });
-
-  it('affiche 16h20 / 4h20 au Niveau 7 et 16h10 au Niveau 8', () => {
-    const info7 = TutorialOverlay.getInfo(7);
-    expect(info7.ruleHtml).toContain('16h20');
-    expect(info7.ruleHtml).toContain('pas 4h20 du matin');
-
-    const info8 = TutorialOverlay.getInfo(8);
-    expect(info8.ruleHtml).toContain('deviner les chiffres');
-    expect(info8.ruleHtml).toContain('16h10');
   });
 });

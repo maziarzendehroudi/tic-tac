@@ -245,7 +245,7 @@ export class GameEngine {
         calloutRow?.classList.add('hidden');
       }
 
-      this.clock.draw(this.currentLevel, frameDay);
+      this.clock.draw(this.currentLevel, frameDay, dyn?.activeTour);
       TutorialOverlay.draw(this.ctx, this.hands, this.radius, this.currentLevel, elapsed);
       this.tutorialAnimId = requestAnimationFrame(loop);
     };

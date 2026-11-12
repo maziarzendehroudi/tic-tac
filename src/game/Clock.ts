@@ -7,7 +7,7 @@ export class Clock {
     this.radius = radius;
   }
 
-  public draw(level: number = 1, isDay: boolean = true): void {
+  public draw(level: number = 1, isDay: boolean = true, activeTour?: 1 | 2): void {
     const ctx = this.ctx;
     const r = this.radius;
     ctx.clearRect(-r - 14, -r - 14, (r + 14) * 2, (r + 14) * 2);
@@ -104,7 +104,6 @@ export class Clock {
     for (let i = 1; i <= 12; i++) {
       const angle = (i * Math.PI) / 6;
 
-      // Niveau 8 : suppression des graduations noires intermédiaires (seuls 12, 3, 6, 9 sont affichés)
       if (level >= 8 && i % 3 !== 0) {
         continue;
       }
@@ -115,6 +114,8 @@ export class Clock {
       ctx.save();
       if (level === 3) {
         ctx.globalAlpha = 0.20;
+      } else if (level === 2 && activeTour === 2) {
+        ctx.globalAlpha = 0.24;
       }
       ctx.font = level >= 8 ? '700 32px "Fredoka", sans-serif' : '700 28px "Fredoka", sans-serif';
       ctx.textAlign = 'center';
@@ -132,6 +133,9 @@ export class Clock {
         const y24 = -hour24Radius * Math.cos(angle);
 
         ctx.save();
+        if (level === 2 && activeTour === 1) {
+          ctx.globalAlpha = 0.22;
+        }
         ctx.font = '700 16px "Fredoka", sans-serif';
         ctx.textAlign = 'center';
         ctx.textBaseline = 'middle';
