@@ -1,4 +1,4 @@
-const CACHE_NAME = 'tic-tac-v53';
+const CACHE_NAME = 'tic-tac-v54';
 const PRECACHE_ASSETS = [
   './',
   './index.html',
