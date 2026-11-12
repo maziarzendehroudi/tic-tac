@@ -28,8 +28,8 @@ export class TutorialOverlay {
           title: 'Les 24 Heures',
           ruleHtml:
             'Chaque jour commence à minuit. Entre minuit et midi, on lit les <strong>chiffres noirs</strong>. Après midi, et jusqu’à minuit, on lit les <strong>chiffres orange</strong>.',
-          periodLabel: '☀️ Matin',
-          isDay: true
+          periodLabel: '🌙 Nuit (matin)',
+          isDay: false
         };
       case 3:
         return {
@@ -67,7 +67,7 @@ export class TutorialOverlay {
         return {
           title: 'Le Défi Jour & Nuit',
           ruleHtml:
-            'Comme il fait jour, on sait qu’il est <strong>16h</strong> (l’après-midi) et pas 4h du matin !',
+            'Comme il fait jour, on sait qu’il est <strong>16h20</strong> (l’après-midi) et pas 4h20 du matin !',
           periodLabel: '🌤️ Après-midi',
           isDay: true
         };
@@ -75,7 +75,7 @@ export class TutorialOverlay {
         return {
           title: 'L’Horloge des Grands',
           ruleHtml:
-            'Voici une horloge de grand : il faut <strong>deviner les chiffres</strong> !',
+            'Voici une horloge de grand : il faut <strong>deviner les chiffres</strong> : il est <strong>16h10</strong> !',
           periodLabel: '🌤️ Après-midi',
           isDay: true
         };
@@ -89,7 +89,7 @@ export class TutorialOverlay {
     if (level !== 2) return null;
     const t = (elapsedMs % 7200) / 7200;
     if (t < 0.5) {
-      return { isDay: true, periodLabel: '☀️ Matin' };
+      return { isDay: false, periodLabel: '🌙 Nuit (matin)' };
     }
     return { isDay: true, periodLabel: '🌤️ Après-midi' };
   }
@@ -101,7 +101,7 @@ export class TutorialOverlay {
     if (level !== 2) return null;
     const t = (elapsedMs % 7200) / 7200;
     if (t < 0.5) {
-      return { text: 'le matin : 3h', color: '#0284c7' };
+      return { text: 'le matin : 3h', color: '#38bdf8' };
     }
     return { text: 'l’après-midi : 15h', color: '#ea580c' };
   }

@@ -149,3 +149,25 @@ describe('Progression Pédagogique 8 Niveaux (V49) — Didacticiels clarifiés, 
     expect(() => sound.playWindingClick()).not.toThrow();
   });
 });
+
+describe('Correctifs V50 — Niveau 2 décor de nuit à 3h du matin & Textes Niveaux 7-8', () => {
+  it('active le décor de nuit pour 3h du matin et le décor de jour pour 15h au Niveau 2', () => {
+    const info2 = TutorialOverlay.getInfo(2);
+    expect(info2.isDay).toBe(false);
+
+    const morningFrame = TutorialOverlay.getDynamicFrameState(2, 1000);
+    const afternoonFrame = TutorialOverlay.getDynamicFrameState(2, 5000);
+    expect(morningFrame?.isDay).toBe(false);
+    expect(afternoonFrame?.isDay).toBe(true);
+  });
+
+  it('affiche 16h20 / 4h20 au Niveau 7 et 16h10 au Niveau 8', () => {
+    const info7 = TutorialOverlay.getInfo(7);
+    expect(info7.ruleHtml).toContain('16h20');
+    expect(info7.ruleHtml).toContain('pas 4h20 du matin');
+
+    const info8 = TutorialOverlay.getInfo(8);
+    expect(info8.ruleHtml).toContain('deviner les chiffres');
+    expect(info8.ruleHtml).toContain('16h10');
+  });
+});
