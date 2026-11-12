@@ -70,7 +70,7 @@ export class TutorialOverlay {
         return {
           title: '💡 Astuce · L’Horloge des Grands',
           ruleHtml:
-            'Repère-toi avec <strong>12, 3, 6, 9</strong> et ajoute <strong>+ 12</strong> dans ta tête l’après-midi (<strong>4 h + 12 = 16 h</strong>) !',
+            'Repère-toi avec les chiffres <strong>12, 3, 6, 9</strong> et compte les traits suivants pour lire l’heure !',
           periodLabel: '🌤️ Après-midi',
           isDay: true
         };
@@ -177,7 +177,7 @@ export class TutorialOverlay {
     const a4 = (4 * Math.PI) / 6;
     this.drawCurvedArrow(ctx, radius - 90, Math.PI / 2, a4, '#ea580c');
     this.drawTargetHalo(ctx, radius - 28, a4, 18 + pulse * 4, '#ea580c');
-    this.drawCalloutBadge(ctx, 0, 62, '4 h + 12 = 16:10', '#ea580c');
+    this.drawCalloutBadge(ctx, 0, 62, 'Après-midi : 16:10', '#ea580c');
   }
 
   private static drawLevel2Continuous(

@@ -22,17 +22,15 @@ interface CelebrationParticle {
 }
 
 const ZOOM_LABELS: Record<Exclude<WorkshopZoom, 'overview'>, string> = {
-  spring: '⚙️ Ressort / Molette',
+  spring: '⚙️ Ressort',
   hours: '🟠 Heures',
-  minutes: '🔵 Minutes',
-  seconds: '🔴 Secondes'
+  minutes: '🔵 Minutes'
 };
 
-const FOUR_ZOOM_BUTTONS: Array<Exclude<WorkshopZoom, 'overview'>> = [
+const THREE_ZOOM_BUTTONS: Array<Exclude<WorkshopZoom, 'overview'>> = [
   'spring',
   'hours',
-  'minutes',
-  'seconds'
+  'minutes'
 ];
 
 export class GameEngine {
@@ -66,7 +64,7 @@ export class GameEngine {
 
   private isDragging: boolean = false;
   private isWaitingNext: boolean = false;
-  private nextActionCallback: (() => void) | null = null;
+  private autoNextTimerId: number = 0;
   private celebrationAnimId: number = 0;
   private isTutorialActive: boolean = false;
   private tutorialAnimId: number = 0;
@@ -106,7 +104,6 @@ export class GameEngine {
 
     this.initEvents();
     this.updateSoundButtonUI();
-    this.updateDevButtonUI();
     this.updateMenuUI();
     this.applySkyTheme(true);
   }
@@ -115,10 +112,10 @@ export class GameEngine {
     cancelAnimationFrame(this.celebrationAnimId);
     cancelAnimationFrame(this.workshopAnimId);
     cancelAnimationFrame(this.tutorialAnimId);
+    clearTimeout(this.autoNextTimerId);
     this.isTutorialActive = false;
     this.isWinding = false;
     this.isWaitingNext = false;
-    this.nextActionCallback = null;
   }
 
   public startLevel(level: number): void {
@@ -143,6 +140,7 @@ export class GameEngine {
 
   private openTutorial(): void {
     cancelAnimationFrame(this.tutorialAnimId);
+    clearTimeout(this.autoNextTimerId);
     this.isTutorialActive = true;
     this.tutorialStartTime = performance.now();
 
@@ -159,7 +157,6 @@ export class GameEngine {
       }
     }
 
-    // Masque le titre d'astuce : l'explication s'affiche directement en typo noire sur fond bleu
     const instructionEl = document.getElementById('instruction');
     if (instructionEl) {
       instructionEl.classList.add('hidden');
@@ -176,12 +173,16 @@ export class GameEngine {
 
     const helpBox = document.getElementById('help-box');
     const helpText = document.getElementById('help-text');
-    const nextBtn = document.getElementById('next-question-btn');
     if (helpBox && helpText) {
       helpText.innerHTML = info.ruleHtml;
-      helpBox.classList.remove('invisible-feedback', 'hidden', 'feedback-success', 'feedback-error');
+      helpBox.classList.remove(
+        'invisible-feedback',
+        'hidden',
+        'feedback-success',
+        'feedback-step2',
+        'feedback-error'
+      );
       helpBox.classList.add('feedback-tutorial');
-      nextBtn?.classList.add('hidden');
     }
 
     const loop = (now: number) => {
@@ -244,7 +245,7 @@ export class GameEngine {
     const activeZoom = this.watchMechanism.zoomMode;
     tray.innerHTML = '';
 
-    FOUR_ZOOM_BUTTONS.forEach(mode => {
+    THREE_ZOOM_BUTTONS.forEach(mode => {
       const isSelected = activeZoom === mode;
       const btn = document.createElement('button');
       btn.type = 'button';
@@ -267,7 +268,6 @@ export class GameEngine {
     document.getElementById('workshop-screen')?.classList.add('hidden');
     document.getElementById('main-menu')?.classList.remove('hidden');
     this.applySkyTheme(true);
-    this.updateDevButtonUI();
     this.updateMenuUI();
   }
 
@@ -285,12 +285,12 @@ export class GameEngine {
 
   private initNewQuestion(): void {
     cancelAnimationFrame(this.celebrationAnimId);
+    clearTimeout(this.autoNextTimerId);
     this.targetTime = this.questionManager.generateQuestion();
     this.errorsCount = 0;
     this.currentQuestionAssisted = false;
     this.showGhostGuide = false;
     this.isWaitingNext = false;
-    this.nextActionCallback = null;
     this.hideHelp();
     this.resetButtonsState();
 
@@ -429,28 +429,6 @@ export class GameEngine {
       window.location.replace(url.toString());
     });
 
-    const devUnlockBtn = document.getElementById('dev-unlock-btn');
-    devUnlockBtn?.addEventListener('click', () => {
-      const currentMuted = this.saveData.muted;
-      this.saveData = SaveManager.unlockAll(currentMuted);
-      this.soundEngine.playLevelComplete();
-      this.renderProfilesList();
-      this.updateDevButtonUI();
-      this.updateMenuUI();
-    });
-
-    const devResetBtn = document.getElementById('dev-reset-btn');
-    devResetBtn?.addEventListener('click', () => {
-      const currentMuted = this.saveData.muted;
-      this.saveData = SaveManager.reset();
-      this.saveData.muted = currentMuted;
-      SaveManager.save(this.saveData);
-      this.soundEngine.playSnap();
-      this.renderProfilesList();
-      this.updateDevButtonUI();
-      this.updateMenuUI();
-    });
-
     document.getElementById('profile-btn')?.addEventListener('click', () => {
       this.soundEngine.playSnap();
       this.openProfileModal();
@@ -479,18 +457,7 @@ export class GameEngine {
       this.confirmingDeleteId = null;
       this.soundEngine.playSuccess();
       this.renderProfilesList();
-      this.updateDevButtonUI();
       this.updateMenuUI();
-    });
-
-    document.getElementById('next-question-btn')?.addEventListener('click', () => {
-      if (this.isWaitingNext && this.nextActionCallback) {
-        this.soundEngine.playSnap();
-        const cb = this.nextActionCallback;
-        this.nextActionCallback = null;
-        this.isWaitingNext = false;
-        cb();
-      }
     });
 
     const getPointerPos = (e: MouseEvent | TouchEvent) => {
@@ -548,14 +515,6 @@ export class GameEngine {
     window.addEventListener('touchend', onEnd);
 
     document.getElementById('check-btn')?.addEventListener('click', () => {
-      if (this.isWaitingNext && this.nextActionCallback) {
-        this.soundEngine.playSnap();
-        const cb = this.nextActionCallback;
-        this.nextActionCallback = null;
-        this.isWaitingNext = false;
-        cb();
-        return;
-      }
       if (!this.isWaitingNext && this.currentPhase === 2) {
         this.checkPlaceAnswer();
       }
@@ -576,7 +535,6 @@ export class GameEngine {
     this.editingProfileId = null;
     this.confirmingDeleteId = null;
     this.renderProfilesList();
-    this.updateDevButtonUI();
     document.getElementById('profile-modal')?.classList.remove('hidden');
   }
 
@@ -590,8 +548,7 @@ export class GameEngine {
     profiles.forEach(profile => {
       const isActive = profile.id === active.id;
       const stars = SaveManager.getTotalStars(profile.save);
-      const rank = SaveManager.getRankTitle(stars);
-      const maxLvl = profile.save.maxUnlockedLevel || 1;
+      const displayName = profile.name === 'Test' ? 'Menu' : profile.name;
 
       const row = document.createElement('div');
       row.className = `profile-item${isActive ? ' active-profile' : ''}`;
@@ -603,7 +560,7 @@ export class GameEngine {
         const input = document.createElement('input');
         input.type = 'text';
         input.maxLength = 16;
-        input.value = profile.name;
+        input.value = displayName;
         input.className = 'profile-rename-input';
 
         const saveBtn = document.createElement('button');
@@ -647,14 +604,11 @@ export class GameEngine {
       selectBtn.type = 'button';
       selectBtn.className = 'profile-select-btn';
       selectBtn.innerHTML = `
-        <div class="prof-info-col">
-          <div class="prof-name-line">
-            <span class="prof-name">${profile.name}</span>
-            ${isActive ? '<span class="prof-active-pill">Actif</span>' : ''}
-          </div>
-          <span class="prof-meta">${rank} · Niv. ${maxLvl}/8</span>
+        <div class="prof-name-line">
+          <span class="prof-name">${displayName}</span>
+          ${isActive ? '<span class="prof-active-pill">✓</span>' : ''}
         </div>
-        <span class="prof-stars">★ ${stars}/${SaveManager.MAX_STARS}</span>
+        <span class="prof-stars">★ ${stars} / ${SaveManager.MAX_STARS}</span>
       `;
       selectBtn.addEventListener('click', () => {
         this.saveData = SaveManager.switchProfile(profile.id);
@@ -663,7 +617,6 @@ export class GameEngine {
         this.confirmingDeleteId = null;
         this.renderProfilesList();
         this.updateSoundButtonUI();
-        this.updateDevButtonUI();
         this.updateMenuUI();
       });
 
@@ -672,7 +625,7 @@ export class GameEngine {
       const editBtn = document.createElement('button');
       editBtn.type = 'button';
       editBtn.className = 'profile-action-btn';
-      editBtn.title = `Renommer ${profile.name}`;
+      editBtn.title = `Renommer ${displayName}`;
       editBtn.textContent = '✏️';
       editBtn.addEventListener('click', (e) => {
         e.stopPropagation();
@@ -688,8 +641,8 @@ export class GameEngine {
         delBtn.type = 'button';
         const isConfirming = this.confirmingDeleteId === profile.id;
         delBtn.className = `profile-del-btn${isConfirming ? ' confirm-del' : ''}`;
-        delBtn.title = isConfirming ? `Confirmer la suppression de ${profile.name}` : `Supprimer ${profile.name}`;
-        delBtn.textContent = isConfirming ? 'Suppr ?' : '🗑️';
+        delBtn.title = isConfirming ? `Confirmer la suppression` : `Supprimer ${displayName}`;
+        delBtn.textContent = isConfirming ? 'Oui ?' : '🗑️';
         delBtn.addEventListener('click', (e) => {
           e.stopPropagation();
           if (this.confirmingDeleteId !== profile.id) {
@@ -703,7 +656,6 @@ export class GameEngine {
           this.saveData = updatedActive.save;
           this.soundEngine.playSnap();
           this.renderProfilesList();
-          this.updateDevButtonUI();
           this.updateMenuUI();
         });
         row.appendChild(delBtn);
@@ -722,29 +674,15 @@ export class GameEngine {
     }
   }
 
-  private updateDevButtonUI(): void {
-    const unlockBtn = document.getElementById('dev-unlock-btn') as HTMLButtonElement | null;
-    const resetBtn = document.getElementById('dev-reset-btn') as HTMLButtonElement | null;
-    const totalStars = SaveManager.getTotalStars(this.saveData);
-    const fullyUnlocked = SaveManager.isFullyUnlocked(this.saveData) && totalStars >= SaveManager.MAX_STARS;
-    const isFresh = totalStars === 0 && (this.saveData.maxUnlockedLevel || 1) <= 1;
-
-    if (unlockBtn) {
-      unlockBtn.disabled = fullyUnlocked;
-      unlockBtn.textContent = fullyUnlocked ? '✓ Tout débloqué' : '🔓 Tout débloquer';
-    }
-    if (resetBtn) {
-      resetBtn.disabled = isFresh;
-    }
-  }
-
   private updateMenuUI(): void {
     const levelRects = document.querySelectorAll('.level-rect');
     const maxUnlocked = this.saveData.maxUnlockedLevel || 1;
     const activeProfile = SaveManager.getActiveProfile();
 
     const profileLabel = document.getElementById('current-profile-name');
-    if (profileLabel) profileLabel.textContent = activeProfile.name;
+    if (profileLabel) {
+      profileLabel.textContent = activeProfile.name === 'Test' ? 'Menu' : activeProfile.name;
+    }
 
     const totalStars = SaveManager.getTotalStars(this.saveData);
     const rankTitle = SaveManager.getRankTitle(totalStars);
@@ -799,51 +737,60 @@ export class GameEngine {
 
   private showFeedback(
     html: string,
-    type: 'success' | 'error',
-    nextCallback?: () => void,
-    nextBtnLabel: string = 'Suivant ➔'
+    type: 'success' | 'step2' | 'error',
+    nextCallback?: () => void
   ): void {
     const helpBox = document.getElementById('help-box');
     const helpText = document.getElementById('help-text');
-    const nextBtn = document.getElementById('next-question-btn');
-    const placementTools = document.getElementById('placement-tools');
     const instructionEl = document.getElementById('instruction');
     if (!helpBox || !helpText) return;
 
-    if (type === 'success') {
+    if (type === 'success' || type === 'step2') {
       instructionEl?.classList.add('hidden');
     } else {
       instructionEl?.classList.remove('hidden');
     }
 
     helpText.innerHTML = html;
-    helpBox.classList.remove('invisible-feedback', 'hidden', 'feedback-success', 'feedback-error', 'feedback-tutorial');
-    helpBox.classList.add(type === 'success' ? 'feedback-success' : 'feedback-error');
+    helpBox.classList.remove(
+      'invisible-feedback',
+      'hidden',
+      'feedback-success',
+      'feedback-step2',
+      'feedback-error',
+      'feedback-tutorial'
+    );
+    helpBox.classList.add(
+      type === 'step2'
+        ? 'feedback-step2'
+        : type === 'success'
+          ? 'feedback-success'
+          : 'feedback-error'
+    );
 
-    if (nextBtn) {
-      if (nextCallback) {
-        nextBtn.textContent = nextBtnLabel;
-        nextBtn.classList.remove('hidden');
-        this.isWaitingNext = true;
-        this.nextActionCallback = nextCallback;
-        if (this.currentPhase === 2) {
-          placementTools?.classList.add('hidden');
-        }
-      } else {
-        nextBtn.classList.add('hidden');
-      }
+    if (nextCallback) {
+      this.isWaitingNext = true;
+      clearTimeout(this.autoNextTimerId);
+      this.autoNextTimerId = window.setTimeout(() => {
+        if (!this.isWaitingNext) return;
+        this.isWaitingNext = false;
+        nextCallback();
+      }, 4000);
     }
   }
 
   private hideHelp(): void {
     const helpBox = document.getElementById('help-box');
-    const nextBtn = document.getElementById('next-question-btn');
     const instructionEl = document.getElementById('instruction');
     instructionEl?.classList.remove('hidden');
     if (!helpBox) return;
     helpBox.classList.add('invisible-feedback');
-    helpBox.classList.remove('feedback-success', 'feedback-error', 'feedback-tutorial');
-    nextBtn?.classList.add('hidden');
+    helpBox.classList.remove(
+      'feedback-success',
+      'feedback-step2',
+      'feedback-error',
+      'feedback-tutorial'
+    );
   }
 
   private handleSuccessfulAnswer(): void {
@@ -878,15 +825,14 @@ export class GameEngine {
 
         this.showFeedback(
           step2Text,
-          'success',
+          'step2',
           () => {
             this.currentPhase = 2;
             this.phaseSuccessCount = 0;
             this.initNewQuestion();
             this.updateUI();
             this.render();
-          },
-          'Étape 2 ➔'
+          }
         );
         return;
       } else {
@@ -894,7 +840,6 @@ export class GameEngine {
         const earnedStars = SaveManager.computeStarsForErrors(this.levelTotalErrors);
         SaveManager.applyLevelRewards(this.saveData, this.currentLevel, earnedStars);
         SaveManager.save(this.saveData);
-        this.updateDevButtonUI();
         this.updateMenuUI();
 
         const starsStr = '★'.repeat(earnedStars) + '☆'.repeat(3 - earnedStars);
@@ -906,24 +851,23 @@ export class GameEngine {
             'success',
             () => {
               this.openWorkshop();
-            },
-            'Atelier ⚙️'
+            }
           );
           return;
         }
 
+        const nextLvl = this.currentLevel + 1;
         const msg =
           earnedStars === 3
-            ? `🏆 <strong>Niveau ${this.currentLevel} parfait (${starsStr}) !</strong>`
-            : `🏆 <strong>Niveau ${this.currentLevel} validé (${starsStr}) !</strong>`;
+            ? `🏆 <strong>Niveau ${this.currentLevel} parfait (${starsStr}) !</strong> Passage au Niveau ${nextLvl}...`
+            : `🏆 <strong>Niveau ${this.currentLevel} validé (${starsStr}) !</strong> Passage au Niveau ${nextLvl}...`;
 
         this.showFeedback(
           msg,
           'success',
           () => {
-            this.returnToMenu();
-          },
-          'Menu 🏆'
+            this.startLevel(nextLvl);
+          }
         );
         return;
       }

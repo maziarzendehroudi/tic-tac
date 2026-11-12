@@ -26,14 +26,14 @@
       <div id="main-menu" class="view">
         <div id="global-top-bar">
           <div class="top-left-actions">
-            <button id="profile-btn" type="button" title="Changer ou gérer les joueurs">
+            <button id="profile-btn" type="button" title="Gérer les joueurs">
               <svg class="user-svg-icon" viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
                 <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"></path>
                 <circle cx="12" cy="7" r="4"></circle>
               </svg>
-              <span id="current-profile-name">Joueur 1</span> ▾
+              <span id="current-profile-name">Menu</span> ▾
             </button>
-            <button id="force-refresh-btn" type="button" title="Vider le cache PWA et forcer la mise à jour">⚡ Maj v46</button>
+            <button id="force-refresh-btn" type="button" title="Vider le cache PWA et forcer la mise à jour">⚡ Maj v47</button>
           </div>
           <button id="sound-toggle-btn" type="button" aria-pressed="true" aria-label="Activer ou couper le son" title="Son actif">
             <svg viewBox="0 0 24 24" width="26" height="26" fill="none" stroke="currentColor" stroke-width="2.3" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
@@ -121,18 +121,18 @@
           <button id="tutorial-btn" type="button" title="Revoir l'explication du niveau">💡</button>
         </div>
 
+        <div id="period-row">
+          <span id="period-chip-el" class="period-chip invisible-chip">☀️ Matin</span>
+        </div>
+
         <div id="game-container">
           <canvas id="clockCanvas" width="500" height="500"></canvas>
         </div>
 
         <div id="ui-container">
-          <div id="period-row">
-            <span id="period-chip-el" class="period-chip invisible-chip">☀️ Matin</span>
-          </div>
           <div id="instruction">Quelle heure est-il ?</div>
           <div id="help-box" class="invisible-feedback">
             <span id="help-text"></span>
-            <button id="next-question-btn" type="button" class="hidden">Suivant ➔</button>
           </div>
           <div id="controls-zone">
             <div id="choices-container">
@@ -165,13 +165,13 @@
         </div>
       </div>
 
-      <!-- MODALE MULTI-PROFILS & GESTION DU JOUEUR -->
+      <!-- MODALE MULTI-PROFILS ÉPURÉE -->
       <div id="profile-modal" class="modal hidden">
         <div class="modal-content profile-modal-content">
           <div class="modal-header-row">
             <div>
               <h2>Joueurs &amp; Profils</h2>
-              <p class="profile-subtitle">Sélectionne, renomme ou gère la progression</p>
+              <p class="profile-subtitle">Choisis ou ajoute un joueur</p>
             </div>
             <button id="profile-close-top-btn" type="button" class="modal-icon-close" aria-label="Fermer">✕</button>
           </div>
@@ -179,19 +179,11 @@
           <div id="profiles-list"></div>
 
           <form id="add-profile-form">
-            <input id="new-profile-input" type="text" maxlength="16" placeholder="Nouveau joueur (prénom)..." autocomplete="off" />
+            <input id="new-profile-input" type="text" maxlength="16" placeholder="Prénom du nouveau joueur..." autocomplete="off" />
             <button type="submit" id="add-profile-submit">+ Créer</button>
           </form>
 
-          <div class="active-profile-tools">
-            <span class="tools-label">Progression du joueur actif :</span>
-            <div class="modal-footer-row">
-              <button id="dev-unlock-btn" type="button" title="Débloquer tous les niveaux et l'Atelier">🔓 Tout débloquer</button>
-              <button id="dev-reset-btn" type="button" title="Remettre la progression de ce joueur à zéro">🔄 Réinitialiser</button>
-            </div>
-          </div>
-
-          <button id="profile-close-btn" type="button" class="modal-main-close-btn">Terminé</button>
+          <button id="profile-close-btn" type="button" class="modal-main-close-btn">Fermer</button>
         </div>
       </div>
 

@@ -126,16 +126,20 @@ export class TimeMath {
     return n === 0 ? 12 : n;
   }
 
+  private static hourUnit(h: number): string {
+    return h === 1 ? 'heure' : 'heures';
+  }
+
   public static formatSpokenTime(hours24: number, minutes: number, level: number): string {
     const h24 = ((hours24 % 24) + 24) % 24;
     const h12 = h24 % 12 || 12;
     const nextH12 = (h12 % 12) + 1;
 
-    if (level === 1) return `${h12} heures`;
+    if (level === 1) return `${h12} ${this.hourUnit(h12)}`;
     if (level === 2) {
       if (h24 === 12) return 'Midi';
       if (h24 === 0) return 'Minuit';
-      return `${h24} heures`;
+      return `${h24} ${this.hourUnit(h24)}`;
     }
     if (level === 3) return `${minutes} minutes`;
 
@@ -144,10 +148,10 @@ export class TimeMath {
       if (h24 === 0) return 'Minuit pile';
     }
 
-    if (minutes === 0 && level === 4) return `${h12} heures pile`;
-    if (minutes === 15 && level === 5) return `${h12} heures et quart`;
-    if (minutes === 30 && (level === 4 || level === 5)) return `${h12} heures et demie`;
-    if (minutes === 45 && level === 5) return `${nextH12} heures moins le quart`;
+    if (minutes === 0 && level === 4) return `${h12} ${this.hourUnit(h12)} pile`;
+    if (minutes === 15 && level === 5) return `${h12} ${this.hourUnit(h12)} et quart`;
+    if (minutes === 30 && (level === 4 || level === 5)) return `${h12} ${this.hourUnit(h12)} et demie`;
+    if (minutes === 45 && level === 5) return `${nextH12} ${this.hourUnit(nextH12)} moins le quart`;
     return '';
   }
 
@@ -180,7 +184,7 @@ export class TimeMath {
         }
         return 'C’est <strong>le matin ou la nuit</strong> : lis le grand chiffre noir entre <strong>1 et 11</strong> !';
       }
-      return 'Suis la <strong>petite aiguille orange</strong> et observe l’étiquette Jour/Nuit au-dessus de la question.';
+      return 'Suis la <strong>petite aiguille orange</strong> et observe l’étiquette Jour/Nuit en haut.';
     }
 
     if (level === 3) {
@@ -199,7 +203,7 @@ export class TimeMath {
       }
       if (targetHours >= 13) {
         if (level >= 8) {
-          return 'C’est <strong>l’après-midi ou le soir</strong> : ajoute 12 à l’heure du matin (ex : 1h ➔ 13h, 4h ➔ 16h) !';
+          return 'C’est <strong>l’après-midi ou le soir</strong> : utilise les heures de l’après-midi (<strong>13 h, 14 h, 15 h...</strong>) !';
         }
         return 'C’est <strong>l’après-midi ou le soir</strong> : lis le petit nombre <strong>orange</strong> à l’intérieur du cadran !';
       }
@@ -284,10 +288,7 @@ export class TimeMath {
       if (level === 8) {
         return 'Les minutes sont bonnes ! Aide-toi des repères <strong>12, 3, 6, 9</strong> pour placer la <strong>petite aiguille orange</strong>.';
       }
-      if (level >= 7 && targetHours >= 13) {
-        return 'Les minutes sont bonnes ! Pour l’après-midi ou le soir, retranche 12 pour trouver le chiffre de la <strong>petite aiguille orange</strong>.';
-      }
-      return 'Les minutes sont bonnes ! Glisse maintenant la <strong>petite aiguille orange</strong> sur le chiffre des heures demandé.';
+      return 'Les minutes sont bonnes ! Glisse maintenant la <strong>petite aiguille orange</strong> sur l’heure demandée.';
     }
 
     return 'Glisse d’abord la <strong>petite aiguille orange</strong> sur l’heure, puis la <strong>grande aiguille bleue</strong> sur les minutes.';

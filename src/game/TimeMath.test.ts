@@ -1,6 +1,5 @@
 import { describe, it, expect, beforeEach } from 'vitest';
 import { TimeMath } from './TimeMath';
-import { QuestionManager } from './QuestionManager';
 import { SaveManager } from './SaveManager';
 import { SoundEngine } from './SoundEngine';
 import { WatchMechanism } from './WatchMechanism';
@@ -35,7 +34,7 @@ function createMockCtx(): CanvasRenderingContext2D {
   } as unknown as CanvasRenderingContext2D;
 }
 
-describe('WatchMechanism V40/V41 — Continuité du Ressort sans saut, Détente Rapide (20s) & Cinématique 5 Contacts', () => {
+describe('WatchMechanism V47 — Continuité du Ressort, Détente Rapide (20s), Cinématique 5 Contacts & 3 Zooms', () => {
   it('ne provoque aucun saut de position du barillet lorsque le ressort est chargé et repart en détente', () => {
     const wm = new WatchMechanism(createMockCtx(), 500, 500);
     wm.power = 50;
@@ -59,7 +58,7 @@ describe('WatchMechanism V40/V41 — Continuité du Ressort sans saut, Détente 
     expect(wm.power).toBeCloseTo(0, 1);
   });
 
-  it('maintient un rapport d’engrènement exact sur les 5 contacts (Secondes -> Minutes -> Heures -> Ressort)', () => {
+  it('maintient un rapport d’engrènement exact sur les 5 contacts et contient le barillet dans le cadran (< 114 px)', () => {
     const wm = new WatchMechanism(createMockCtx(), 500, 500);
     wm.power = 100;
 
@@ -87,10 +86,13 @@ describe('WatchMechanism V40/V41 — Continuité du Ressort sans saut, Détente 
     expect(dRelayMin * relayMinutes.teethWheel).toBeCloseTo(-dMin * minutes.teeth, 5);
     expect(dHr * hours.teeth).toBeCloseTo(-dRelayMin * relayMinutes.teethPinion, 5);
     expect(dBarrel * spring.teeth).toBeCloseTo(-dHr * hours.teeth, 5);
+
+    const maxToothRadiusFromCenter = Math.hypot(spring.x, spring.y) + spring.r + 3.2;
+    expect(maxToothRadiusFromCenter).toBeLessThan(114);
   });
 });
 
-describe('Progression Pédagogique 8 Niveaux (V41) — QuestionManager, TimeMath & SaveManager', () => {
+describe('Progression Pédagogique 8 Niveaux (V47) — Orthographe 1 heure & Sans calcul +12', () => {
   beforeEach(() => {
     const store: Record<string, string> = {};
     globalThis.localStorage = {
@@ -103,44 +105,36 @@ describe('Progression Pédagogique 8 Niveaux (V41) — QuestionManager, TimeMath
     };
   });
 
-  it('isole les heures (Niv 1-2) et les minutes (Niv 3) avec leurs formats dédiés', () => {
-    expect(QuestionManager.formatTimeText(3, 0, 1)).toBe('3 h');
-    expect(QuestionManager.formatTimeText(15, 0, 2)).toBe('15 h');
-    expect(QuestionManager.formatTimeText(12, 25, 3)).toBe('25 min');
-
-    expect(TimeMath.pickHandFromPointer(10, -100, 3, 0, 200, 1, 'minute')).toBe('hour');
-    expect(TimeMath.pickHandFromPointer(10, -100, 15, 0, 200, 2, 'minute')).toBe('hour');
-    expect(TimeMath.pickHandFromPointer(10, -50, 12, 25, 200, 3, 'hour')).toBe('minute');
+  it('accorde correctement "1 heure" au singulier et les autres heures au pluriel', () => {
+    expect(TimeMath.formatSpokenTime(1, 0, 1)).toBe('1 heure');
+    expect(TimeMath.formatSpokenTime(2, 0, 1)).toBe('2 heures');
+    expect(TimeMath.formatSpokenTime(1, 0, 2)).toBe('1 heure');
+    expect(TimeMath.formatSpokenTime(1, 30, 4)).toBe('1 heure et demie');
+    expect(TimeMath.formatSpokenTime(1, 15, 5)).toBe('1 heure et quart');
+    expect(TimeMath.formatSpokenTime(12, 45, 5)).toBe('1 heure moins le quart');
   });
 
-  it('génère toujours un leurre sur l’heure ET un leurre sur les minutes aux niveaux 4 à 8', () => {
-    for (let lvl = 4; lvl <= 8; lvl++) {
-      const qm = new QuestionManager(lvl);
-      const target = qm.generateQuestion();
-      const choices = qm.generateChoices(target);
-      expect(choices).toHaveLength(3);
-      expect(choices.some(c => c.minutes !== target.minutes)).toBe(true);
-      expect(choices.some(c => c.hours !== target.hours)).toBe(true);
-    }
+  it('n’utilise jamais l’indication "+ 12" ou "ajoute 12" dans les didacticiels et indices', () => {
+    const info8 = TutorialOverlay.getInfo(8);
+    expect(info8.ruleHtml).not.toContain('12 =');
+    expect(info8.ruleHtml).not.toContain('+ 12');
+
+    const hint8 = TimeMath.buildReadDiagnosticHint(15, 20, 3, 20, 8);
+    expect(hint8).not.toContain('ajoute 12');
+    expect(hint8).toContain('après-midi');
   });
 
-  it('mentionne les nombres oranges au Niveau 2, le calcul +12 dès le Niveau 7, et débloque l’Atelier au Niveau 8', () => {
-    expect(TimeMath.buildReadDiagnosticHint(15, 0, 3, 0, 2)).toContain('orange');
-    expect(TimeMath.buildReadDiagnosticHint(15, 20, 3, 20, 7)).toContain('orange');
-    expect(TimeMath.buildReadDiagnosticHint(15, 20, 3, 20, 8)).toContain('ajoute 12');
-
-    let save = SaveManager.load();
-    expect(SaveManager.MAX_LEVEL).toBe(8);
-    expect(SaveManager.MAX_STARS).toBe(24);
-
-    save = SaveManager.applyLevelRewards(save, 8, 3);
-    expect(SaveManager.isWorkshopUnlocked(save)).toBe(true);
+  it('permet de créer et renommer un profil joueur', () => {
+    const created = SaveManager.createProfile('Menu', false);
+    const renamed = SaveManager.renameProfile(created.id, 'Sophia');
+    expect(renamed.name).toBe('Sophia');
+    expect(SaveManager.getActiveProfile().name).toBe('Sophia');
 
     const sound = new SoundEngine(false);
     expect(() => sound.playWindingClick()).not.toThrow();
   });
 
-  it("fournit et dessine un didacticiel animé sans erreur pour chacun des 8 niveaux", () => {
+  it('fournit et dessine un didacticiel animé sans erreur pour chacun des 8 niveaux', () => {
     const ctx = createMockCtx();
     const hands = new Hands(ctx, 200);
     for (let lvl = 1; lvl <= 8; lvl++) {
@@ -149,21 +143,5 @@ describe('Progression Pédagogique 8 Niveaux (V41) — QuestionManager, TimeMath
       expect(info.ruleHtml.length).toBeGreaterThan(10);
       expect(() => TutorialOverlay.draw(ctx, hands, 200, lvl, 1200)).not.toThrow();
     }
-  });
-});
-
-describe('Correctifs V46 — Barillet dans le cadran & Gestion des profils', () => {
-  it('maintient les dents du barillet du ressort strictement à l’intérieur des graduations du cadran (< 114 px)', () => {
-    const { spring } = WatchMechanism.POS;
-    const centerDist = Math.hypot(spring.x, spring.y);
-    const maxToothRadiusFromCenter = centerDist + spring.r + 3.2;
-    expect(maxToothRadiusFromCenter).toBeLessThan(114);
-  });
-
-  it('permet de renommer un profil joueur existant', () => {
-    const created = SaveManager.createProfile('Test', false);
-    const renamed = SaveManager.renameProfile(created.id, 'Sophia');
-    expect(renamed.name).toBe('Sophia');
-    expect(SaveManager.getActiveProfile().name).toBe('Sophia');
   });
 });

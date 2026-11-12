@@ -1,4 +1,4 @@
-export type WorkshopZoom = 'overview' | 'spring' | 'hours' | 'minutes' | 'seconds';
+export type WorkshopZoom = 'overview' | 'spring' | 'hours' | 'minutes';
 
 interface CameraTarget {
   scale: number;
@@ -35,12 +35,6 @@ export class WatchMechanism {
   private onTickCallback?: (isTic: boolean) => void;
   private onWindingClickCallback?: () => void;
 
-  /**
-   * Calage géométrique V46 :
-   * - relayMinutes.rPinion (24) + hours.r (52) = 76 px (distance exacte)
-   * - hours.r (52) + spring.r (29) = 81 px (distance sqrt(73² + (-35)²) = 80.96 px)
-   * - Rayon extérieur max du barillet depuis le centre : 80.96 + 29 + 3.2 = 113.16 px (< 114 px graduations)
-   */
   public static readonly POS = {
     crown: { x: 138, y: 0 },
     spring: { x: 73, y: -35, r: 29, teeth: 12 },
@@ -55,8 +49,7 @@ export class WatchMechanism {
     overview: { scale: 1.62, x: 16, y: 0 },
     spring: { scale: 2.65, x: 88, y: -16 },
     hours: { scale: 2.35, x: 24, y: -14 },
-    minutes: { scale: 2.35, x: 14, y: -32 },
-    seconds: { scale: 2.25, x: 0, y: -10 }
+    minutes: { scale: 2.35, x: 14, y: -32 }
   };
 
   constructor(
@@ -273,31 +266,26 @@ export class WatchMechanism {
     const { crown, spring, hours, relayMinutes, minutes, relaySeconds, seconds } = WatchMechanism.POS;
     const z = this.zoomMode;
 
-    // Opacité maximale cumulative selon le niveau de zoom :
+    // Opacité maximale cumulative selon les 3 zooms :
     // - spring : ressort/molette
     // - hours : ressort/molette + heures
     // - minutes : ressort/molette + heures + minutes
-    // - seconds : tout en opacité maximale
     const focusSpring = true;
-    const focusHours = z === 'hours' || z === 'minutes' || z === 'seconds';
-    const focusMinutes = z === 'minutes' || z === 'seconds';
-    const focusSeconds = z === 'seconds';
+    const focusHours = z === 'hours' || z === 'minutes';
+    const focusMinutes = z === 'minutes';
+    const focusSeconds = false;
 
-    // 1. Début de bracelet (haut/bas) + Platine squelette avec les 60 graduations
     this.drawChassisWithBraceletStubs();
 
-    // 2. Roue dorée des Heures
     this.drawWithFocus(focusHours, () => {
       this.drawToyDiscGear(hours.x, hours.y, hours.r, hours.teeth, this.angleHours, '#fbbf24', '#b45309', '#fef3c7', 8);
     });
 
-    // 3. Barillet du Ressort et Molette à débrayage automatique
     this.drawWithFocus(focusSpring, () => {
       this.drawToyBarrel(spring.x, spring.y, spring.r, spring.teeth, this.angleBarrel, this.power);
       this.drawRightCrownWithAutoClutch(crown.x, crown.y, this.wormOffset, isWinding && this.power < 100);
     });
 
-    // 4. Train des Minutes à double roue
     this.drawWithFocus(focusMinutes, () => {
       this.drawSteppedRelayGear(
         relayMinutes.x,
@@ -314,7 +302,6 @@ export class WatchMechanism {
       this.drawToyDiscGear(minutes.x, minutes.y, minutes.r, minutes.teeth, this.angleMinutes, '#38bdf8', '#0284c7', '#e0f2fe', 6);
     });
 
-    // 5. Train des Secondes à double roue
     this.drawWithFocus(focusSeconds, () => {
       this.drawSteppedRelayGear(
         relaySeconds.x,
@@ -331,7 +318,6 @@ export class WatchMechanism {
       this.drawToyDiscGear(seconds.x, seconds.y, seconds.r, seconds.teeth, this.angleSeconds, '#f43f5e', '#be123c', '#ffe4e6', 4);
     });
 
-    // 6. Les 3 aiguilles
     this.drawHandsWithFocus(focusHours, focusMinutes, focusSeconds);
 
     this.ctx.restore();
