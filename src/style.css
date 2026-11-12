@@ -27,12 +27,18 @@ html.theme-night, body.theme-night { background-color: #0b132b; color: #f8fafc; 
   pointer-events: none;
   z-index: 0;
   overflow: hidden;
-}
-body.theme-day #sky-backdrop {
   background: linear-gradient(180deg, #38bdf8 0%, #38bdf8 5%, #7dd3fc 42%, #bae6fd 62%, #38bdf8 100%);
 }
-body.theme-night #sky-backdrop {
+#sky-backdrop::before {
+  content: '';
+  position: absolute;
+  inset: 0;
   background: linear-gradient(180deg, #0b132b 0%, #0b132b 6%, #1e1b4b 48%, #0f172a 78%, #0b132b 100%);
+  opacity: 0;
+  transition: opacity 0.85s ease-in-out;
+}
+body.theme-night #sky-backdrop::before {
+  opacity: 1;
 }
 
 /* Astres décollés des bords de l'écran */

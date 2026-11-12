@@ -226,26 +226,38 @@ export class GameEngine {
       }
     }
 
+    let lastFrameDay = info.isDay;
+    let lastPeriodLabel = info.periodLabel;
+    let lastCalloutText = initialCallout ? initialCallout.text : '';
+
     const loop = (now: number) => {
       if (!this.isTutorialActive) return;
       const elapsed = now - this.tutorialStartTime;
       const dyn = TutorialOverlay.getDynamicFrameState(this.currentLevel, elapsed);
       const frameDay = dyn ? dyn.isDay : info.isDay;
-      this.applySkyTheme(frameDay);
-      if (dyn && periodChipEl) {
+      if (frameDay !== lastFrameDay) {
+        lastFrameDay = frameDay;
+        this.applySkyTheme(frameDay);
+      }
+      if (dyn && periodChipEl && dyn.periodLabel !== lastPeriodLabel) {
+        lastPeriodLabel = dyn.periodLabel;
         periodChipEl.textContent = dyn.periodLabel;
       }
 
       const callout = TutorialOverlay.getCallout(this.currentLevel, elapsed);
       if (callout && calloutRow && calloutPill) {
-        calloutRow.classList.remove('hidden');
-        calloutPill.textContent = callout.text;
-        calloutPill.style.borderColor = callout.color;
-      } else {
+        if (callout.text !== lastCalloutText) {
+          lastCalloutText = callout.text;
+          calloutRow.classList.remove('hidden');
+          calloutPill.textContent = callout.text;
+          calloutPill.style.borderColor = callout.color;
+        }
+      } else if (lastCalloutText !== '') {
+        lastCalloutText = '';
         calloutRow?.classList.add('hidden');
       }
 
-      this.clock.draw(this.currentLevel, frameDay, dyn?.activeTour);
+      this.clock.draw(this.currentLevel, frameDay, dyn?.tourBlend);
       TutorialOverlay.draw(this.ctx, this.hands, this.radius, this.currentLevel, elapsed);
       this.tutorialAnimId = requestAnimationFrame(loop);
     };

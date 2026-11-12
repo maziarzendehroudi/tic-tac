@@ -16,13 +16,16 @@ export interface Level2TimelineState {
   hours24: number;
   isDay: boolean;
   activeTour: 1 | 2;
+  tourBlend: number;
+  dwellFactor: number;
   periodLabel: string;
   calloutText: string;
   calloutColor: string;
 }
 
 export class TutorialOverlay {
-  private static readonly LEVEL2_CYCLE_MS = 12000;
+  private static readonly LEVEL2_SEGMENT_MS = 3600;
+  private static readonly LEVEL2_CYCLE_MS = 14400;
 
   public static getInfo(level: number): TutorialStepInfo {
     switch (level) {
@@ -94,65 +97,78 @@ export class TutorialOverlay {
   }
 
   /**
-   * Calcule l'état continu des 2 tours d'horloge (00h -> 12h -> 24h) avec 4 pauses :
-   * 1. 03 h (Nuit, 1er tour noir) : "🌙 03 h · On dort"
-   * 2. 08 h (Matin, 1er tour noir, après le lever du soleil à 06 h) : "☀️ 08 h · L’école"
-   * 3. 15 h (Après-midi, 2e tour orange, après la bascule de midi à 12 h) : "🌤️ 15 h · L’après-midi"
-   * 4. 20 h (Soir, 2e tour orange, après le coucher du soleil à 18 h) : "🌙 20 h · Le soir"
+   * Animation fluide en 4 segments égaux (3,6 s par étape = 14,4 s pour les 2 tours) :
+   * - Segment 0 : pause sur 03 h puis glissement fluide vers 08 h (lever du soleil à 06 h)
+   * - Segment 1 : pause sur 08 h puis glissement fluide vers 15 h (bascule noir -> orange à 12 h)
+   * - Segment 2 : pause sur 15 h puis glissement fluide vers 20 h (coucher du soleil à 18 h)
+   * - Segment 3 : pause sur 20 h puis glissement continu vers 03 h (bascule orange -> noir à 00 h sans arrêt)
    */
   public static getLevel2Timeline(elapsedMs: number): Level2TimelineState {
-    const t = ((elapsedMs % this.LEVEL2_CYCLE_MS) + this.LEVEL2_CYCLE_MS) % this.LEVEL2_CYCLE_MS / this.LEVEL2_CYCLE_MS;
-    let h = 3;
+    const cycleTime =
+      ((elapsedMs % this.LEVEL2_CYCLE_MS) + this.LEVEL2_CYCLE_MS) % this.LEVEL2_CYCLE_MS;
+    const segIndex = Math.min(3, Math.floor(cycleTime / this.LEVEL2_SEGMENT_MS));
+    const u = (cycleTime - segIndex * this.LEVEL2_SEGMENT_MS) / this.LEVEL2_SEGMENT_MS;
 
-    if (t < 0.06) {
-      h = this.easeInOut(t / 0.06) * 3;
-    } else if (t < 0.25) {
-      h = 3;
-    } else if (t < 0.33) {
-      h = 3 + this.easeInOut((t - 0.25) / 0.08) * 5;
-    } else if (t < 0.50) {
-      h = 8;
-    } else if (t < 0.60) {
-      h = 8 + this.easeInOut((t - 0.50) / 0.10) * 7;
-    } else if (t < 0.75) {
-      h = 15;
-    } else if (t < 0.82) {
-      h = 15 + this.easeInOut((t - 0.75) / 0.07) * 5;
-    } else if (t < 0.94) {
-      h = 20;
-    } else {
-      h = 20 + this.easeInOut((t - 0.94) / 0.06) * 4;
+    const starts = [3, 8, 15, 20];
+    const deltas = [5, 7, 5, 7];
+    const dwellRatio = 0.44;
+
+    let moveProgress = 0;
+    let dwellFactor = 1;
+
+    if (u > dwellRatio) {
+      const moveU = (u - dwellRatio) / (1 - dwellRatio);
+      moveProgress = this.easeInOutSine(moveU);
+      dwellFactor = Math.max(0.25, 1 - Math.sin(moveU * Math.PI) * 0.75);
+    }
+
+    const hRaw = starts[segIndex] + moveProgress * deltas[segIndex];
+    const h = ((hRaw % 24) + 24) % 24;
+
+    // Fondu doux entre le 1er tour (0) et le 2e tour (1) autour de Midi (12h) et Minuit (00h)
+    let tourBlend = h >= 12 ? 1 : 0;
+    if (h >= 10.8 && h <= 13.2) {
+      tourBlend = this.smoothstep(10.8, 13.2, h);
+    } else if (h >= 22.8 || h <= 1.2) {
+      const wrappedH = h >= 22.8 ? h - 24 : h;
+      tourBlend = 1 - this.smoothstep(-1.2, 1.2, wrappedH);
     }
 
     const isDay = h >= 6 && h < 18;
-    const activeTour: 1 | 2 = h < 12 || h >= 23.95 ? 1 : 2;
+    const activeTour: 1 | 2 = tourBlend >= 0.5 ? 2 : 1;
 
-    if (t < 0.25) {
+    if (h >= 0 && h < 6) {
       return {
         hours24: h,
         isDay,
         activeTour,
+        tourBlend,
+        dwellFactor,
         periodLabel: '🌙 1er tour · Nuit (matin)',
         calloutText: '🌙 03 h · On dort',
         calloutColor: '#38bdf8'
       };
     }
-    if (t < 0.50) {
+    if (h >= 6 && h < 12) {
       return {
         hours24: h,
         isDay,
         activeTour,
-        periodLabel: isDay ? '☀️ 1er tour · Matin' : '🌙 1er tour · Nuit (matin)',
+        tourBlend,
+        dwellFactor,
+        periodLabel: '☀️ 1er tour · Matin',
         calloutText: '☀️ 08 h · L’école',
         calloutColor: '#0284c7'
       };
     }
-    if (t < 0.75) {
+    if (h >= 12 && h < 18) {
       return {
         hours24: h,
         isDay,
         activeTour,
-        periodLabel: activeTour === 2 ? '🌤️ 2e tour · Après-midi' : '☀️ 1er tour · Matin',
+        tourBlend,
+        dwellFactor,
+        periodLabel: '🌤️ 2e tour · Après-midi',
         calloutText: '🌤️ 15 h · L’après-midi',
         calloutColor: '#ea580c'
       };
@@ -161,7 +177,9 @@ export class TutorialOverlay {
       hours24: h,
       isDay,
       activeTour,
-      periodLabel: isDay ? '🌤️ 2e tour · Après-midi' : '🌙 2e tour · Soir',
+      tourBlend,
+      dwellFactor,
+      periodLabel: '🌙 2e tour · Soir',
       calloutText: '🌙 20 h · Le soir',
       calloutColor: '#ea580c'
     };
@@ -170,13 +188,14 @@ export class TutorialOverlay {
   public static getDynamicFrameState(
     level: number,
     elapsedMs: number
-  ): { isDay: boolean; periodLabel: string; activeTour: 1 | 2 } | null {
+  ): { isDay: boolean; periodLabel: string; activeTour: 1 | 2; tourBlend: number } | null {
     if (level !== 2) return null;
     const state = this.getLevel2Timeline(elapsedMs);
     return {
       isDay: state.isDay,
       periodLabel: state.periodLabel,
-      activeTour: state.activeTour
+      activeTour: state.activeTour,
+      tourBlend: state.tourBlend
     };
   }
 
@@ -196,14 +215,14 @@ export class TutorialOverlay {
     level: number,
     elapsedMs: number
   ): void {
-    const pulse = 0.5 + 0.5 * Math.sin(elapsedMs * 0.006);
-    const cycle = (elapsedMs % 3600) / 3600;
+    const pulse = 0.5 + 0.5 * Math.sin(elapsedMs * 0.005);
+    const cycle = (elapsedMs % 4200) / 4200;
     const smoothT =
-      cycle < 0.45
-        ? this.easeInOut(cycle / 0.45)
-        : cycle < 0.85
+      cycle < 0.42
+        ? this.easeInOutSine(cycle / 0.42)
+        : cycle < 0.78
           ? 1
-          : 1 - this.easeInOut((cycle - 0.85) / 0.15);
+          : 1 - this.easeInOutSine((cycle - 0.78) / 0.22);
 
     if (level === 1) {
       const h = 1 + smoothT * 2;
@@ -282,11 +301,15 @@ export class TutorialOverlay {
     hands.draw(h, 0, 2, 'hour');
     const angleH = ((h % 12) * Math.PI) / 6;
 
-    if (state.activeTour === 1) {
-      this.drawTargetHalo(ctx, radius - 54, angleH, 24 + pulse * 4, '#0284c7');
-    } else {
-      this.drawTargetHalo(ctx, radius - 104, angleH, 20 + pulse * 4, '#ea580c');
-    }
+    // Interpolation continue du rayon et de la taille du halo entre la couronne noire et la couronne orange
+    const orbitR = (radius - 54) * (1 - state.tourBlend) + (radius - 104) * state.tourBlend;
+    const baseHaloR = 24 * (1 - state.tourBlend) + 20 * state.tourBlend;
+    const haloColor = state.tourBlend < 0.5 ? '#0284c7' : '#ea580c';
+
+    ctx.save();
+    ctx.globalAlpha = 0.45 + 0.55 * state.dwellFactor;
+    this.drawTargetHalo(ctx, orbitR, angleH, baseHaloR + pulse * 3.5, haloColor);
+    ctx.restore();
   }
 
   private static drawLevel5Continuous(
@@ -296,19 +319,17 @@ export class TutorialOverlay {
     elapsedMs: number,
     pulse: number
   ): void {
-    const t = (elapsedMs % 7500) / 7500;
+    const t = (elapsedMs % 7200) / 7200;
     let m = 15;
 
-    if (t < 0.14) {
-      m = this.easeInOut(t / 0.14) * 15;
-    } else if (t < 0.45) {
+    if (t < 0.35) {
       m = 15;
-    } else if (t < 0.63) {
-      m = 15 + this.easeInOut((t - 0.45) / 0.18) * 30;
-    } else if (t < 0.93) {
+    } else if (t < 0.50) {
+      m = 15 + this.easeInOutSine((t - 0.35) / 0.15) * 30;
+    } else if (t < 0.85) {
       m = 45;
     } else {
-      m = 45 - this.easeInOut((t - 0.93) / 0.07) * 45;
+      m = 45 - this.easeInOutSine((t - 0.85) / 0.15) * 30;
     }
 
     hands.draw(4, m, 5);
@@ -323,8 +344,14 @@ export class TutorialOverlay {
     }
   }
 
-  private static easeInOut(t: number): number {
-    return t < 0.5 ? 2 * t * t : 1 - Math.pow(-2 * t + 2, 2) / 2;
+  private static easeInOutSine(t: number): number {
+    const clamped = Math.max(0, Math.min(1, t));
+    return -(Math.cos(Math.PI * clamped) - 1) / 2;
+  }
+
+  private static smoothstep(edge0: number, edge1: number, x: number): number {
+    const t = Math.max(0, Math.min(1, (x - edge0) / (edge1 - edge0)));
+    return t * t * (3 - 2 * t);
   }
 
   private static drawTargetHalo(

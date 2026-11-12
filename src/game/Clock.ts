@@ -7,7 +7,10 @@ export class Clock {
     this.radius = radius;
   }
 
-  public draw(level: number = 1, isDay: boolean = true, activeTour?: 1 | 2): void {
+  /**
+   * @param tourBlend Valeur continue optionnelle entre 0 (1er tour noir à 100%) et 1 (2e tour orange à 100%)
+   */
+  public draw(level: number = 1, isDay: boolean = true, tourBlend?: number): void {
     const ctx = this.ctx;
     const r = this.radius;
     ctx.clearRect(-r - 14, -r - 14, (r + 14) * 2, (r + 14) * 2);
@@ -97,9 +100,11 @@ export class Clock {
       ctx.fillText(label, mx, my);
     });
 
-    // 6. Chiffres des heures (1..12 aux niveaux 1-7, couronne 24h aux niveaux 2 et 7, 12/3/6/9 seuls au niveau 8)
+    // 6. Chiffres des heures avec fondu progressif entre le 1er tour (noir) et le 2e tour (orange)
     const hour12Radius = showMinuteTrackBand ? r - 68 : r - 54;
     const hour24Radius = level === 7 ? r - 108 : r - 104;
+    const clampedBlend =
+      typeof tourBlend === 'number' ? Math.max(0, Math.min(1, tourBlend)) : undefined;
 
     for (let i = 1; i <= 12; i++) {
       const angle = (i * Math.PI) / 6;
@@ -114,8 +119,8 @@ export class Clock {
       ctx.save();
       if (level === 3) {
         ctx.globalAlpha = 0.20;
-      } else if (level === 2 && activeTour === 2) {
-        ctx.globalAlpha = 0.24;
+      } else if (level === 2 && clampedBlend !== undefined) {
+        ctx.globalAlpha = 1 - 0.76 * clampedBlend;
       }
       ctx.font = level >= 8 ? '700 32px "Fredoka", sans-serif' : '700 28px "Fredoka", sans-serif';
       ctx.textAlign = 'center';
@@ -133,8 +138,8 @@ export class Clock {
         const y24 = -hour24Radius * Math.cos(angle);
 
         ctx.save();
-        if (level === 2 && activeTour === 1) {
-          ctx.globalAlpha = 0.22;
+        if (level === 2 && clampedBlend !== undefined) {
+          ctx.globalAlpha = 0.22 + 0.78 * clampedBlend;
         }
         ctx.font = '700 16px "Fredoka", sans-serif';
         ctx.textAlign = 'center';

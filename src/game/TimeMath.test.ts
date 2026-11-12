@@ -35,7 +35,7 @@ function createMockCtx(): CanvasRenderingContext2D {
   } as unknown as CanvasRenderingContext2D;
 }
 
-describe('WatchMechanism V52 — Continuité du Ressort, Détente Rapide (20s), Cinématique 5 Contacts & 3 Zooms', () => {
+describe('WatchMechanism V53 — Continuité du Ressort, Détente Rapide (20s), Cinématique 5 Contacts & 3 Zooms', () => {
   it('ne provoque aucun saut de position du barillet lorsque le ressort est chargé et repart en détente', () => {
     const wm = new WatchMechanism(createMockCtx(), 500, 500);
     wm.power = 50;
@@ -93,7 +93,7 @@ describe('WatchMechanism V52 — Continuité du Ressort, Détente Rapide (20s), 
   });
 });
 
-describe('Progression Pédagogique 8 Niveaux (V52) — Didacticiel 2 tours en accéléré & 4 moments de vie', () => {
+describe('Progression Pédagogique 8 Niveaux (V53) — Fluidité des 2 tours & Fondus progressifs', () => {
   beforeEach(() => {
     const store: Record<string, string> = {};
     globalThis.localStorage = {
@@ -115,46 +115,52 @@ describe('Progression Pédagogique 8 Niveaux (V52) — Didacticiel 2 tours en ac
     expect(TimeMath.formatSpokenTime(4, 45, 5)).toBe('');
   });
 
-  it('anime les 2 tours du Niveau 2 à travers les 4 moments de vie (03h, 08h, 15h, 20h) avec bascule à midi', () => {
+  it('anime de façon continue les 4 moments de vie (03h, 08h, 15h, 20h) avec fondu tourBlend à midi et minuit', () => {
     expect(TutorialOverlay.getCallout(1, 1000)).toBeNull();
     expect(TutorialOverlay.getCallout(7, 1000)).toBeNull();
 
-    // 1. 03 h (Nuit, 1er tour noir)
-    const step03 = TutorialOverlay.getLevel2Timeline(1500);
+    // 1. Segment 0 (800 ms) : 03 h (Nuit, 1er tour noir, tourBlend = 0)
+    const step03 = TutorialOverlay.getLevel2Timeline(800);
     expect(step03.hours24).toBe(3);
     expect(step03.isDay).toBe(false);
-    expect(step03.activeTour).toBe(1);
+    expect(step03.tourBlend).toBe(0);
     expect(step03.calloutText).toContain('03 h');
 
-    // 2. 08 h (Matin, 1er tour noir)
-    const step08 = TutorialOverlay.getLevel2Timeline(4800);
+    // 2. Segment 1 (4400 ms) : 08 h (Matin, 1er tour noir, tourBlend = 0)
+    const step08 = TutorialOverlay.getLevel2Timeline(4400);
     expect(step08.hours24).toBe(8);
     expect(step08.isDay).toBe(true);
-    expect(step08.activeTour).toBe(1);
+    expect(step08.tourBlend).toBe(0);
     expect(step08.calloutText).toContain('08 h');
 
-    // 3. 15 h (Après-midi, 2e tour orange)
+    // Passage de midi (~6450 ms) : tourBlend est en transition progressive entre 0 et 1
+    const midNoon = TutorialOverlay.getLevel2Timeline(6450);
+    expect(midNoon.tourBlend).toBeGreaterThan(0.05);
+    expect(midNoon.tourBlend).toBeLessThan(0.95);
+
+    // 3. Segment 2 (8000 ms) : 15 h (Après-midi, 2e tour orange, tourBlend = 1)
     const step15 = TutorialOverlay.getLevel2Timeline(8000);
     expect(step15.hours24).toBe(15);
     expect(step15.isDay).toBe(true);
-    expect(step15.activeTour).toBe(2);
+    expect(step15.tourBlend).toBe(1);
     expect(step15.calloutText).toContain('15 h');
 
-    // 4. 20 h (Soir, 2e tour orange)
-    const step20 = TutorialOverlay.getLevel2Timeline(10500);
+    // 4. Segment 3 (11600 ms) : 20 h (Soir, 2e tour orange, tourBlend = 1)
+    const step20 = TutorialOverlay.getLevel2Timeline(11600);
     expect(step20.hours24).toBe(20);
     expect(step20.isDay).toBe(false);
-    expect(step20.activeTour).toBe(2);
+    expect(step20.tourBlend).toBe(1);
     expect(step20.calloutText).toContain('20 h');
   });
 
-  it('dessine le cadran (avec activeTour 1 et 2) et le didacticiel sans erreur pour chacun des 8 niveaux', () => {
+  it('dessine le cadran (avec tourBlend continu) et le didacticiel sans erreur pour chacun des 8 niveaux', () => {
     const ctx = createMockCtx();
     const clock = new Clock(ctx, 200);
     const hands = new Hands(ctx, 200);
 
-    expect(() => clock.draw(2, false, 1)).not.toThrow();
-    expect(() => clock.draw(2, true, 2)).not.toThrow();
+    expect(() => clock.draw(2, false, 0)).not.toThrow();
+    expect(() => clock.draw(2, true, 0.5)).not.toThrow();
+    expect(() => clock.draw(2, true, 1)).not.toThrow();
 
     for (let lvl = 1; lvl <= 8; lvl++) {
       const info = TutorialOverlay.getInfo(lvl);
