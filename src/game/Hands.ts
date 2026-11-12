@@ -18,8 +18,8 @@ export class Hands {
     const showHourHand = level !== 3;
     const showMinuteHand = level >= 3;
 
-    const hourTip = level === 2 || level === 7 ? this.radius - 122 : this.radius - 86;
-    const minuteTip = level >= 3 && level <= 6 ? this.radius - 36 : this.radius - 18;
+    const hourTip = level === 2 || level === 7 ? this.radius - 124 : this.radius - 86;
+    const minuteTip = level >= 3 && level <= 7 ? this.radius - 36 : this.radius - 18;
 
     if (ghostTarget) {
       if (showHourHand) {

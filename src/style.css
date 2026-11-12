@@ -1011,3 +1011,8 @@ body.theme-night #help-box.feedback-step2 {
 .choice-btn.btn-wrong, #check-btn.btn-wrong {
   animation: btnWrongWiggle 0.45s ease-in-out;
 }
+
+#help-box.feedback-tutorial.compact-tutorial-text {
+  font-size: clamp(0.95rem, 3.7vw, 1.08rem);
+  line-height: 1.22;
+}

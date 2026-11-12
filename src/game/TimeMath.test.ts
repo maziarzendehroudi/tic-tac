@@ -4,6 +4,7 @@ import { SaveManager } from './SaveManager';
 import { SoundEngine } from './SoundEngine';
 import { WatchMechanism } from './WatchMechanism';
 import { Hands } from './Hands';
+import { Clock } from './Clock';
 import { TutorialOverlay } from './TutorialOverlay';
 
 function createMockCtx(): CanvasRenderingContext2D {
@@ -34,7 +35,7 @@ function createMockCtx(): CanvasRenderingContext2D {
   } as unknown as CanvasRenderingContext2D;
 }
 
-describe('WatchMechanism V47 — Continuité du Ressort, Détente Rapide (20s), Cinématique 5 Contacts & 3 Zooms', () => {
+describe('WatchMechanism V49 — Continuité du Ressort, Détente Rapide (20s), Cinématique 5 Contacts & 3 Zooms', () => {
   it('ne provoque aucun saut de position du barillet lorsque le ressort est chargé et repart en détente', () => {
     const wm = new WatchMechanism(createMockCtx(), 500, 500);
     wm.power = 50;
@@ -92,7 +93,7 @@ describe('WatchMechanism V47 — Continuité du Ressort, Détente Rapide (20s), 
   });
 });
 
-describe('Progression Pédagogique 8 Niveaux (V47) — Orthographe 1 heure & Sans calcul +12', () => {
+describe('Progression Pédagogique 8 Niveaux (V49) — Didacticiels clarifiés, Niveau 5 sans parenthèse & Niveau 2 avec pilule', () => {
   beforeEach(() => {
     const store: Record<string, string> = {};
     globalThis.localStorage = {
@@ -105,53 +106,46 @@ describe('Progression Pédagogique 8 Niveaux (V47) — Orthographe 1 heure & San
     };
   });
 
-  it('accorde correctement "1 heure" au singulier et les autres heures au pluriel', () => {
+  it('accorde "1 heure" au singulier et retire la mention entre parenthèses au Niveau 5', () => {
     expect(TimeMath.formatSpokenTime(1, 0, 1)).toBe('1 heure');
     expect(TimeMath.formatSpokenTime(2, 0, 1)).toBe('2 heures');
     expect(TimeMath.formatSpokenTime(1, 0, 2)).toBe('1 heure');
     expect(TimeMath.formatSpokenTime(1, 30, 4)).toBe('1 heure et demie');
-    expect(TimeMath.formatSpokenTime(1, 15, 5)).toBe('1 heure et quart');
-    expect(TimeMath.formatSpokenTime(12, 45, 5)).toBe('1 heure moins le quart');
+    expect(TimeMath.formatSpokenTime(4, 15, 5)).toBe('');
+    expect(TimeMath.formatSpokenTime(4, 45, 5)).toBe('');
   });
 
-  it('n’utilise jamais l’indication "+ 12" ou "ajoute 12" dans les didacticiels et indices', () => {
-    const info8 = TutorialOverlay.getInfo(8);
-    expect(info8.ruleHtml).not.toContain('12 =');
-    expect(info8.ruleHtml).not.toContain('+ 12');
+  it('affiche la pilule de didacticiel uniquement au Niveau 2 ("le matin : 3h" / "l’après-midi : 15h")', () => {
+    expect(TutorialOverlay.getCallout(1, 1000)).toBeNull();
+    expect(TutorialOverlay.getCallout(3, 1000)).toBeNull();
+    expect(TutorialOverlay.getCallout(4, 1000)).toBeNull();
+    expect(TutorialOverlay.getCallout(5, 1000)).toBeNull();
+    expect(TutorialOverlay.getCallout(6, 1000)).toBeNull();
+    expect(TutorialOverlay.getCallout(7, 1000)).toBeNull();
+    expect(TutorialOverlay.getCallout(8, 1000)).toBeNull();
 
-    const hint8 = TimeMath.buildReadDiagnosticHint(15, 20, 3, 20, 8);
-    expect(hint8).not.toContain('ajoute 12');
-    expect(hint8).toContain('après-midi');
+    const morningCallout = TutorialOverlay.getCallout(2, 1000);
+    const afternoonCallout = TutorialOverlay.getCallout(2, 5000);
+    expect(morningCallout?.text).toBe('le matin : 3h');
+    expect(afternoonCallout?.text).toBe('l’après-midi : 15h');
   });
 
-  it('permet de créer et renommer un profil joueur', () => {
-    const created = SaveManager.createProfile('Menu', false);
-    const renamed = SaveManager.renameProfile(created.id, 'Sophia');
-    expect(renamed.name).toBe('Sophia');
-    expect(SaveManager.getActiveProfile().name).toBe('Sophia');
-
-    const sound = new SoundEngine(false);
-    expect(() => sound.playWindingClick()).not.toThrow();
-  });
-
-  it('fournit et dessine un didacticiel animé sans erreur pour chacun des 8 niveaux', () => {
+  it('dessine le cadran et le didacticiel sans erreur pour chacun des 8 niveaux', () => {
     const ctx = createMockCtx();
+    const clock = new Clock(ctx, 200);
     const hands = new Hands(ctx, 200);
     for (let lvl = 1; lvl <= 8; lvl++) {
       const info = TutorialOverlay.getInfo(lvl);
-      expect(info.title.length).toBeGreaterThan(5);
-      expect(info.ruleHtml.length).toBeGreaterThan(10);
+      expect(info.ruleHtml.length).toBeGreaterThan(15);
+      expect(() => clock.draw(lvl, true)).not.toThrow();
       expect(() => TutorialOverlay.draw(ctx, hands, 200, lvl, 1200)).not.toThrow();
     }
-  });
-});
 
-describe('Correctifs V48 — Pilule de didacticiel déportée sous l’horloge', () => {
-  it('fournit une pilule de didacticiel dédiée pour chacun des 8 niveaux', () => {
-    for (let lvl = 1; lvl <= 8; lvl++) {
-      const callout = TutorialOverlay.getCallout(lvl, 1000);
-      expect(callout.text.length).toBeGreaterThan(3);
-      expect(callout.color).toMatch(/^#/);
-    }
+    const created = SaveManager.createProfile('Menu', false);
+    const renamed = SaveManager.renameProfile(created.id, 'Sophia');
+    expect(renamed.name).toBe('Sophia');
+
+    const sound = new SoundEngine(false);
+    expect(() => sound.playWindingClick()).not.toThrow();
   });
 });

@@ -190,7 +190,14 @@ export class GameEngine {
 
     const calloutRow = document.getElementById('tutorial-callout-row');
     const calloutPill = document.getElementById('tutorial-callout-pill');
-    calloutRow?.classList.remove('hidden');
+    const initialCallout = TutorialOverlay.getCallout(this.currentLevel, 0);
+    if (initialCallout && calloutRow && calloutPill) {
+      calloutRow.classList.remove('hidden');
+      calloutPill.textContent = initialCallout.text;
+      calloutPill.style.borderColor = initialCallout.color;
+    } else {
+      calloutRow?.classList.add('hidden');
+    }
 
     document.getElementById('choices-container')?.classList.add('hidden');
     document.getElementById('placement-tools')?.classList.add('hidden');
@@ -210,9 +217,13 @@ export class GameEngine {
         'hidden',
         'feedback-success',
         'feedback-step2',
-        'feedback-error'
+        'feedback-error',
+        'compact-tutorial-text'
       );
       helpBox.classList.add('feedback-tutorial');
+      if (this.currentLevel === 2) {
+        helpBox.classList.add('compact-tutorial-text');
+      }
     }
 
     const loop = (now: number) => {
@@ -225,10 +236,13 @@ export class GameEngine {
         periodChipEl.textContent = dyn.periodLabel;
       }
 
-      if (calloutPill) {
-        const callout = TutorialOverlay.getCallout(this.currentLevel, elapsed);
+      const callout = TutorialOverlay.getCallout(this.currentLevel, elapsed);
+      if (callout && calloutRow && calloutPill) {
+        calloutRow.classList.remove('hidden');
         calloutPill.textContent = callout.text;
         calloutPill.style.borderColor = callout.color;
+      } else {
+        calloutRow?.classList.add('hidden');
       }
 
       this.clock.draw(this.currentLevel, frameDay);
@@ -814,7 +828,8 @@ export class GameEngine {
       'feedback-success',
       'feedback-step2',
       'feedback-error',
-      'feedback-tutorial'
+      'feedback-tutorial',
+      'compact-tutorial-text'
     );
     helpBox.classList.add(
       type === 'step2'
@@ -845,7 +860,8 @@ export class GameEngine {
       'feedback-success',
       'feedback-step2',
       'feedback-error',
-      'feedback-tutorial'
+      'feedback-tutorial',
+      'compact-tutorial-text'
     );
   }
 

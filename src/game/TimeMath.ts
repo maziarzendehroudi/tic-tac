@@ -56,8 +56,8 @@ export class TimeMath {
     const hourAngle = ((hours % 12) * Math.PI) / 6 + (minutes * Math.PI) / 360;
     const minuteAngle = (minutes * Math.PI) / 30;
 
-    const hourLen = level === 7 ? radius - 118 : radius - 96;
-    const minLen = level <= 6 ? radius - 42 : radius - 24;
+    const hourLen = level === 7 ? radius - 120 : radius - 96;
+    const minLen = level <= 7 ? radius - 42 : radius - 24;
 
     const hx = Math.sin(hourAngle) * hourLen;
     const hy = -Math.cos(hourAngle) * hourLen;
@@ -133,7 +133,6 @@ export class TimeMath {
   public static formatSpokenTime(hours24: number, minutes: number, level: number): string {
     const h24 = ((hours24 % 24) + 24) % 24;
     const h12 = h24 % 12 || 12;
-    const nextH12 = (h12 % 12) + 1;
 
     if (level === 1) return `${h12} ${this.hourUnit(h12)}`;
     if (level === 2) {
@@ -149,9 +148,7 @@ export class TimeMath {
     }
 
     if (minutes === 0 && level === 4) return `${h12} ${this.hourUnit(h12)} pile`;
-    if (minutes === 15 && level === 5) return `${h12} ${this.hourUnit(h12)} et quart`;
-    if (minutes === 30 && (level === 4 || level === 5)) return `${h12} ${this.hourUnit(h12)} et demie`;
-    if (minutes === 45 && level === 5) return `${nextH12} ${this.hourUnit(nextH12)} moins le quart`;
+    if (minutes === 30 && level === 4) return `${h12} ${this.hourUnit(h12)} et demie`;
     return '';
   }
 
@@ -220,19 +217,19 @@ export class TimeMath {
 
     if (chosenMinutes === targetMinutes) {
       if (level === 8) {
-        return 'Les minutes sont justes ! Aide-toi des repères <strong>12, 3, 6, 9</strong> pour trouver l’heure de la petite aiguille orange.';
+        return 'Les minutes sont justes ! Aide-toi des repères <strong>12, 3, 6, 9</strong> pour deviner l’heure de la petite aiguille orange.';
       }
       return 'Les minutes sont justes ! Regarde bien vers quel chiffre pointe la <strong>petite aiguille orange</strong>.';
     }
 
     if (chosenH12 === targetH12) {
       if (level === 4) {
-        return 'L’heure est juste ! En haut c’est <strong>:00</strong> (heure pile), tout en bas c’est <strong>:30</strong> (et demie).';
+        return 'L’heure est juste ! En haut c’est <strong>:00</strong> (heure pile), tout en bas c’est <strong>:30</strong> (la demie).';
       }
       if (level === 5) {
-        return 'L’heure est juste ! Regarde le nombre bleu pointé par la <strong>grande aiguille bleue</strong> (:15 à droite, :30 en bas, :45 à gauche).';
+        return 'L’heure est juste ! Regarde le nombre bleu pointé par la <strong>grande aiguille bleue</strong> (:15 = un quart, :45 = trois quarts).';
       }
-      if (level === 6) {
+      if (level === 6 || level === 7) {
         return 'L’heure est juste ! Pars du nombre bleu le plus proche (de 5 en 5) et compte les petites graduations.';
       }
       return 'L’heure est juste ! Compte de 5 en 5 sur les grands traits bleus, puis ajoute les petites graduations.';
@@ -272,14 +269,14 @@ export class TimeMath {
         return 'L’heure est bonne ! Pour <strong>:00 (heure pile)</strong>, glisse la grande aiguille bleue tout en haut sur le 12.';
       }
       if (level === 4 && targetMinutes === 30) {
-        return 'L’heure est bonne ! Pour <strong>:30 (« et demie »)</strong>, glisse la grande aiguille bleue tout en bas sur le 6.';
+        return 'L’heure est bonne ! Pour <strong>:30 (la demie)</strong>, glisse la grande aiguille bleue tout en bas sur le 6.';
       }
       if (level >= 6) {
         const diff = this.circularMinuteDiff(currentMinutes, targetMinutes);
         if (diff <= 4) {
           return 'Tu es tout près ! Glisse doucement la <strong>grande aiguille bleue</strong> sur la graduation exacte.';
         }
-        return 'L’heure est bonne ! Compte de 5 en 5 sur les grands traits bleus, puis ajuste la <strong>grande aiguille bleue</strong>.';
+        return 'L’heure est bonne ! Aide-toi des repères bleus de 5 en 5, puis ajuste la <strong>grande aiguille bleue</strong>.';
       }
       return 'L’heure est bonne ! Glisse maintenant la <strong>grande aiguille bleue</strong> sur le repère des minutes demandé.';
     }

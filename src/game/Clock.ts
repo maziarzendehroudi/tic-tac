@@ -26,8 +26,8 @@ export class Clock {
     ctx.strokeStyle = outerBezelColor;
     ctx.stroke();
 
-    // 2. Anneau de la piste des minutes (niveaux 3 à 6)
-    const showMinuteTrackBand = level >= 3 && level <= 6;
+    // 2. Anneau de la piste des minutes (niveaux 3 à 7)
+    const showMinuteTrackBand = level >= 3 && level <= 7;
     if (showMinuteTrackBand) {
       ctx.beginPath();
       ctx.arc(0, 0, r - 4.5, 0, 2 * Math.PI);
@@ -75,12 +75,12 @@ export class Clock {
       ctx.stroke();
     }
 
-    // 5. Repères des minutes en bleu (niveaux 3 à 6)
+    // 5. Repères des minutes en bleu (niveaux 3 à 7)
     const minuteLabelRadius = r - 25;
     let minutesToDisplay: number[] = [];
     if (level === 4) minutesToDisplay = [0, 30];
     else if (level === 5) minutesToDisplay = [0, 15, 30, 45];
-    else if (level === 3 || level === 6) {
+    else if (level === 3 || level === 6 || level === 7) {
       minutesToDisplay = [0, 5, 10, 15, 20, 25, 30, 35, 40, 45, 50, 55];
     }
 
@@ -97,25 +97,15 @@ export class Clock {
       ctx.fillText(label, mx, my);
     });
 
-    // 6. Chiffres des heures (1..12 aux niveaux 1-7, couronne 24h aux niveaux 2 et 7, index courts au niveau 8)
+    // 6. Chiffres des heures (1..12 aux niveaux 1-7, couronne 24h aux niveaux 2 et 7, 12/3/6/9 seuls au niveau 8)
     const hour12Radius = showMinuteTrackBand ? r - 68 : r - 54;
-    const hour24Radius = r - 104;
+    const hour24Radius = level === 7 ? r - 108 : r - 104;
 
     for (let i = 1; i <= 12; i++) {
       const angle = (i * Math.PI) / 6;
 
+      // Niveau 8 : suppression des graduations noires intermédiaires (seuls 12, 3, 6, 9 sont affichés)
       if (level >= 8 && i % 3 !== 0) {
-        const markerOuter = r - 22;
-        const markerInner = r - 33;
-        ctx.save();
-        ctx.beginPath();
-        ctx.moveTo(markerInner * Math.sin(angle), -markerInner * Math.cos(angle));
-        ctx.lineTo(markerOuter * Math.sin(angle), -markerOuter * Math.cos(angle));
-        ctx.lineWidth = 4.5;
-        ctx.strokeStyle = '#1e293b';
-        ctx.lineCap = 'round';
-        ctx.stroke();
-        ctx.restore();
         continue;
       }
 

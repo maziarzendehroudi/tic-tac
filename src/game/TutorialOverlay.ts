@@ -17,47 +17,47 @@ export class TutorialOverlay {
     switch (level) {
       case 1:
         return {
-          title: '💡 Astuce · La petite aiguille',
+          title: 'Les Heures (12h)',
           ruleHtml:
-            'La <strong>petite aiguille orange</strong> indique les <strong>heures</strong> : regarde le chiffre qu’elle pointe !',
+            'La <strong>petite aiguille orange</strong> indique les heures : regarde le chiffre qu’elle pointe : il est <strong>3 heures</strong>.',
           periodLabel: '',
           isDay: true
         };
       case 2:
         return {
-          title: '💡 Astuce · Jour, Nuit et 24 Heures',
+          title: 'Les 24 Heures',
           ruleHtml:
-            '1 jour + 1 nuit = <strong>24 h (2 tours)</strong> ! Matin : lis le chiffre <strong>noir (03 h)</strong> · Après-midi et Soir : lis le nombre <strong>orange (15 h)</strong> !',
-          periodLabel: '☀️ 1er tour · Matin (01h - 12h)',
+            'Chaque jour commence à minuit. Entre minuit et midi, on lit les <strong>chiffres noirs</strong>. Après midi, et jusqu’à minuit, on lit les <strong>chiffres orange</strong>.',
+          periodLabel: '☀️ Matin',
           isDay: true
         };
       case 3:
         return {
-          title: '💡 Astuce · La grande aiguille',
+          title: 'Les Minutes',
           ruleHtml:
-            'La <strong>grande aiguille bleue</strong> indique les <strong>minutes</strong> : lis les nombres bleus au bord (de 5 en 5) !',
+            'La <strong>grande aiguille bleue</strong> indique les minutes (de 5 en 5) : lis les nombres bleus : <strong>20 minutes</strong>.',
           periodLabel: '',
           isDay: true
         };
       case 4:
         return {
-          title: '💡 Astuce · Les Demi-Heures',
+          title: 'Les Demi-Heures',
           ruleHtml:
-            'En bas sur <strong>30</strong>, c’est <strong>« et demie »</strong> : la petite aiguille orange avance <strong>entre deux chiffres</strong> !',
+            'En haut c’est <strong>l’heure pile</strong>, en bas c’est <strong>la demie</strong>. Regarde l’aiguille orange des heures qui montre qu’il est entre <strong>2h et 3h</strong>.',
           periodLabel: '',
           isDay: true
         };
       case 5:
         return {
-          title: '💡 Astuce · Les Quarts d’Heure',
+          title: 'Les Quarts d’Heure',
           ruleHtml:
-            '<strong>:15</strong> = et quart · <strong>:45</strong> = moins le quart (la petite aiguille s’approche du <strong>5</strong> sans le dépasser !).',
+            '<strong>15</strong> = un quart d’heure et <strong>45</strong> = trois quarts d’heure.',
           periodLabel: '',
           isDay: true
         };
       case 6:
         return {
-          title: '💡 Astuce · À la Minute près',
+          title: 'À la Minute près',
           ruleHtml:
             'Pars du nombre bleu le plus proche (<strong>20</strong>), puis compte les petites graduations une par une (<strong>21, 22, 23</strong>) !',
           periodLabel: '',
@@ -65,17 +65,17 @@ export class TutorialOverlay {
         };
       case 7:
         return {
-          title: '💡 Astuce · Défi Jour & Nuit',
+          title: 'Le Défi Jour & Nuit',
           ruleHtml:
-            'Les nombres bleus ont disparu : compte les grands traits bleus de <strong>5 en 5</strong> et lis l’heure du soir en <strong>orange</strong> !',
+            'Comme il fait jour, on sait qu’il est <strong>16h</strong> (l’après-midi) et pas 4h du matin !',
           periodLabel: '🌤️ Après-midi',
           isDay: true
         };
       default:
         return {
-          title: '💡 Astuce · L’Horloge des Grands',
+          title: 'L’Horloge des Grands',
           ruleHtml:
-            'Repère-toi avec les chiffres <strong>12, 3, 6, 9</strong> et compte les traits suivants pour lire l’heure !',
+            'Voici une horloge de grand : il faut <strong>deviner les chiffres</strong> !',
           periodLabel: '🌤️ Après-midi',
           isDay: true
         };
@@ -87,47 +87,23 @@ export class TutorialOverlay {
     elapsedMs: number
   ): { isDay: boolean; periodLabel: string } | null {
     if (level !== 2) return null;
-    const t = (elapsedMs % 8400) / 8400;
-    if (t < 0.44) {
-      return { isDay: true, periodLabel: '☀️ 1er tour · Matin (01h - 12h)' };
+    const t = (elapsedMs % 7200) / 7200;
+    if (t < 0.5) {
+      return { isDay: true, periodLabel: '☀️ Matin' };
     }
-    if (t < 0.74) {
-      return { isDay: true, periodLabel: '🌤️ 2e tour · Après-midi (13h - 17h)' };
-    }
-    return { isDay: false, periodLabel: '🌙 2e tour · Soir & Nuit (18h - 00h)' };
+    return { isDay: true, periodLabel: '🌤️ Après-midi' };
   }
 
   /**
-   * Fournit le texte et la couleur de la pilule d'exemple affichée sous l'horloge pendant le didacticiel
+   * Pilule affichée sous l'horloge uniquement pour le Niveau 2 ("le matin : 3h" / "l'après-midi : 15h")
    */
-  public static getCallout(level: number, elapsedMs: number): TutorialCallout {
-    if (level === 1) {
-      return { text: '3 heures', color: '#ea580c' };
+  public static getCallout(level: number, elapsedMs: number): TutorialCallout | null {
+    if (level !== 2) return null;
+    const t = (elapsedMs % 7200) / 7200;
+    if (t < 0.5) {
+      return { text: 'le matin : 3h', color: '#0284c7' };
     }
-    if (level === 2) {
-      const t = (elapsedMs % 8400) / 8400;
-      if (t < 0.44) return { text: '☀️ 3 h du matin = 03 h', color: '#0284c7' };
-      if (t < 0.74) return { text: '🌤️ 3 h après-midi = 15 h', color: '#ea580c' };
-      return { text: '🌙 8 h du soir = 20 h', color: '#ea580c' };
-    }
-    if (level === 3) {
-      return { text: '20 minutes', color: '#0284c7' };
-    }
-    if (level === 4) {
-      return { text: '2:30 (2 h et demie)', color: '#0284c7' };
-    }
-    if (level === 5) {
-      const t = (elapsedMs % 7500) / 7500;
-      if (t < 0.54) return { text: '4:15 (4 h et quart)', color: '#0284c7' };
-      return { text: '4:45 (5 h moins le quart)', color: '#ea580c' };
-    }
-    if (level === 6) {
-      return { text: '20 + 3 traits = 8:23', color: '#0284c7' };
-    }
-    if (level === 7) {
-      return { text: '16:20 (5, 10, 15, 20)', color: '#0284c7' };
-    }
-    return { text: 'Après-midi : 16:10', color: '#ea580c' };
+    return { text: 'l’après-midi : 15h', color: '#ea580c' };
   }
 
   public static draw(
@@ -196,11 +172,9 @@ export class TutorialOverlay {
     if (level === 7) {
       const m = smoothT * 20;
       hands.draw(16, m, 7);
-      this.drawTargetHalo(ctx, radius - 104, (4 * Math.PI) / 6, 20 + pulse * 4, '#ea580c');
-      for (let step = 5; step <= 20; step += 5) {
-        const aStep = (step * Math.PI) / 30;
-        this.drawSmallDot(ctx, radius - 15, aStep, '#0284c7');
-      }
+      const endMinAngle = (20 * Math.PI) / 30;
+      this.drawTargetHalo(ctx, radius - 108, (4 * Math.PI) / 6, 20 + pulse * 4, '#ea580c');
+      this.drawTargetHalo(ctx, radius - 25, endMinAngle, 19 + pulse * 3, '#0284c7');
       return;
     }
 
@@ -209,7 +183,7 @@ export class TutorialOverlay {
     hands.draw(h8, m8, 8);
     const a4 = (4 * Math.PI) / 6;
     this.drawCurvedArrow(ctx, radius - 90, Math.PI / 2, a4, '#ea580c');
-    this.drawTargetHalo(ctx, radius - 28, a4, 18 + pulse * 4, '#ea580c');
+    this.drawTargetHalo(ctx, radius - 54, a4, 22 + pulse * 4, '#ea580c');
   }
 
   private static drawLevel2Continuous(
@@ -219,29 +193,23 @@ export class TutorialOverlay {
     elapsedMs: number,
     pulse: number
   ): void {
-    const t = (elapsedMs % 8400) / 8400;
+    const t = (elapsedMs % 7200) / 7200;
     let h = 3;
 
-    if (t < 0.12) {
-      h = this.easeInOut(t / 0.12) * 3;
-    } else if (t < 0.36) {
+    if (t < 0.14) {
+      h = this.easeInOut(t / 0.14) * 3;
+    } else if (t < 0.46) {
       h = 3;
-    } else if (t < 0.50) {
-      h = 3 + this.easeInOut((t - 0.36) / 0.14) * 12;
-    } else if (t < 0.72) {
-      h = 15;
-    } else if (t < 0.80) {
-      h = 15 + this.easeInOut((t - 0.72) / 0.08) * 5;
-    } else if (t < 0.95) {
-      h = 20;
+    } else if (t < 0.64) {
+      h = 3 + this.easeInOut((t - 0.46) / 0.18) * 12;
     } else {
-      h = 20 + this.easeInOut((t - 0.95) / 0.05) * 4;
+      h = 15;
     }
 
     hands.draw(h, 0, 2, 'hour');
     const angleH = ((h % 12) * Math.PI) / 6;
 
-    if (t < 0.44) {
+    if (t < 0.5) {
       this.drawTargetHalo(ctx, radius - 54, angleH, 24 + pulse * 4, '#0284c7');
     } else {
       this.drawTargetHalo(ctx, radius - 104, angleH, 20 + pulse * 4, '#ea580c');
@@ -302,22 +270,6 @@ export class TutorialOverlay {
     ctx.lineWidth = 3.5;
     ctx.setLineDash([5, 4]);
     ctx.stroke();
-    ctx.restore();
-  }
-
-  private static drawSmallDot(
-    ctx: CanvasRenderingContext2D,
-    orbitR: number,
-    angle: number,
-    color: string
-  ): void {
-    const x = orbitR * Math.sin(angle);
-    const y = -orbitR * Math.cos(angle);
-    ctx.save();
-    ctx.beginPath();
-    ctx.arc(x, y, 5, 0, Math.PI * 2);
-    ctx.fillStyle = color;
-    ctx.fill();
     ctx.restore();
   }
 
