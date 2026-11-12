@@ -26,15 +26,7 @@
       <div id="main-menu" class="view">
         <div id="global-top-bar">
           <div class="top-left-actions">
-            <button id="profile-btn" type="button" aria-label="Joueurs et profils" title="Changer de joueur">
-              <svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="2.3" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
-                <path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"></path>
-                <circle cx="9" cy="7" r="4"></circle>
-                <path d="M22 21v-2a4 4 0 0 0-3-3.87"></path>
-                <path d="M16 3.13a4 4 0 0 1 0 7.75"></path>
-              </svg>
-            </button>
-            <button id="force-refresh-btn" type="button" title="Vider le cache PWA et forcer la mise à jour">⚡ Maj v60</button>
+            <button id="force-refresh-btn" type="button" title="Vider le cache PWA et forcer la mise à jour">⚡ Maj v61</button>
           </div>
           <button id="sound-toggle-btn" type="button" aria-pressed="true" aria-label="Activer ou couper le son" title="Son actif">
             <svg viewBox="0 0 24 24" width="24" height="24" fill="none" stroke="currentColor" stroke-width="2.3" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
@@ -49,11 +41,11 @@
         <div id="main-title-box">
           <h1>Tic-Tac</h1>
           <p>Apprends à lire l'heure pas à pas !</p>
-          <div id="player-progress-bar">
-            <span id="active-player-pill">Joueur 1</span>
+          <button id="player-progress-bar" type="button" title="Changer de joueur">
+            <span id="active-player-pill">👤 Joueur 1 ▾</span>
             <span id="player-rank-title">⏱️ Apprenti du Temps</span>
             <span id="player-stars-count">★ 0 / 24</span>
-          </div>
+          </button>
         </div>
 
         <div id="levels-grid">
@@ -156,7 +148,12 @@
               <button id="check-btn" type="button">✓ Vérifier</button>
             </div>
             <div id="tutorial-tools" class="hidden">
-              <button id="tutorial-start-btn" type="button">C'est parti ! ▶</button>
+              <button id="tutorial-start-btn" type="button">
+                <span>C'est parti !</span>
+                <svg class="btn-play-svg" viewBox="0 0 24 24" width="20" height="20" fill="currentColor" aria-hidden="true">
+                  <path d="M8 5.14v13.72a1 1 0 0 0 1.5.86l11-6.86a1 1 0 0 0 0-1.72l-11-6.86a1 1 0 0 0-1.5.86z"/>
+                </svg>
+              </button>
             </div>
           </div>
         </div>
@@ -184,7 +181,7 @@
         </div>
       </div>
 
-      <!-- VUE 4 : ÉCRAN PLEINE PAGE D'ANIMATION (ÉTAPE 2 & NIVEAU SUIVANT - 5 SECONDES) -->
+      <!-- VUE 4 : ÉCRAN PLEINE PAGE D'ANIMATION (ÉTAPE 1, ÉTAPE 2 & NIVEAU SUIVANT) -->
       <div id="transition-screen" class="hidden" aria-live="polite">
         <canvas id="transitionBgCanvas" width="540" height="960"></canvas>
         <div id="transition-content" class="transition-stage"></div>

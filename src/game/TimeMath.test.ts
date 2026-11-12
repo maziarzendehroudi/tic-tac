@@ -215,3 +215,12 @@ describe('Améliorations UX & Design V60 — Consignes adaptatives Étape 2 & At
     expect(GameEngine.getWorkshopInstructionText(80, 'minutes')).toContain('roues bleues');
   });
 });
+
+describe('Animation Étape 1 (V61) — Consigne adaptative de lecture de l’horloge', () => {
+  it('adapte le message de l’Étape 1 à l’aiguille du niveau en cours', () => {
+    expect(GameEngine.getStep1PromptForLevel(1)).toContain('petite aiguille orange');
+    expect(GameEngine.getStep1PromptForLevel(2)).toContain('petite aiguille orange');
+    expect(GameEngine.getStep1PromptForLevel(3)).toContain('grande aiguille bleue');
+    expect(GameEngine.getStep1PromptForLevel(4)).toContain('choisis la bonne heure');
+  });
+});
