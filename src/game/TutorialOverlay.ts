@@ -14,7 +14,7 @@ export class TutorialOverlay {
         return {
           title: '💡 Astuce · La petite aiguille',
           ruleHtml:
-            'La <strong style="color:#fb923c">petite aiguille orange</strong> indique les <strong>heures</strong> : regarde le chiffre qu’elle pointe !',
+            'La <strong>petite aiguille orange</strong> indique les <strong>heures</strong> : regarde le chiffre qu’elle pointe !',
           periodLabel: '',
           isDay: true
         };
@@ -22,7 +22,7 @@ export class TutorialOverlay {
         return {
           title: '💡 Astuce · Jour, Nuit et 24 Heures',
           ruleHtml:
-            '1 jour + 1 nuit = <strong>24 h (2 tours)</strong> ! Matin (1er tour) : lis le chiffre <strong>noir (03 h)</strong> · Après-midi et Soir (2e tour) : lis le nombre <strong style="color:#fb923c">orange (15 h)</strong> !',
+            '1 jour + 1 nuit = <strong>24 h (2 tours)</strong> ! Matin : lis le chiffre <strong>noir (03 h)</strong> · Après-midi et Soir : lis le nombre <strong>orange (15 h)</strong> !',
           periodLabel: '☀️ 1er tour · Matin (01h - 12h)',
           isDay: true
         };
@@ -30,7 +30,7 @@ export class TutorialOverlay {
         return {
           title: '💡 Astuce · La grande aiguille',
           ruleHtml:
-            'La <strong style="color:#38bdf8">grande aiguille bleue</strong> indique les <strong>minutes</strong> : lis les nombres bleus au bord (de 5 en 5) !',
+            'La <strong>grande aiguille bleue</strong> indique les <strong>minutes</strong> : lis les nombres bleus au bord (de 5 en 5) !',
           periodLabel: '',
           isDay: true
         };
@@ -46,7 +46,7 @@ export class TutorialOverlay {
         return {
           title: '💡 Astuce · Les Quarts d’Heure',
           ruleHtml:
-            '<strong>:15</strong> = et quart · <strong>:45</strong> = moins le quart (regarde la petite aiguille avancer vers le <strong>5</strong> sans le dépasser !).',
+            '<strong>:15</strong> = et quart · <strong>:45</strong> = moins le quart (la petite aiguille s’approche du <strong>5</strong> sans le dépasser !).',
           periodLabel: '',
           isDay: true
         };
@@ -62,7 +62,7 @@ export class TutorialOverlay {
         return {
           title: '💡 Astuce · Défi Jour & Nuit',
           ruleHtml:
-            'Les nombres bleus ont disparu : compte les grands traits bleus de <strong>5 en 5</strong> et lis l’heure du soir en <strong style="color:#fb923c">orange</strong> !',
+            'Les nombres bleus ont disparu : compte les grands traits bleus de <strong>5 en 5</strong> et lis l’heure du soir en <strong>orange</strong> !',
           periodLabel: '🌤️ Après-midi',
           isDay: true
         };
@@ -108,7 +108,6 @@ export class TutorialOverlay {
           ? 1
           : 1 - this.easeInOut((cycle - 0.85) / 0.15);
 
-    // Niveau 1 : Flèche courbe sur le rayon interne (r - 94) pour ne jamais barrer les chiffres 1, 2, 3
     if (level === 1) {
       const h = 1 + smoothT * 2;
       hands.draw(h, 0, 1, 'hour');
@@ -123,7 +122,6 @@ export class TutorialOverlay {
       return;
     }
 
-    // Niveau 3 : Flèche courbe à r - 52 (sous la piste bleue) pour ne pas rayer 05, 10, 15, 20
     if (level === 3) {
       const m = smoothT * 20;
       hands.draw(12, m, 3, 'minute');
@@ -182,9 +180,6 @@ export class TutorialOverlay {
     this.drawCalloutBadge(ctx, 0, 62, '4 h + 12 = 16:10', '#ea580c');
   }
 
-  /**
-   * Niveau 2 : Badge centré à y = 56 (au-dessus de 17/18/19) et halos sans flèche rayant le 15
-   */
   private static drawLevel2Continuous(
     ctx: CanvasRenderingContext2D,
     hands: Hands,

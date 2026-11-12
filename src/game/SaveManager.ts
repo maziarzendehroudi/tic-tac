@@ -171,6 +171,18 @@ export class SaveManager {
     return newProfile;
   }
 
+  public static renameProfile(profileId: string, newName: string): PlayerProfile {
+    const cleanName = newName.trim().slice(0, 18);
+    const store = this.loadStore();
+    const target = store.profiles.find(p => p.id === profileId);
+    if (target && cleanName) {
+      target.name = cleanName;
+      this.saveStore(store);
+      return target;
+    }
+    return this.getActiveProfile();
+  }
+
   public static deleteProfile(profileId: string): PlayerProfile {
     const store = this.loadStore();
     if (store.profiles.length <= 1) {

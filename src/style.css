@@ -34,17 +34,17 @@ body.theme-night #sky-backdrop {
   background: radial-gradient(circle at 50% 38%, #1e1b4b 0%, #0f172a 52%, #0b132b 100%);
 }
 
-/* Astres placés en haut du ciel pour ne jamais être masqués par les boutons du bas */
+/* Astres décollés des bords de l'écran (compense inset: -24px de #sky-backdrop) */
 .sun-orb {
   position: absolute;
-  top: 76px;
-  right: 26px;
-  width: 46px;
-  height: 46px;
+  top: 90px;
+  right: max(50px, calc(50% - 200px));
+  width: 44px;
+  height: 44px;
   border-radius: 50%;
   background: radial-gradient(circle, #fef08a 25%, #fbbf24 70%, #f59e0b 100%);
   box-shadow: 0 0 28px 6px rgba(251, 191, 36, 0.45);
-  opacity: 0.82;
+  opacity: 0.85;
   transition: transform 0.6s ease, opacity 0.4s ease;
 }
 body.theme-night .sun-orb { transform: translateY(-40px) scale(0.3); opacity: 0; }
@@ -61,15 +61,20 @@ body.theme-night .sun-orb { transform: translateY(-40px) scale(0.3); opacity: 0;
   background: rgba(255, 255, 255, 0.7);
   border-radius: 50%;
 }
-.cloud-1 { width: 82px; height: 22px; top: 88px; left: 24px; }
+.cloud-1 {
+  width: 80px;
+  height: 22px;
+  top: 96px;
+  left: max(48px, calc(50% - 205px));
+}
 .cloud-1::before { width: 34px; height: 34px; top: -13px; left: 13px; }
 .cloud-1::after { width: 26px; height: 26px; top: -8px; left: 38px; }
 body.theme-night .cloud { opacity: 0; }
 
 .moon-orb {
   position: absolute;
-  top: 76px;
-  right: 26px;
+  top: 90px;
+  right: max(50px, calc(50% - 200px));
   width: 42px;
   height: 42px;
   border-radius: 50%;
@@ -127,7 +132,7 @@ body {
   flex-direction: column;
   align-items: center;
   justify-content: space-between;
-  gap: 8px;
+  gap: 6px;
   overflow: hidden;
 }
 .view.hidden { display: none; }
@@ -222,11 +227,12 @@ body {
   border-radius: 12px;
 }
 
+/* Pilules des niveaux rapprochées verticalement */
 #levels-grid {
   display: flex;
   flex-direction: column;
-  justify-content: space-evenly;
-  gap: clamp(4px, 0.75dvh, 8px);
+  justify-content: center;
+  gap: clamp(4px, 0.65dvh, 7px);
   width: 100%;
   flex: 1;
   min-height: 0;
@@ -235,7 +241,7 @@ body {
 .level-rect, .workshop-rect {
   border: 2px solid rgba(255, 255, 255, 0.38);
   border-radius: 14px;
-  padding: clamp(5px, 1.05dvh, 10px) 13px;
+  padding: clamp(5px, 0.95dvh, 9px) 13px;
   text-align: left;
   cursor: pointer;
   box-shadow: 0 4px 10px rgba(15, 23, 42, 0.16);
@@ -448,6 +454,7 @@ canvas:active { cursor: grabbing; }
   color: #0f172a;
   text-shadow: 0 1px 0 rgba(255, 255, 255, 0.85);
 }
+#instruction.hidden { display: none; }
 body.theme-night #instruction {
   color: #f8fafc;
   text-shadow: 0 2px 8px rgba(0, 0, 0, 0.65);
@@ -466,26 +473,50 @@ body.theme-night #instruction {
 
 #help-box {
   width: 100%;
-  min-height: 58px;
+  min-height: 54px;
   display: flex;
   align-items: center;
-  justify-content: space-between;
-  gap: 10px;
-  padding: 8px 13px;
+  justify-content: center;
+  gap: 8px;
+  padding: 6px 10px;
   border-radius: 16px;
-  font-size: 0.86rem;
+  font-size: 0.9rem;
   line-height: 1.32;
-  text-align: left;
+  text-align: center;
   transition: opacity 0.2s ease;
 }
 #help-text { flex: 1; }
 #help-box.invisible-feedback { visibility: hidden; opacity: 0; pointer-events: none; }
+
+/* Didacticiels et bonnes réponses : typographie noire sur fond bleu (sans boîte) */
+#help-box.feedback-tutorial,
 #help-box.feedback-success {
-  background: rgba(6, 78, 59, 0.96);
-  border: 2px solid #34d399;
-  color: #ecfdf5;
-  box-shadow: 0 6px 18px rgba(16, 185, 129, 0.32);
+  background: transparent;
+  border: none;
+  box-shadow: none;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 4px 6px;
+  gap: 10px;
+  color: #0f172a;
+  font-size: clamp(0.98rem, 3.9vw, 1.14rem);
+  font-weight: 700;
+  text-shadow: 0 1px 0 rgba(255, 255, 255, 0.85);
 }
+body.theme-night #help-box.feedback-tutorial,
+body.theme-night #help-box.feedback-success {
+  color: #f8fafc;
+  text-shadow: 0 2px 8px rgba(0, 0, 0, 0.65);
+}
+#help-box.feedback-tutorial #help-text,
+#help-box.feedback-success #help-text {
+  flex: 0 1 auto;
+  width: 100%;
+  text-align: center;
+}
+
+/* Indices d'erreur : conserve le bandeau lisible */
 #help-box.feedback-error {
   background: rgba(15, 23, 42, 0.95);
   border: 2px solid #fbbf24;
@@ -498,14 +529,15 @@ body.theme-night #instruction {
   background: #fbbf24;
   color: #0f172a;
   border: 2px solid #fef08a;
-  padding: 8px 14px;
+  padding: 8px 20px;
   border-radius: 12px;
-  font-size: 0.94rem;
+  font-size: 0.96rem;
   font-weight: 700;
   cursor: pointer;
   white-space: nowrap;
   flex-shrink: 0;
-  box-shadow: 0 3px 10px rgba(0, 0, 0, 0.25);
+  margin: 0 auto;
+  box-shadow: 0 3px 10px rgba(0, 0, 0, 0.22);
 }
 
 #controls-zone { width: 100%; display: flex; flex-direction: column; align-items: center; }
@@ -606,10 +638,11 @@ body.theme-night #instruction {
   box-shadow: 0 4px 12px rgba(245, 158, 11, 0.4);
 }
 
+/* Modale Multi-Profils améliorée */
 .modal {
   position: fixed;
   inset: 0;
-  background: rgba(15, 23, 42, 0.7);
+  background: rgba(15, 23, 42, 0.72);
   backdrop-filter: blur(5px);
   display: flex;
   justify-content: center;
@@ -621,49 +654,169 @@ body.theme-night #instruction {
 .modal-content {
   background: #ffffff;
   color: #0f172a;
-  padding: 22px;
+  padding: 20px;
   border-radius: 24px;
   width: 100%;
-  max-width: 390px;
+  max-width: 410px;
   text-align: center;
   display: flex;
   flex-direction: column;
   gap: 12px;
   box-shadow: 0 20px 40px rgba(0, 0, 0, 0.4);
 }
-.profile-subtitle { font-size: 0.86rem; color: #475569; margin-top: -6px; }
-#profiles-list { display: flex; flex-direction: column; gap: 8px; max-height: 210px; overflow-y: auto; }
-.profile-item { display: flex; align-items: center; gap: 8px; }
+.modal-header-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  text-align: left;
+  gap: 8px;
+}
+.modal-header-row h2 { font-size: 1.3rem; line-height: 1.15; }
+.profile-subtitle { font-size: 0.82rem; color: #64748b; margin-top: 2px; }
+.modal-icon-close {
+  background: #f1f5f9;
+  color: #475569;
+  border: none;
+  width: 34px;
+  height: 34px;
+  border-radius: 50%;
+  font-size: 0.95rem;
+  font-weight: 700;
+  cursor: pointer;
+  flex-shrink: 0;
+}
+
+#profiles-list {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  max-height: 225px;
+  overflow-y: auto;
+  padding-right: 2px;
+}
+.profile-item {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
 .profile-select-btn {
   flex: 1;
-  background: #f1f5f9;
+  min-width: 0;
+  background: #f8fafc;
   border: 2px solid #cbd5e1;
   color: #0f172a;
-  padding: 10px 14px;
+  padding: 8px 12px;
   border-radius: 14px;
-  font-size: 0.96rem;
-  font-weight: 700;
   cursor: pointer;
   display: flex;
   justify-content: space-between;
   align-items: center;
+  gap: 8px;
+  text-align: left;
 }
 .profile-item.active-profile .profile-select-btn {
   background: #e0f2fe;
   border-color: #0284c7;
   color: #0369a1;
 }
-.prof-stars { font-size: 0.85rem; color: #d97706; }
+.prof-info-col {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+  flex: 1;
+}
+.prof-name-line {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+.prof-name {
+  font-size: 0.96rem;
+  font-weight: 700;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.prof-active-pill {
+  font-size: 0.68rem;
+  font-weight: 700;
+  background: #0284c7;
+  color: #ffffff;
+  padding: 1px 6px;
+  border-radius: 8px;
+  flex-shrink: 0;
+}
+.prof-meta {
+  font-size: 0.73rem;
+  font-weight: 600;
+  color: #64748b;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.profile-item.active-profile .prof-meta { color: #0369a1; }
+.prof-stars {
+  font-size: 0.86rem;
+  font-weight: 700;
+  color: #d97706;
+  background: #fef3c7;
+  padding: 4px 8px;
+  border-radius: 10px;
+  flex-shrink: 0;
+}
+.profile-action-btn {
+  background: #f1f5f9;
+  color: #334155;
+  border: 1.5px solid #cbd5e1;
+  width: 38px;
+  height: 44px;
+  border-radius: 12px;
+  font-size: 0.9rem;
+  font-weight: 700;
+  cursor: pointer;
+  flex-shrink: 0;
+}
+.save-rename-btn {
+  background: #10b981;
+  color: #ffffff;
+  border-color: #059669;
+}
 .profile-del-btn {
   background: #fee2e2;
   color: #dc2626;
   border: 1.5px solid #fca5a5;
-  width: 38px;
-  height: 40px;
+  min-width: 38px;
+  height: 44px;
+  padding: 0 8px;
   border-radius: 12px;
+  font-size: 0.82rem;
   font-weight: 700;
   cursor: pointer;
+  flex-shrink: 0;
 }
+.profile-del-btn.confirm-del {
+  background: #dc2626;
+  color: #ffffff;
+  border-color: #b91c1c;
+}
+.profile-rename-form {
+  display: flex;
+  gap: 6px;
+  width: 100%;
+  align-items: center;
+}
+.profile-rename-input {
+  flex: 1;
+  min-width: 0;
+  border: 2px solid #0284c7;
+  border-radius: 12px;
+  padding: 9px 11px;
+  font-size: 0.92rem;
+  font-weight: 700;
+  outline: none;
+  user-select: text;
+}
+
 #add-profile-form { display: flex; gap: 8px; width: 100%; }
 #new-profile-input {
   flex: 1;
@@ -684,6 +837,23 @@ body.theme-night #instruction {
   border-radius: 12px;
   font-weight: 700;
   cursor: pointer;
+  white-space: nowrap;
+}
+
+.active-profile-tools {
+  background: #f8fafc;
+  border: 1.5px solid #e2e8f0;
+  border-radius: 16px;
+  padding: 10px;
+  display: flex;
+  flex-direction: column;
+  gap: 7px;
+}
+.tools-label {
+  font-size: 0.76rem;
+  font-weight: 700;
+  color: #64748b;
+  text-align: left;
 }
 .modal-footer-row {
   display: flex;
@@ -695,27 +865,45 @@ body.theme-night #instruction {
   background: #fef3c7;
   color: #b45309;
   border: 2px solid #fcd34d;
-  padding: 10px;
+  padding: 9px 8px;
   border-radius: 12px;
-  font-size: 0.86rem;
+  font-size: 0.83rem;
   font-weight: 700;
   cursor: pointer;
 }
-#dev-unlock-btn.unlocked-mode {
+#dev-unlock-btn:disabled {
   background: #d1fae5;
   color: #047857;
   border-color: #6ee7b7;
+  cursor: default;
 }
-#profile-close-btn {
+#dev-reset-btn {
   flex: 1;
-  background: #e2e8f0;
-  color: #334155;
-  border: none;
-  padding: 10px;
+  background: #fee2e2;
+  color: #b91c1c;
+  border: 2px solid #fca5a5;
+  padding: 9px 8px;
   border-radius: 12px;
+  font-size: 0.83rem;
   font-weight: 700;
   cursor: pointer;
 }
+#dev-reset-btn:disabled {
+  opacity: 0.45;
+  cursor: default;
+}
+.modal-main-close-btn {
+  width: 100%;
+  background: #0f172a;
+  color: #ffffff;
+  border: none;
+  padding: 11px;
+  border-radius: 14px;
+  font-size: 0.95rem;
+  font-weight: 700;
+  cursor: pointer;
+}
+
 .install-icon { width: 84px; height: 84px; margin: 0 auto 4px; }
 .install-app-icon { width: 84px; height: 84px; border-radius: 20px; box-shadow: 0 8px 20px rgba(15, 23, 42, 0.25); }
 .install-actions { display: flex; gap: 10px; width: 100%; }

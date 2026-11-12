@@ -73,6 +73,9 @@ export class GameEngine {
   private tutorialStartTime: number = 0;
   private activeHand: 'hour' | 'minute' = 'hour';
 
+  private editingProfileId: string | null = null;
+  private confirmingDeleteId: string | null = null;
+
   constructor(canvas: HTMLCanvasElement) {
     this.canvas = canvas;
     this.ctx = canvas.getContext('2d')!;
@@ -138,7 +141,6 @@ export class GameEngine {
     this.openTutorial();
   }
 
-
   private openTutorial(): void {
     cancelAnimationFrame(this.tutorialAnimId);
     this.isTutorialActive = true;
@@ -147,38 +149,39 @@ export class GameEngine {
     const info = TutorialOverlay.getInfo(this.currentLevel);
     this.applySkyTheme(info.isDay);
 
-    const periodChipEl = document.getElementById("period-chip-el");
+    const periodChipEl = document.getElementById('period-chip-el');
     if (periodChipEl) {
       if (info.periodLabel) {
         periodChipEl.textContent = info.periodLabel;
-        periodChipEl.classList.remove("invisible-chip");
+        periodChipEl.classList.remove('invisible-chip');
       } else {
-        periodChipEl.classList.add("invisible-chip");
+        periodChipEl.classList.add('invisible-chip');
       }
     }
 
-    const instructionEl = document.getElementById("instruction");
+    // Masque le titre d'astuce : l'explication s'affiche directement en typo noire sur fond bleu
+    const instructionEl = document.getElementById('instruction');
     if (instructionEl) {
-      instructionEl.innerHTML = `<span>${info.title}</span>`;
+      instructionEl.classList.add('hidden');
     }
 
-    document.getElementById("choices-container")?.classList.add("hidden");
-    document.getElementById("placement-tools")?.classList.add("hidden");
-    document.getElementById("tutorial-tools")?.classList.remove("hidden");
+    document.getElementById('choices-container')?.classList.add('hidden');
+    document.getElementById('placement-tools')?.classList.add('hidden');
+    document.getElementById('tutorial-tools')?.classList.remove('hidden');
 
-    const startBtn = document.getElementById("tutorial-start-btn");
+    const startBtn = document.getElementById('tutorial-start-btn');
     if (startBtn) {
       startBtn.textContent = "C'est parti ! ▶";
     }
 
-    const helpBox = document.getElementById("help-box");
-    const helpText = document.getElementById("help-text");
-    const nextBtn = document.getElementById("next-question-btn");
+    const helpBox = document.getElementById('help-box');
+    const helpText = document.getElementById('help-text');
+    const nextBtn = document.getElementById('next-question-btn');
     if (helpBox && helpText) {
       helpText.innerHTML = info.ruleHtml;
-      helpBox.classList.remove("invisible-feedback", "hidden", "feedback-success");
-      helpBox.classList.add("feedback-error");
-      nextBtn?.classList.add("hidden");
+      helpBox.classList.remove('invisible-feedback', 'hidden', 'feedback-success', 'feedback-error');
+      helpBox.classList.add('feedback-tutorial');
+      nextBtn?.classList.add('hidden');
     }
 
     const loop = (now: number) => {
@@ -201,7 +204,7 @@ export class GameEngine {
     if (!this.isTutorialActive) return;
     cancelAnimationFrame(this.tutorialAnimId);
     this.isTutorialActive = false;
-    document.getElementById("tutorial-tools")?.classList.add("hidden");
+    document.getElementById('tutorial-tools')?.classList.add('hidden');
     const showDaySky = TimeMath.is24HourLevel(this.currentLevel) ? this.targetTime.isDay : true;
     this.applySkyTheme(showDaySky);
     this.hideHelp();
@@ -429,15 +432,21 @@ export class GameEngine {
     const devUnlockBtn = document.getElementById('dev-unlock-btn');
     devUnlockBtn?.addEventListener('click', () => {
       const currentMuted = this.saveData.muted;
-      if (SaveManager.isFullyUnlocked(this.saveData)) {
-        this.saveData = SaveManager.reset();
-        this.saveData.muted = currentMuted;
-        SaveManager.save(this.saveData);
-        this.soundEngine.playSnap();
-      } else {
-        this.saveData = SaveManager.unlockAll(currentMuted);
-        this.soundEngine.playLevelComplete();
-      }
+      this.saveData = SaveManager.unlockAll(currentMuted);
+      this.soundEngine.playLevelComplete();
+      this.renderProfilesList();
+      this.updateDevButtonUI();
+      this.updateMenuUI();
+    });
+
+    const devResetBtn = document.getElementById('dev-reset-btn');
+    devResetBtn?.addEventListener('click', () => {
+      const currentMuted = this.saveData.muted;
+      this.saveData = SaveManager.reset();
+      this.saveData.muted = currentMuted;
+      SaveManager.save(this.saveData);
+      this.soundEngine.playSnap();
+      this.renderProfilesList();
       this.updateDevButtonUI();
       this.updateMenuUI();
     });
@@ -447,10 +456,15 @@ export class GameEngine {
       this.openProfileModal();
     });
 
-    document.getElementById('profile-close-btn')?.addEventListener('click', () => {
+    const closeProfileModal = () => {
+      this.editingProfileId = null;
+      this.confirmingDeleteId = null;
       this.soundEngine.playSnap();
       document.getElementById('profile-modal')?.classList.add('hidden');
-    });
+    };
+
+    document.getElementById('profile-close-btn')?.addEventListener('click', closeProfileModal);
+    document.getElementById('profile-close-top-btn')?.addEventListener('click', closeProfileModal);
 
     const addProfileForm = document.getElementById('add-profile-form') as HTMLFormElement | null;
     addProfileForm?.addEventListener('submit', (e) => {
@@ -461,11 +475,12 @@ export class GameEngine {
       const created = SaveManager.createProfile(name, this.saveData.muted);
       this.saveData = created.save;
       if (input) input.value = '';
+      this.editingProfileId = null;
+      this.confirmingDeleteId = null;
       this.soundEngine.playSuccess();
       this.renderProfilesList();
       this.updateDevButtonUI();
       this.updateMenuUI();
-      document.getElementById('profile-modal')?.classList.add('hidden');
     });
 
     document.getElementById('next-question-btn')?.addEventListener('click', () => {
@@ -558,7 +573,10 @@ export class GameEngine {
   }
 
   private openProfileModal(): void {
+    this.editingProfileId = null;
+    this.confirmingDeleteId = null;
     this.renderProfilesList();
+    this.updateDevButtonUI();
     document.getElementById('profile-modal')?.classList.remove('hidden');
   }
 
@@ -570,34 +588,117 @@ export class GameEngine {
 
     listEl.innerHTML = '';
     profiles.forEach(profile => {
+      const isActive = profile.id === active.id;
       const stars = SaveManager.getTotalStars(profile.save);
+      const rank = SaveManager.getRankTitle(stars);
+      const maxLvl = profile.save.maxUnlockedLevel || 1;
+
       const row = document.createElement('div');
-      row.className = `profile-item${profile.id === active.id ? ' active-profile' : ''}`;
+      row.className = `profile-item${isActive ? ' active-profile' : ''}`;
+
+      if (this.editingProfileId === profile.id) {
+        const editForm = document.createElement('form');
+        editForm.className = 'profile-rename-form';
+
+        const input = document.createElement('input');
+        input.type = 'text';
+        input.maxLength = 16;
+        input.value = profile.name;
+        input.className = 'profile-rename-input';
+
+        const saveBtn = document.createElement('button');
+        saveBtn.type = 'submit';
+        saveBtn.className = 'profile-action-btn save-rename-btn';
+        saveBtn.textContent = '✓';
+        saveBtn.title = 'Valider le prénom';
+
+        const cancelBtn = document.createElement('button');
+        cancelBtn.type = 'button';
+        cancelBtn.className = 'profile-action-btn';
+        cancelBtn.textContent = '✕';
+        cancelBtn.title = 'Annuler';
+        cancelBtn.addEventListener('click', () => {
+          this.editingProfileId = null;
+          this.renderProfilesList();
+        });
+
+        editForm.addEventListener('submit', (e) => {
+          e.preventDefault();
+          const newName = input.value.trim();
+          if (newName) {
+            SaveManager.renameProfile(profile.id, newName);
+            this.soundEngine.playSuccess();
+          }
+          this.editingProfileId = null;
+          this.renderProfilesList();
+          this.updateMenuUI();
+        });
+
+        editForm.appendChild(input);
+        editForm.appendChild(saveBtn);
+        editForm.appendChild(cancelBtn);
+        row.appendChild(editForm);
+        listEl.appendChild(row);
+        setTimeout(() => input.focus(), 10);
+        return;
+      }
 
       const selectBtn = document.createElement('button');
       selectBtn.type = 'button';
       selectBtn.className = 'profile-select-btn';
-      selectBtn.innerHTML = `<span class="prof-name">${profile.name}</span><span class="prof-stars">★ ${stars}/${SaveManager.MAX_STARS}</span>`;
+      selectBtn.innerHTML = `
+        <div class="prof-info-col">
+          <div class="prof-name-line">
+            <span class="prof-name">${profile.name}</span>
+            ${isActive ? '<span class="prof-active-pill">Actif</span>' : ''}
+          </div>
+          <span class="prof-meta">${rank} · Niv. ${maxLvl}/8</span>
+        </div>
+        <span class="prof-stars">★ ${stars}/${SaveManager.MAX_STARS}</span>
+      `;
       selectBtn.addEventListener('click', () => {
         this.saveData = SaveManager.switchProfile(profile.id);
         this.soundEngine.setMuted(this.saveData.muted);
         this.soundEngine.playSnap();
+        this.confirmingDeleteId = null;
+        this.renderProfilesList();
         this.updateSoundButtonUI();
         this.updateDevButtonUI();
         this.updateMenuUI();
-        document.getElementById('profile-modal')?.classList.add('hidden');
       });
 
       row.appendChild(selectBtn);
 
+      const editBtn = document.createElement('button');
+      editBtn.type = 'button';
+      editBtn.className = 'profile-action-btn';
+      editBtn.title = `Renommer ${profile.name}`;
+      editBtn.textContent = '✏️';
+      editBtn.addEventListener('click', (e) => {
+        e.stopPropagation();
+        this.confirmingDeleteId = null;
+        this.editingProfileId = profile.id;
+        this.soundEngine.playSnap();
+        this.renderProfilesList();
+      });
+      row.appendChild(editBtn);
+
       if (profiles.length > 1) {
         const delBtn = document.createElement('button');
         delBtn.type = 'button';
-        delBtn.className = 'profile-del-btn';
-        delBtn.title = `Supprimer ${profile.name}`;
-        delBtn.textContent = '✕';
+        const isConfirming = this.confirmingDeleteId === profile.id;
+        delBtn.className = `profile-del-btn${isConfirming ? ' confirm-del' : ''}`;
+        delBtn.title = isConfirming ? `Confirmer la suppression de ${profile.name}` : `Supprimer ${profile.name}`;
+        delBtn.textContent = isConfirming ? 'Suppr ?' : '🗑️';
         delBtn.addEventListener('click', (e) => {
           e.stopPropagation();
+          if (this.confirmingDeleteId !== profile.id) {
+            this.confirmingDeleteId = profile.id;
+            this.soundEngine.playSnap();
+            this.renderProfilesList();
+            return;
+          }
+          this.confirmingDeleteId = null;
           const updatedActive = SaveManager.deleteProfile(profile.id);
           this.saveData = updatedActive.save;
           this.soundEngine.playSnap();
@@ -622,14 +723,18 @@ export class GameEngine {
   }
 
   private updateDevButtonUI(): void {
-    const btn = document.getElementById('dev-unlock-btn');
-    if (!btn) return;
-    if (SaveManager.isFullyUnlocked(this.saveData)) {
-      btn.textContent = '🔄 Réinitialiser';
-      btn.classList.add('unlocked-mode');
-    } else {
-      btn.textContent = '🔓 Mode Test';
-      btn.classList.remove('unlocked-mode');
+    const unlockBtn = document.getElementById('dev-unlock-btn') as HTMLButtonElement | null;
+    const resetBtn = document.getElementById('dev-reset-btn') as HTMLButtonElement | null;
+    const totalStars = SaveManager.getTotalStars(this.saveData);
+    const fullyUnlocked = SaveManager.isFullyUnlocked(this.saveData) && totalStars >= SaveManager.MAX_STARS;
+    const isFresh = totalStars === 0 && (this.saveData.maxUnlockedLevel || 1) <= 1;
+
+    if (unlockBtn) {
+      unlockBtn.disabled = fullyUnlocked;
+      unlockBtn.textContent = fullyUnlocked ? '✓ Tout débloqué' : '🔓 Tout débloquer';
+    }
+    if (resetBtn) {
+      resetBtn.disabled = isFresh;
     }
   }
 
@@ -682,8 +787,8 @@ export class GameEngine {
     if (workshopBtn && workshopStatus) {
       if (workshopUnlocked) {
         workshopBtn.classList.remove('locked');
-        workshopStatus.innerHTML = `<span class="lvl-star-on">🔍 Loupe</span>`;
-        workshopStatus.className = 'lvl-status stars-badge';
+        workshopStatus.textContent = '🔍';
+        workshopStatus.className = 'lvl-status play';
       } else {
         workshopBtn.classList.add('locked');
         workshopStatus.textContent = '🔒';
@@ -702,10 +807,17 @@ export class GameEngine {
     const helpText = document.getElementById('help-text');
     const nextBtn = document.getElementById('next-question-btn');
     const placementTools = document.getElementById('placement-tools');
+    const instructionEl = document.getElementById('instruction');
     if (!helpBox || !helpText) return;
 
+    if (type === 'success') {
+      instructionEl?.classList.add('hidden');
+    } else {
+      instructionEl?.classList.remove('hidden');
+    }
+
     helpText.innerHTML = html;
-    helpBox.classList.remove('invisible-feedback', 'hidden', 'feedback-success', 'feedback-error');
+    helpBox.classList.remove('invisible-feedback', 'hidden', 'feedback-success', 'feedback-error', 'feedback-tutorial');
     helpBox.classList.add(type === 'success' ? 'feedback-success' : 'feedback-error');
 
     if (nextBtn) {
@@ -726,9 +838,11 @@ export class GameEngine {
   private hideHelp(): void {
     const helpBox = document.getElementById('help-box');
     const nextBtn = document.getElementById('next-question-btn');
+    const instructionEl = document.getElementById('instruction');
+    instructionEl?.classList.remove('hidden');
     if (!helpBox) return;
     helpBox.classList.add('invisible-feedback');
-    helpBox.classList.remove('feedback-success', 'feedback-error');
+    helpBox.classList.remove('feedback-success', 'feedback-error', 'feedback-tutorial');
     nextBtn?.classList.add('hidden');
   }
 
@@ -1074,6 +1188,7 @@ export class GameEngine {
     const placementTools = document.getElementById('placement-tools');
     const choicesContainer = document.getElementById('choices-container');
     document.getElementById('tutorial-tools')?.classList.add('hidden');
+    instructionEl?.classList.remove('hidden');
 
     this.updatePhaseStarsUI();
 

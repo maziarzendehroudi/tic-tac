@@ -151,3 +151,19 @@ describe('Progression Pédagogique 8 Niveaux (V41) — QuestionManager, TimeMath
     }
   });
 });
+
+describe('Correctifs V46 — Barillet dans le cadran & Gestion des profils', () => {
+  it('maintient les dents du barillet du ressort strictement à l’intérieur des graduations du cadran (< 114 px)', () => {
+    const { spring } = WatchMechanism.POS;
+    const centerDist = Math.hypot(spring.x, spring.y);
+    const maxToothRadiusFromCenter = centerDist + spring.r + 3.2;
+    expect(maxToothRadiusFromCenter).toBeLessThan(114);
+  });
+
+  it('permet de renommer un profil joueur existant', () => {
+    const created = SaveManager.createProfile('Test', false);
+    const renamed = SaveManager.renameProfile(created.id, 'Sophia');
+    expect(renamed.name).toBe('Sophia');
+    expect(SaveManager.getActiveProfile().name).toBe('Sophia');
+  });
+});
