@@ -23,9 +23,90 @@ export interface Level2TimelineState {
   calloutColor: string;
 }
 
+interface Level2Waypoint {
+  hour: number;
+  deltaToNext: number;
+  dwellMs: number;
+  moveMs: number;
+  tourBlend: number;
+  periodLabel: string;
+  calloutText: string;
+  calloutColor: string;
+}
+
 export class TutorialOverlay {
-  private static readonly LEVEL2_SEGMENT_MS = 3600;
-  private static readonly LEVEL2_CYCLE_MS = 14400;
+  /**
+   * Les 6 repères clés d'une journée de 24h (2 tours d'horloge) :
+   * - 3 repères sur la couronne extérieure noire (03 h, 09 h, 12 h)
+   * - 3 repères sur la couronne intérieure orange (17 h, 21 h, 00 h)
+   */
+  private static readonly LEVEL2_WAYPOINTS: readonly Level2Waypoint[] = [
+    {
+      hour: 0,
+      deltaToNext: 3,
+      dwellMs: 1400,
+      moveMs: 1050,
+      tourBlend: 1,
+      periodLabel: '🌙 Minuit · Nouveau jour',
+      calloutText: '🌙 Minuit (00 h) : on change de jour',
+      calloutColor: '#fbbf24'
+    },
+    {
+      hour: 3,
+      deltaToNext: 6,
+      dwellMs: 1350,
+      moveMs: 1650,
+      tourBlend: 0,
+      periodLabel: '🌙 1er tour · Nuit (matin)',
+      calloutText: '🌙 03 h · On dort',
+      calloutColor: '#38bdf8'
+    },
+    {
+      hour: 9,
+      deltaToNext: 3,
+      dwellMs: 1400,
+      moveMs: 1050,
+      tourBlend: 0,
+      periodLabel: '☀️ 1er tour · Matin',
+      calloutText: '☀️ 09 h · L’école',
+      calloutColor: '#0284c7'
+    },
+    {
+      hour: 12,
+      deltaToNext: 5,
+      dwellMs: 1450,
+      moveMs: 1450,
+      tourBlend: 0,
+      periodLabel: '☀️ Midi · Milieu du jour',
+      calloutText: '🍽️ 12 h · Midi : le repas',
+      calloutColor: '#0284c7'
+    },
+    {
+      hour: 17,
+      deltaToNext: 4,
+      dwellMs: 1400,
+      moveMs: 1250,
+      tourBlend: 1,
+      periodLabel: '🌤️ 2e tour · Après-midi',
+      calloutText: '🌤️ 17 h · La fin de l’école',
+      calloutColor: '#ea580c'
+    },
+    {
+      hour: 21,
+      deltaToNext: 3,
+      dwellMs: 1400,
+      moveMs: 1050,
+      tourBlend: 1,
+      periodLabel: '🌙 2e tour · Soir',
+      calloutText: '🌙 21 h · Le dodo',
+      calloutColor: '#ea580c'
+    }
+  ];
+
+  public static readonly LEVEL2_CYCLE_MS = TutorialOverlay.LEVEL2_WAYPOINTS.reduce(
+    (sum, wp) => sum + wp.dwellMs + wp.moveMs,
+    0
+  );
 
   public static getInfo(level: number): TutorialStepInfo {
     switch (level) {
@@ -42,7 +123,7 @@ export class TutorialOverlay {
           title: 'Les 24 Heures',
           ruleHtml:
             'Chaque jour commence à minuit. Entre minuit et midi, on lit les <strong>chiffres noirs</strong>. Après midi, et jusqu’à minuit, on lit les <strong>chiffres orange</strong>.',
-          periodLabel: '🌙 1er tour · Nuit (matin)',
+          periodLabel: '🌙 Minuit · Nouveau jour',
           isDay: false
         };
       case 3:
@@ -96,92 +177,54 @@ export class TutorialOverlay {
     }
   }
 
-  /**
-   * Animation fluide en 4 segments égaux (3,6 s par étape = 14,4 s pour les 2 tours) :
-   * - Segment 0 : pause sur 03 h puis glissement fluide vers 08 h (lever du soleil à 06 h)
-   * - Segment 1 : pause sur 08 h puis glissement fluide vers 15 h (bascule noir -> orange à 12 h)
-   * - Segment 2 : pause sur 15 h puis glissement fluide vers 20 h (coucher du soleil à 18 h)
-   * - Segment 3 : pause sur 20 h puis glissement continu vers 03 h (bascule orange -> noir à 00 h sans arrêt)
-   */
   public static getLevel2Timeline(elapsedMs: number): Level2TimelineState {
-    const cycleTime =
-      ((elapsedMs % this.LEVEL2_CYCLE_MS) + this.LEVEL2_CYCLE_MS) % this.LEVEL2_CYCLE_MS;
-    const segIndex = Math.min(3, Math.floor(cycleTime / this.LEVEL2_SEGMENT_MS));
-    const u = (cycleTime - segIndex * this.LEVEL2_SEGMENT_MS) / this.LEVEL2_SEGMENT_MS;
+    const total = this.LEVEL2_CYCLE_MS;
+    let rem = ((elapsedMs % total) + total) % total;
 
-    const starts = [3, 8, 15, 20];
-    const deltas = [5, 7, 5, 7];
-    const dwellRatio = 0.44;
+    const waypoints = this.LEVEL2_WAYPOINTS;
+    let idx = 0;
+    for (let i = 0; i < waypoints.length; i++) {
+      const segDuration = waypoints[i].dwellMs + waypoints[i].moveMs;
+      if (rem < segDuration || i === waypoints.length - 1) {
+        idx = i;
+        break;
+      }
+      rem -= segDuration;
+    }
+
+    const current = waypoints[idx];
+    const next = waypoints[(idx + 1) % waypoints.length];
 
     let moveProgress = 0;
     let dwellFactor = 1;
+    let labelSource = current;
 
-    if (u > dwellRatio) {
-      const moveU = (u - dwellRatio) / (1 - dwellRatio);
+    if (rem > current.dwellMs) {
+      const moveU = Math.min(1, (rem - current.dwellMs) / current.moveMs);
       moveProgress = this.easeInOutSine(moveU);
-      dwellFactor = Math.max(0.25, 1 - Math.sin(moveU * Math.PI) * 0.75);
+      dwellFactor = Math.max(0.28, 1 - Math.sin(moveU * Math.PI) * 0.72);
+      if (moveU >= 0.52) {
+        labelSource = next;
+      }
     }
 
-    const hRaw = starts[segIndex] + moveProgress * deltas[segIndex];
+    const hRaw = current.hour + moveProgress * current.deltaToNext;
     const h = ((hRaw % 24) + 24) % 24;
 
-    // Fondu doux entre le 1er tour (0) et le 2e tour (1) autour de Midi (12h) et Minuit (00h)
-    let tourBlend = h >= 12 ? 1 : 0;
-    if (h >= 10.8 && h <= 13.2) {
-      tourBlend = this.smoothstep(10.8, 13.2, h);
-    } else if (h >= 22.8 || h <= 1.2) {
-      const wrappedH = h >= 22.8 ? h - 24 : h;
-      tourBlend = 1 - this.smoothstep(-1.2, 1.2, wrappedH);
-    }
-
+    const tourBlend =
+      current.tourBlend + (next.tourBlend - current.tourBlend) * moveProgress;
     const isDay = h >= 6 && h < 18;
     const activeTour: 1 | 2 = tourBlend >= 0.5 ? 2 : 1;
 
-    if (h >= 0 && h < 6) {
-      return {
-        hours24: h,
-        isDay,
-        activeTour,
-        tourBlend,
-        dwellFactor,
-        periodLabel: '🌙 1er tour · Nuit (matin)',
-        calloutText: '🌙 03 h · On dort',
-        calloutColor: '#38bdf8'
-      };
-    }
-    if (h >= 6 && h < 12) {
-      return {
-        hours24: h,
-        isDay,
-        activeTour,
-        tourBlend,
-        dwellFactor,
-        periodLabel: '☀️ 1er tour · Matin',
-        calloutText: '☀️ 08 h · L’école',
-        calloutColor: '#0284c7'
-      };
-    }
-    if (h >= 12 && h < 18) {
-      return {
-        hours24: h,
-        isDay,
-        activeTour,
-        tourBlend,
-        dwellFactor,
-        periodLabel: '🌤️ 2e tour · Après-midi',
-        calloutText: '🌤️ 15 h · L’après-midi',
-        calloutColor: '#ea580c'
-      };
-    }
     return {
       hours24: h,
       isDay,
       activeTour,
       tourBlend,
       dwellFactor,
-      periodLabel: '🌙 2e tour · Soir',
-      calloutText: '🌙 20 h · Le soir',
-      calloutColor: '#ea580c'
+      periodLabel: labelSource.periodLabel,
+      calloutText: labelSource.calloutText,
+      calloutColor: labelSource.calloutColor
     };
   }
 
@@ -301,7 +344,6 @@ export class TutorialOverlay {
     hands.draw(h, 0, 2, 'hour');
     const angleH = ((h % 12) * Math.PI) / 6;
 
-    // Interpolation continue du rayon et de la taille du halo entre la couronne noire et la couronne orange
     const orbitR = (radius - 54) * (1 - state.tourBlend) + (radius - 104) * state.tourBlend;
     const baseHaloR = 24 * (1 - state.tourBlend) + 20 * state.tourBlend;
     const haloColor = state.tourBlend < 0.5 ? '#0284c7' : '#ea580c';
@@ -347,11 +389,6 @@ export class TutorialOverlay {
   private static easeInOutSine(t: number): number {
     const clamped = Math.max(0, Math.min(1, t));
     return -(Math.cos(Math.PI * clamped) - 1) / 2;
-  }
-
-  private static smoothstep(edge0: number, edge1: number, x: number): number {
-    const t = Math.max(0, Math.min(1, (x - edge0) / (edge1 - edge0)));
-    return t * t * (3 - 2 * t);
   }
 
   private static drawTargetHalo(

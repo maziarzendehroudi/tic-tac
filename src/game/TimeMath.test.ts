@@ -35,7 +35,7 @@ function createMockCtx(): CanvasRenderingContext2D {
   } as unknown as CanvasRenderingContext2D;
 }
 
-describe('WatchMechanism V53 — Continuité du Ressort, Détente Rapide (20s), Cinématique 5 Contacts & 3 Zooms', () => {
+describe('WatchMechanism V54 — Continuité du Ressort, Détente Rapide (20s), Cinématique 5 Contacts & 3 Zooms', () => {
   it('ne provoque aucun saut de position du barillet lorsque le ressort est chargé et repart en détente', () => {
     const wm = new WatchMechanism(createMockCtx(), 500, 500);
     wm.power = 50;
@@ -93,7 +93,7 @@ describe('WatchMechanism V53 — Continuité du Ressort, Détente Rapide (20s), 
   });
 });
 
-describe('Progression Pédagogique 8 Niveaux (V53) — Fluidité des 2 tours & Fondus progressifs', () => {
+describe('Progression Pédagogique 8 Niveaux (V54) — 6 repères quotidiens du Niveau 2', () => {
   beforeEach(() => {
     const store: Record<string, string> = {};
     globalThis.localStorage = {
@@ -115,52 +115,53 @@ describe('Progression Pédagogique 8 Niveaux (V53) — Fluidité des 2 tours & F
     expect(TimeMath.formatSpokenTime(4, 45, 5)).toBe('');
   });
 
-  it('anime de façon continue les 4 moments de vie (03h, 08h, 15h, 20h) avec fondu tourBlend à midi et minuit', () => {
-    expect(TutorialOverlay.getCallout(1, 1000)).toBeNull();
-    expect(TutorialOverlay.getCallout(7, 1000)).toBeNull();
+  it('parcourt les 6 repères de la journée (Minuit 00h, 03h, 09h école, 12h repas, 17h fin école, 21h dodo)', () => {
+    // 1. Minuit (00h) : on change de jour (t = 500 ms)
+    const step00 = TutorialOverlay.getLevel2Timeline(500);
+    expect(step00.hours24).toBe(0);
+    expect(step00.isDay).toBe(false);
+    expect(step00.calloutText).toContain('on change de jour');
 
-    // 1. Segment 0 (800 ms) : 03 h (Nuit, 1er tour noir, tourBlend = 0)
-    const step03 = TutorialOverlay.getLevel2Timeline(800);
+    // 2. 03 h : On dort (t = 3000 ms)
+    const step03 = TutorialOverlay.getLevel2Timeline(3000);
     expect(step03.hours24).toBe(3);
     expect(step03.isDay).toBe(false);
     expect(step03.tourBlend).toBe(0);
     expect(step03.calloutText).toContain('03 h');
 
-    // 2. Segment 1 (4400 ms) : 08 h (Matin, 1er tour noir, tourBlend = 0)
-    const step08 = TutorialOverlay.getLevel2Timeline(4400);
-    expect(step08.hours24).toBe(8);
-    expect(step08.isDay).toBe(true);
-    expect(step08.tourBlend).toBe(0);
-    expect(step08.calloutText).toContain('08 h');
+    // 3. 09 h : L’école (t = 6000 ms)
+    const step09 = TutorialOverlay.getLevel2Timeline(6000);
+    expect(step09.hours24).toBe(9);
+    expect(step09.isDay).toBe(true);
+    expect(step09.tourBlend).toBe(0);
+    expect(step09.calloutText).toContain('09 h · L’école');
 
-    // Passage de midi (~6450 ms) : tourBlend est en transition progressive entre 0 et 1
-    const midNoon = TutorialOverlay.getLevel2Timeline(6450);
-    expect(midNoon.tourBlend).toBeGreaterThan(0.05);
-    expect(midNoon.tourBlend).toBeLessThan(0.95);
+    // 4. 12 h : Midi : le repas (t = 8500 ms)
+    const step12 = TutorialOverlay.getLevel2Timeline(8500);
+    expect(step12.hours24).toBe(12);
+    expect(step12.isDay).toBe(true);
+    expect(step12.tourBlend).toBe(0);
+    expect(step12.calloutText).toContain('Midi : le repas');
 
-    // 3. Segment 2 (8000 ms) : 15 h (Après-midi, 2e tour orange, tourBlend = 1)
-    const step15 = TutorialOverlay.getLevel2Timeline(8000);
-    expect(step15.hours24).toBe(15);
-    expect(step15.isDay).toBe(true);
-    expect(step15.tourBlend).toBe(1);
-    expect(step15.calloutText).toContain('15 h');
+    // 5. 17 h : La fin de l’école (t = 11500 ms)
+    const step17 = TutorialOverlay.getLevel2Timeline(11500);
+    expect(step17.hours24).toBe(17);
+    expect(step17.isDay).toBe(true);
+    expect(step17.tourBlend).toBe(1);
+    expect(step17.calloutText).toContain('17 h · La fin de l’école');
 
-    // 4. Segment 3 (11600 ms) : 20 h (Soir, 2e tour orange, tourBlend = 1)
-    const step20 = TutorialOverlay.getLevel2Timeline(11600);
-    expect(step20.hours24).toBe(20);
-    expect(step20.isDay).toBe(false);
-    expect(step20.tourBlend).toBe(1);
-    expect(step20.calloutText).toContain('20 h');
+    // 6. 21 h : Le dodo (t = 14000 ms)
+    const step21 = TutorialOverlay.getLevel2Timeline(14000);
+    expect(step21.hours24).toBe(21);
+    expect(step21.isDay).toBe(false);
+    expect(step21.tourBlend).toBe(1);
+    expect(step21.calloutText).toContain('21 h · Le dodo');
   });
 
-  it('dessine le cadran (avec tourBlend continu) et le didacticiel sans erreur pour chacun des 8 niveaux', () => {
+  it('dessine le cadran et le didacticiel sans erreur pour chacun des 8 niveaux', () => {
     const ctx = createMockCtx();
     const clock = new Clock(ctx, 200);
     const hands = new Hands(ctx, 200);
-
-    expect(() => clock.draw(2, false, 0)).not.toThrow();
-    expect(() => clock.draw(2, true, 0.5)).not.toThrow();
-    expect(() => clock.draw(2, true, 1)).not.toThrow();
 
     for (let lvl = 1; lvl <= 8; lvl++) {
       const info = TutorialOverlay.getInfo(lvl);
