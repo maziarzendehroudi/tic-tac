@@ -133,6 +133,7 @@ export class TimeMath {
   public static formatSpokenTime(hours24: number, minutes: number, level: number): string {
     const h24 = ((hours24 % 24) + 24) % 24;
     const h12 = h24 % 12 || 12;
+    const nextH12 = (h12 % 12) + 1;
 
     if (level === 1) return `${h12} ${this.hourUnit(h12)}`;
     if (level === 2) {
@@ -142,13 +143,20 @@ export class TimeMath {
     }
     if (level === 3) return `${minutes} minutes`;
 
+    if (level === 5) {
+      if (minutes === 0) return `${h12} ${this.hourUnit(h12)} pile`;
+      if (minutes === 15) return `${h12} ${this.hourUnit(h12)} et quart`;
+      if (minutes === 30) return `${h12} ${this.hourUnit(h12)} et demi`;
+      if (minutes === 45) return `${nextH12} ${this.hourUnit(nextH12)} moins le quart`;
+    }
+
     if (level >= 7 && minutes === 0) {
       if (h24 === 12) return 'Midi pile';
       if (h24 === 0) return 'Minuit pile';
     }
 
     if (minutes === 0 && level === 4) return `${h12} ${this.hourUnit(h12)} pile`;
-    if (minutes === 30 && level === 4) return `${h12} ${this.hourUnit(h12)} et demie`;
+    if (minutes === 30 && level === 4) return `${h12} ${this.hourUnit(h12)} et demi`;
     return '';
   }
 

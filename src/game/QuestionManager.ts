@@ -104,7 +104,7 @@ export class QuestionManager {
     } else if (this.level === 4) {
       minutes = Math.random() < 0.75 ? 30 : 0;
     } else if (this.level === 5) {
-      const quarters = [15, 30, 45, 15, 45, 45];
+      const quarters = [0, 15, 30, 45, 15, 45];
       minutes = quarters[Math.floor(Math.random() * quarters.length)];
     } else if (this.level === 6) {
       minutes = Math.floor(Math.random() * 60);

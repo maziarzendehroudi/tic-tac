@@ -349,7 +349,7 @@ export class GameEngine {
         'compact-tutorial-text'
       );
       helpBox.classList.add('feedback-tutorial');
-      if (this.currentLevel === 2 || this.currentLevel === 5) {
+      if (this.currentLevel === 2 || this.currentLevel === 4 || this.currentLevel === 5 || this.currentLevel === 6) {
         helpBox.classList.add('compact-tutorial-text');
       }
     }
@@ -1103,7 +1103,9 @@ export class GameEngine {
     const successMsg =
       this.currentLevel === 3
         ? `<strong>Bravo ! L’aiguille indique bien ${this.targetTime.text} !</strong>`
-        : `<strong>Bravo ! Il est bien ${this.targetTime.text}${spokenSuffix} !</strong>`;
+        : this.currentLevel === 5 && this.targetTime.spokenText
+          ? `<strong>Bravo ! Il est bien ${this.targetTime.spokenText} !</strong>`
+          : `<strong>Bravo ! Il est bien ${this.targetTime.text}${spokenSuffix} !</strong>`;
 
     if (this.phaseSuccessCount >= 3) {
       if (this.currentPhase === 1) {
@@ -1637,6 +1639,11 @@ export class GameEngine {
   }
 
   private formatNeutralTargetHTML(target: TimeTarget): string {
+    if (this.currentLevel === 5 && target.spokenText) {
+      const h12 = target.hours % 12 || 12;
+      const mStr = target.minutes < 10 ? `0${target.minutes}` : `${target.minutes}`;
+      return `<span class="target-time-badge">${h12}h${mStr}</span> <span class="target-spoken-hint">(${target.spokenText})</span>`;
+    }
     return `<span class="target-time-badge">${target.text}</span>`;
   }
 

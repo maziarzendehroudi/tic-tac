@@ -1687,3 +1687,16 @@ button#player-progress-bar:active {
   flex-shrink: 0;
   display: block;
 }
+
+/* Mention parlée doublée dans les questions du Niveau 5 : "Place les aiguilles sur 2h45 (3 heures moins le quart)" */
+.target-spoken-hint {
+  display: block;
+  width: 100%;
+  font-size: clamp(1.05rem, 4.2vw, 1.25rem);
+  font-weight: 700;
+  color: #075985;
+  margin-top: -2px;
+}
+body.theme-night .target-spoken-hint {
+  color: #bae6fd;
+}
