@@ -175,3 +175,18 @@ describe('Progression Pédagogique 8 Niveaux (V55) — Rotation continue Niveau 
     expect(() => sound.playWindingClick()).not.toThrow();
   });
 });
+import { GameEngine } from './GameEngine';
+
+describe('Transitions V56 — Récapitulatif des acquis et annonce du niveau suivant', () => {
+  it('fournit un récapitulatif pédagogique et annonce le niveau suivant (ou l’atelier) pour les 8 niveaux', () => {
+    for (let lvl = 1; lvl <= 7; lvl++) {
+      const summary = GameEngine.getLevelTransitionSummary(lvl);
+      expect(summary.learnedText.length).toBeGreaterThan(20);
+      expect(summary.nextTitle).toContain(`Niveau ${lvl + 1}`);
+    }
+
+    const finalSummary = GameEngine.getLevelTransitionSummary(8);
+    expect(finalSummary.learnedText).toContain('horloge de grand');
+    expect(finalSummary.nextTitle).toContain('atelier de l’horloger');
+  });
+});

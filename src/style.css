@@ -1020,3 +1020,46 @@ body.theme-night #help-box.feedback-step2 {
   font-size: clamp(0.95rem, 3.7vw, 1.08rem);
   line-height: 1.22;
 }
+
+/* Récapitulatif de fin de niveau et annonce du niveau suivant */
+#help-box.feedback-levelup {
+  background: transparent;
+  border: none;
+  box-shadow: none;
+  padding: 2px 4px;
+  color: #0f172a;
+  text-shadow: none;
+}
+body.theme-night #help-box.feedback-levelup {
+  color: #f8fafc;
+}
+.levelup-recap-box {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 5px;
+  width: 100%;
+  animation: btnCorrectPop 0.45s cubic-bezier(0.34, 1.56, 0.64, 1) forwards;
+}
+.recap-learned {
+  font-size: clamp(1rem, 4vw, 1.16rem);
+  font-weight: 700;
+  line-height: 1.24;
+  color: #0f172a;
+}
+body.theme-night .recap-learned {
+  color: #f8fafc;
+}
+.recap-next {
+  font-size: clamp(0.92rem, 3.7vw, 1.05rem);
+  font-weight: 700;
+  color: #ffffff;
+  background: rgba(15, 23, 42, 0.86);
+  border: 2px solid #fde047;
+  padding: 3px 12px;
+  border-radius: 14px;
+}
+.recap-next strong {
+  color: #fde047;
+}

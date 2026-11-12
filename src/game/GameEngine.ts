@@ -21,6 +21,11 @@ interface CelebrationParticle {
   vRot: number;
 }
 
+export interface LevelTransitionSummary {
+  learnedText: string;
+  nextTitle: string;
+}
+
 const ZOOM_LABELS: Record<Exclude<WorkshopZoom, 'overview'>, string> = {
   spring: '⚙️ Ressort',
   hours: '🟠 Heures',
@@ -33,7 +38,7 @@ const THREE_ZOOM_BUTTONS: Array<Exclude<WorkshopZoom, 'overview'>> = [
   'minutes'
 ];
 
-const LEVEL_TITLES: Record<number, string> = {
+export const LEVEL_TITLES: Record<number, string> = {
   1: '1 · Les 12 heures',
   2: '2 · Les 24 heures',
   3: '3 · Les minutes',
@@ -42,6 +47,28 @@ const LEVEL_TITLES: Record<number, string> = {
   6: '6 · À la minute près',
   7: '7 · Le défi jour & nuit',
   8: '8 · L’horloge des grands'
+};
+
+export const LEVEL_SHORT_NAMES: Record<number, string> = {
+  1: 'Les 12 heures',
+  2: 'Les 24 heures',
+  3: 'Les minutes',
+  4: 'Les demi-heures',
+  5: 'Les quarts d’heure',
+  6: 'À la minute près',
+  7: 'Le défi jour & nuit',
+  8: 'L’horloge des grands'
+};
+
+export const LEVEL_RECAPS: Record<number, string> = {
+  1: 'Tu sais lire les heures de 1 h à 12 h avec la petite aiguille orange !',
+  2: 'Tu connais les 24 heures du jour et de la nuit (chiffres noirs et orange) !',
+  3: 'Tu sais lire les minutes de 5 en 5 avec la grande aiguille bleue !',
+  4: 'Tu sais lire l’heure pile et la demie avec les deux aiguilles !',
+  5: 'Tu connais le quart d’heure (15) et les trois quarts d’heure (45) !',
+  6: 'Tu sais compter chaque petite graduation à la minute près !',
+  7: 'Tu sais lire toutes les heures et les minutes, le jour comme la nuit !',
+  8: 'Tu sais lire l’heure sur une horloge de grand en devinant les chiffres !'
 };
 
 export class GameEngine {
@@ -85,6 +112,16 @@ export class GameEngine {
   private unlockedEditProfileId: string | null = null;
   private editingProfileId: string | null = null;
   private confirmingDeleteId: string | null = null;
+
+  public static getLevelTransitionSummary(completedLevel: number): LevelTransitionSummary {
+    const learnedText =
+      LEVEL_RECAPS[completedLevel] || 'Tu maîtrises une nouvelle étape de l’horloge !';
+    const nextTitle =
+      completedLevel >= SaveManager.MAX_LEVEL
+        ? '⚙️ L’atelier de l’horloger'
+        : `Niveau ${completedLevel + 1} · ${LEVEL_SHORT_NAMES[completedLevel + 1]}`;
+    return { learnedText, nextTitle };
+  }
 
   constructor(canvas: HTMLCanvasElement) {
     this.canvas = canvas;
@@ -159,6 +196,7 @@ export class GameEngine {
 
   private openTutorial(): void {
     cancelAnimationFrame(this.tutorialAnimId);
+    cancelAnimationFrame(this.celebrationAnimId);
     clearTimeout(this.autoNextTimerId);
     this.isTutorialActive = true;
     this.tutorialStartTime = performance.now();
@@ -210,6 +248,7 @@ export class GameEngine {
         'hidden',
         'feedback-success',
         'feedback-step2',
+        'feedback-levelup',
         'feedback-error',
         'compact-tutorial-text'
       );
@@ -675,7 +714,6 @@ export class GameEngine {
         <span class="prof-stars"><span class="prof-star-icon">★</span> ${stars} / ${SaveManager.MAX_STARS}</span>
       `;
 
-      // Détection du clic long (500 ms) pour afficher les boutons d'édition
       let pressTimer = 0;
       let longPressTriggered = false;
 
@@ -860,8 +898,9 @@ export class GameEngine {
 
   private showFeedback(
     html: string,
-    type: 'success' | 'step2' | 'error',
-    nextCallback?: () => void
+    type: 'success' | 'step2' | 'levelup' | 'error',
+    nextCallback?: () => void,
+    delayMs: number = 3000
   ): void {
     const helpBox = document.getElementById('help-box');
     const helpText = document.getElementById('help-text');
@@ -869,7 +908,7 @@ export class GameEngine {
     document.getElementById('tutorial-callout-row')?.classList.add('hidden');
     if (!helpBox || !helpText) return;
 
-    if (type === 'success' || type === 'step2') {
+    if (type === 'success' || type === 'step2' || type === 'levelup') {
       instructionEl?.classList.add('hidden');
     } else {
       instructionEl?.classList.remove('hidden');
@@ -881,6 +920,7 @@ export class GameEngine {
       'hidden',
       'feedback-success',
       'feedback-step2',
+      'feedback-levelup',
       'feedback-error',
       'feedback-tutorial',
       'compact-tutorial-text'
@@ -888,9 +928,11 @@ export class GameEngine {
     helpBox.classList.add(
       type === 'step2'
         ? 'feedback-step2'
-        : type === 'success'
-          ? 'feedback-success'
-          : 'feedback-error'
+        : type === 'levelup'
+          ? 'feedback-levelup'
+          : type === 'success'
+            ? 'feedback-success'
+            : 'feedback-error'
     );
 
     if (nextCallback) {
@@ -900,7 +942,7 @@ export class GameEngine {
         if (!this.isWaitingNext) return;
         this.isWaitingNext = false;
         nextCallback();
-      }, 3000);
+      }, delayMs);
     }
   }
 
@@ -913,20 +955,11 @@ export class GameEngine {
     helpBox.classList.remove(
       'feedback-success',
       'feedback-step2',
+      'feedback-levelup',
       'feedback-error',
       'feedback-tutorial',
       'compact-tutorial-text'
     );
-  }
-
-  private formatGoldStarsHTML(earnedStars: number): string {
-    return [1, 2, 3]
-      .map(i =>
-        i <= earnedStars
-          ? '<span class="inline-star-gold">★</span>'
-          : '<span class="inline-star-empty">★</span>'
-      )
-      .join('');
   }
 
   private handleSuccessfulAnswer(): void {
@@ -952,12 +985,14 @@ export class GameEngine {
     if (this.phaseSuccessCount >= 3) {
       if (this.currentPhase === 1) {
         this.soundEngine.playSuccess();
+        this.playStep2TransitionAnimation();
+
         const step2Text =
           this.currentLevel <= 2
-            ? '🎉 <strong>Bravo !</strong> Étape 2 : à toi de placer la petite aiguille orange !'
+            ? '🎉 <strong>Étape 2 :</strong> glisse la petite aiguille orange avec ton doigt !'
             : this.currentLevel === 3
-              ? '🎉 <strong>Bravo !</strong> Étape 2 : à toi de placer la grande aiguille bleue !'
-              : '🎉 <strong>Bravo !</strong> Étape 2 : à toi de placer les aiguilles avec ton doigt !';
+              ? '🎉 <strong>Étape 2 :</strong> glisse la grande aiguille bleue avec ton doigt !'
+              : '🎉 <strong>Étape 2 :</strong> glisse les aiguilles sur l’horloge avec ton doigt !';
 
         this.showFeedback(
           step2Text,
@@ -968,7 +1003,8 @@ export class GameEngine {
             this.initNewQuestion();
             this.updateUI();
             this.render();
-          }
+          },
+          3400
         );
         return;
       } else {
@@ -978,32 +1014,36 @@ export class GameEngine {
         SaveManager.save(this.saveData);
         this.updateMenuUI();
 
-        const starsHtml = this.formatGoldStarsHTML(earnedStars);
-        this.playCelebrationAnimation(earnedStars);
+        const summary = GameEngine.getLevelTransitionSummary(this.currentLevel);
+        this.playCelebrationAnimation(earnedStars, summary.nextTitle);
+
+        const recapHtml = `
+          <div class="levelup-recap-box">
+            <div class="recap-learned">🎓 ${summary.learnedText}</div>
+            <div class="recap-next">➔ Prochain défi : <strong>${summary.nextTitle}</strong></div>
+          </div>
+        `;
 
         if (this.currentLevel === SaveManager.MAX_LEVEL) {
           this.showFeedback(
-            `👑 <strong>Niveau 8 validé (${starsHtml}) !</strong> L’atelier de l’horloger est débloqué !`,
-            'success',
+            recapHtml,
+            'levelup',
             () => {
               this.openWorkshop();
-            }
+            },
+            4500
           );
           return;
         }
 
         const nextLvl = this.currentLevel + 1;
-        const msg =
-          earnedStars === 3
-            ? `🏆 <strong>Niveau ${this.currentLevel} parfait (${starsHtml}) !</strong> Passage au niveau ${nextLvl}...`
-            : `🏆 <strong>Niveau ${this.currentLevel} validé (${starsHtml}) !</strong> Passage au niveau ${nextLvl}...`;
-
         this.showFeedback(
-          msg,
-          'success',
+          recapHtml,
+          'levelup',
           () => {
             this.startLevel(nextLvl);
-          }
+          },
+          4500
         );
         return;
       }
@@ -1027,33 +1067,173 @@ export class GameEngine {
     );
   }
 
-  private playCelebrationAnimation(earnedStars: 1 | 2 | 3): void {
+  /**
+   * Animation visuelle sur l'horloge lors du passage à l'Étape 2 :
+   * - Ondes concentriques dorées/violettes
+   * - Balayage de démonstration de l'aiguille accompagné d'un doigt "👆"
+   * - Badge animé "👆 Étape 2 · À ton tour !"
+   */
+  private playStep2TransitionAnimation(): void {
+    cancelAnimationFrame(this.celebrationAnimId);
+    const startTime = performance.now();
+    const isDay = TimeMath.is24HourLevel(this.currentLevel)
+      ? (this.targetTime ? this.targetTime.isDay : true)
+      : true;
+
+    const animate = (now: number) => {
+      const elapsed = now - startTime;
+      const ctx = this.ctx;
+      const r = this.radius;
+
+      this.clock.draw(this.currentLevel, isDay);
+
+      // 1. Ondes lumineuses concentriques
+      for (let i = 0; i < 2; i++) {
+        const waveP = ((elapsed * 0.0009 + i * 0.5) % 1);
+        ctx.save();
+        ctx.beginPath();
+        ctx.arc(0, 0, 24 + waveP * (r - 28), 0, Math.PI * 2);
+        ctx.strokeStyle = `rgba(139, 92, 246, ${(1 - waveP) * 0.45})`;
+        ctx.lineWidth = 4;
+        ctx.stroke();
+        ctx.restore();
+      }
+
+      // 2. Oscillation fluide de l'aiguille + curseur doigt "👆"
+      const swing = Math.sin(elapsed * 0.0048);
+      let pointerAngle = 0;
+      let pointerOrbit = r - 76;
+      let arcColor = '#ea580c';
+
+      if (this.currentLevel === 3) {
+        const demoMin = 15 + swing * 10;
+        this.hands.draw(12, demoMin, 3, 'minute');
+        pointerAngle = (demoMin * Math.PI) / 30;
+        pointerOrbit = r - 52;
+        arcColor = '#0284c7';
+      } else if (this.currentLevel <= 2) {
+        const demoHr = 3 + swing * 1.5;
+        this.hands.draw(demoHr, 0, this.currentLevel, 'hour');
+        pointerAngle = (demoHr * Math.PI) / 6;
+        pointerOrbit = r - 86;
+        arcColor = '#ea580c';
+      } else {
+        const demoMin = 30 + swing * 12;
+        this.hands.draw(2, demoMin, this.currentLevel, 'minute');
+        pointerAngle = (demoMin * Math.PI) / 30;
+        pointerOrbit = r - 52;
+        arcColor = '#0284c7';
+      }
+
+      // Arc pointillé de guidage
+      ctx.save();
+      ctx.beginPath();
+      ctx.arc(
+        0,
+        0,
+        pointerOrbit,
+        pointerAngle - 0.42 - Math.PI / 2,
+        pointerAngle + 0.42 - Math.PI / 2
+      );
+      ctx.strokeStyle = arcColor;
+      ctx.lineWidth = 3.5;
+      ctx.setLineDash([6, 5]);
+      ctx.stroke();
+      ctx.restore();
+
+      // Halo + Doigt "👆" sur la pointe de l'aiguille
+      const fx = Math.sin(pointerAngle) * pointerOrbit;
+      const fy = -Math.cos(pointerAngle) * pointerOrbit;
+      ctx.save();
+      ctx.beginPath();
+      ctx.arc(fx, fy, 20, 0, Math.PI * 2);
+      ctx.fillStyle = 'rgba(254, 240, 138, 0.72)';
+      ctx.fill();
+      ctx.font = '26px sans-serif';
+      ctx.textAlign = 'center';
+      ctx.textBaseline = 'middle';
+      ctx.fillText('👆', fx + 6, fy + 10);
+      ctx.restore();
+
+      // 3. Badge animé "Étape 2 · À ton tour !"
+      const pop = Math.min(1, elapsed / 260);
+      const scale =
+        pop < 1
+          ? 0.5 + 0.5 * Math.sin(pop * Math.PI * 0.75) * 1.08
+          : 1 + 0.025 * Math.sin(elapsed * 0.008);
+
+      ctx.save();
+      ctx.translate(0, 62);
+      ctx.scale(scale, scale);
+
+      ctx.beginPath();
+      ctx.roundRect(-124, -26, 248, 52, 18);
+      ctx.fillStyle = 'rgba(76, 29, 149, 0.94)';
+      ctx.fill();
+      ctx.lineWidth = 3;
+      ctx.strokeStyle = '#fde047';
+      ctx.stroke();
+
+      ctx.font = '700 20px "Fredoka", sans-serif';
+      ctx.fillStyle = '#fde047';
+      ctx.textAlign = 'center';
+      ctx.textBaseline = 'middle';
+      ctx.fillText('👆 Étape 2 · À ton tour !', 0, 1);
+      ctx.restore();
+
+      this.celebrationAnimId = requestAnimationFrame(animate);
+    };
+
+    this.celebrationAnimId = requestAnimationFrame(animate);
+  }
+
+  /**
+   * Animation de fin de niveau :
+   * - Confettis + tour d'honneur des aiguilles
+   * - Apparition séquentielle des 3 étoiles dorées
+   * - Carte de victoire annonçant le niveau suivant sur le cadran
+   */
+  private playCelebrationAnimation(earnedStars: 1 | 2 | 3, nextTitle: string): void {
+    cancelAnimationFrame(this.celebrationAnimId);
+    const startTime = performance.now();
+    const isDay = TimeMath.is24HourLevel(this.currentLevel)
+      ? (this.targetTime ? this.targetTime.isDay : true)
+      : true;
+
     const colors = ['#fbbf24', '#38bdf8', '#34d399', '#f43f5e', '#a855f7'];
     const particles: CelebrationParticle[] = [];
-    for (let i = 0; i < 42; i++) {
+    for (let i = 0; i < 48; i++) {
       const angle = Math.random() * Math.PI * 2;
-      const speed = 2.5 + Math.random() * 5.5;
+      const speed = 2.5 + Math.random() * 5.8;
       particles.push({
         x: 0,
         y: 0,
         vx: Math.cos(angle) * speed,
-        vy: Math.sin(angle) * speed - 2,
+        vy: Math.sin(angle) * speed - 2.4,
         size: 6 + Math.random() * 7,
         color: colors[i % colors.length],
         rotation: Math.random() * Math.PI,
-        vRot: (Math.random() - 0.5) * 0.2
+        vRot: (Math.random() - 0.5) * 0.22
       });
     }
 
-    const animate = () => {
-      this.render();
+    const animate = (now: number) => {
+      const elapsed = now - startTime;
       const ctx = this.ctx;
+
+      // Tour d'honneur des aiguilles sur le cadran
+      this.clock.draw(this.currentLevel, isDay);
+      const spinHours = (this.currentHours + elapsed * 0.004) % 12;
+      const spinMinutes = (this.currentMinutes + elapsed * 0.045) % 60;
+      this.hands.draw(spinHours, spinMinutes, this.currentLevel);
+
       ctx.save();
 
+      // Pluie de confettis
       particles.forEach(p => {
         p.x += p.vx;
         p.y += p.vy;
-        p.vy += 0.16;
+        p.vy += 0.14;
         p.rotation += p.vRot;
 
         ctx.save();
@@ -1064,22 +1244,64 @@ export class GameEngine {
         ctx.restore();
       });
 
+      // Carte centrale de victoire
+      const cardPop = Math.min(1, elapsed / 280);
+      const cardScale = 0.6 + 0.4 * Math.sin(cardPop * Math.PI * 0.5);
+      ctx.save();
+      ctx.scale(cardScale, cardScale);
+
       ctx.beginPath();
-      ctx.roundRect(-115, -34, 230, 68, 22);
-      ctx.fillStyle = 'rgba(15, 23, 42, 0.92)';
+      ctx.roundRect(-146, -66, 292, 132, 24);
+      ctx.fillStyle = 'rgba(15, 23, 42, 0.94)';
       ctx.fill();
-      ctx.lineWidth = 3;
+      ctx.lineWidth = 3.5;
       ctx.strokeStyle = '#fbbf24';
       ctx.stroke();
 
-      ctx.font = '700 36px "Fredoka", sans-serif';
-      ctx.fillStyle = '#fbbf24';
+      // Titre du niveau validé
+      ctx.font = '700 18px "Fredoka", sans-serif';
+      ctx.fillStyle = '#f8fafc';
       ctx.textAlign = 'center';
       ctx.textBaseline = 'middle';
-      const starsDisplay = '★ '.repeat(earnedStars) + '☆ '.repeat(3 - earnedStars);
-      ctx.fillText(starsDisplay.trim(), 0, 2);
+      ctx.fillText(`🏆 Niveau ${this.currentLevel} terminé !`, 0, -40);
+
+      // Les 3 étoiles qui apparaissent une par une avec rebond
+      for (let i = 0; i < 3; i++) {
+        const starDelay = 160 + i * 210;
+        const starElapsed = Math.max(0, elapsed - starDelay);
+        const starPop = Math.min(1, starElapsed / 240);
+        const sScale =
+          starPop === 0
+            ? 0.01
+            : starPop < 1
+              ? 1.25 * Math.sin(starPop * Math.PI * 0.65)
+              : 1 + 0.05 * Math.sin((elapsed - starDelay) * 0.007);
+
+        ctx.save();
+        ctx.translate((i - 1) * 46, -2);
+        ctx.scale(sScale, sScale);
+        ctx.font = '700 36px "Fredoka", sans-serif';
+        ctx.fillStyle = i < earnedStars ? '#fde047' : 'rgba(148, 163, 184, 0.35)';
+        ctx.fillText('★', 0, 0);
+        ctx.restore();
+      }
+
+      // Pilule d'annonce du niveau suivant en bas de la carte
+      ctx.beginPath();
+      ctx.roundRect(-130, 26, 260, 30, 12);
+      ctx.fillStyle = 'rgba(2, 132, 199, 0.35)';
+      ctx.fill();
+      ctx.lineWidth = 1.5;
+      ctx.strokeStyle = '#38bdf8';
+      ctx.stroke();
+
+      ctx.font = '700 14px "Fredoka", sans-serif';
+      ctx.fillStyle = '#bae6fd';
+      ctx.fillText(`➔ ${nextTitle}`, 0, 41);
 
       ctx.restore();
+      ctx.restore();
+
       this.celebrationAnimId = requestAnimationFrame(animate);
     };
 
