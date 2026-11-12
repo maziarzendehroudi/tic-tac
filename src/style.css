@@ -1067,3 +1067,321 @@ body.theme-night .recap-learned {
 .recap-next strong {
   color: #fde047;
 }
+
+/* ============================================================================
+   ÉCRANS PLEINE PAGE DE TRANSITION (ÉTAPE 2 & NIVEAU SUIVANT - 5 SECONDES)
+   ============================================================================ */
+#transition-screen {
+  position: fixed;
+  inset: 0;
+  z-index: 95;
+  width: 100vw;
+  height: 100dvh;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  overflow: hidden;
+  padding: 18px 16px 22px;
+  animation: transScreenFadeIn 0.35s ease-out forwards;
+}
+#transition-screen.hidden {
+  display: none;
+}
+
+#transition-screen.step2-theme {
+  background: radial-gradient(circle at 50% 42%, #7c3aed 0%, #4f46e5 52%, #1e1b4b 100%);
+  color: #ffffff;
+}
+
+#transition-screen.levelup-theme {
+  background: radial-gradient(circle at 50% 28%, #1e3a8a 0%, #0f172a 58%, #090d16 100%);
+  color: #ffffff;
+}
+
+#transitionBgCanvas {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  pointer-events: none;
+  z-index: 0;
+}
+
+.transition-stage {
+  position: relative;
+  z-index: 1;
+  width: 100%;
+  max-width: 440px;
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: space-between;
+  text-align: center;
+  gap: 10px;
+}
+
+.trans-top-group {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 6px;
+  animation: transSlideDown 0.45s cubic-bezier(0.34, 1.56, 0.64, 1) forwards;
+}
+
+.trans-pill-badge {
+  background: rgba(255, 255, 255, 0.18);
+  backdrop-filter: blur(6px);
+  border: 2px solid rgba(254, 240, 138, 0.75);
+  color: #fde047;
+  padding: 5px 16px;
+  border-radius: 20px;
+  font-size: 0.92rem;
+  font-weight: 700;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2);
+}
+.trans-pill-badge.gold-badge {
+  background: rgba(251, 191, 36, 0.22);
+  border-color: #fde047;
+  color: #fef08a;
+}
+
+.trans-hero-title {
+  font-size: clamp(1.85rem, 6.2vw, 2.35rem);
+  font-weight: 700;
+  line-height: 1.08;
+  color: #ffffff;
+  text-shadow: 0 4px 14px rgba(15, 23, 42, 0.45);
+}
+
+.trans-hero-subtitle {
+  font-size: 1rem;
+  font-weight: 700;
+  color: #e0e7ff;
+}
+
+/* Scène centrale de l'Étape 2 (Cadran animé avec main) */
+.trans-clock-stage {
+  width: min(74vw, 290px, 38dvh);
+  aspect-ratio: 1;
+  border-radius: 50%;
+  padding: 8px;
+  background: radial-gradient(circle, rgba(255, 255, 255, 0.25) 0%, rgba(255, 255, 255, 0.05) 70%);
+  box-shadow: 0 0 40px rgba(253, 224, 71, 0.35), 0 14px 30px rgba(15, 23, 42, 0.45);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  animation: transPopScale 0.55s cubic-bezier(0.34, 1.56, 0.64, 1) forwards;
+}
+
+.trans-step2-card {
+  width: 100%;
+  background: rgba(255, 255, 255, 0.95);
+  color: #0f172a;
+  border: 3px solid #fde047;
+  border-radius: 24px;
+  padding: 14px 18px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 6px;
+  box-shadow: 0 14px 32px rgba(15, 23, 42, 0.38);
+  animation: transCardRise 0.55s 0.15s cubic-bezier(0.34, 1.56, 0.64, 1) both;
+}
+
+.trans-card-tag {
+  background: linear-gradient(135deg, #7c3aed, #4f46e5);
+  color: #ffffff;
+  font-size: 0.82rem;
+  font-weight: 700;
+  padding: 3px 12px;
+  border-radius: 12px;
+}
+
+.trans-card-body {
+  font-size: clamp(1.12rem, 4.4vw, 1.32rem);
+  font-weight: 700;
+  line-height: 1.3;
+  color: #0f172a;
+}
+
+/* Scène centrale Fin de Niveau : 3 Étoiles géantes + Carte Acquis + Carte Niveau Suivant */
+.trans-stars-showcase {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 18px;
+  margin: 2px 0;
+}
+
+.trans-star-orb {
+  width: clamp(64px, 17vw, 78px);
+  height: clamp(64px, 17vw, 78px);
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: clamp(2.5rem, 7vw, 3.2rem);
+  line-height: 1;
+  transform: scale(0);
+}
+.trans-star-orb.is-earned {
+  background: radial-gradient(circle at 35% 30%, #fef08a 0%, #f59e0b 75%, #b45309 100%);
+  color: #ffffff;
+  border: 3px solid #ffffff;
+  box-shadow: 0 0 28px rgba(251, 191, 36, 0.75), 0 8px 18px rgba(0, 0, 0, 0.35);
+  text-shadow: 0 2px 6px rgba(180, 83, 9, 0.6);
+}
+.trans-star-orb.is-empty {
+  background: rgba(30, 41, 59, 0.75);
+  color: rgba(148, 163, 184, 0.35);
+  border: 2.5px dashed rgba(148, 163, 184, 0.45);
+}
+
+.trans-star-orb.star-slot-1 {
+  animation: transStarBounce 0.6s 0.2s cubic-bezier(0.34, 1.56, 0.64, 1) forwards;
+}
+.trans-star-orb.star-slot-2 {
+  width: clamp(74px, 20vw, 90px);
+  height: clamp(74px, 20vw, 90px);
+  font-size: clamp(3rem, 8vw, 3.7rem);
+  margin-top: -10px;
+  animation: transStarBounce 0.6s 0.55s cubic-bezier(0.34, 1.56, 0.64, 1) forwards;
+}
+.trans-star-orb.star-slot-3 {
+  animation: transStarBounce 0.6s 0.9s cubic-bezier(0.34, 1.56, 0.64, 1) forwards;
+}
+
+.trans-learned-card {
+  width: 100%;
+  background: linear-gradient(180deg, #ffffff 0%, #fefce8 100%);
+  color: #0f172a;
+  border: 3px solid #fde047;
+  border-radius: 24px;
+  padding: 14px 16px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 6px;
+  box-shadow: 0 12px 28px rgba(0, 0, 0, 0.35);
+  animation: transCardRise 0.55s 1.15s cubic-bezier(0.34, 1.56, 0.64, 1) both;
+}
+
+.trans-learned-header {
+  background: #fef3c7;
+  color: #b45309;
+  border: 1.5px solid #fde68a;
+  font-size: 0.85rem;
+  font-weight: 700;
+  padding: 3px 12px;
+  border-radius: 12px;
+}
+
+.trans-learned-body {
+  font-size: clamp(1.06rem, 4.2vw, 1.24rem);
+  font-weight: 700;
+  line-height: 1.3;
+  color: #0f172a;
+}
+
+.trans-next-level-card {
+  width: 100%;
+  border: 3px solid rgba(255, 255, 255, 0.65);
+  border-radius: 22px;
+  padding: 12px 16px;
+  color: #ffffff;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  box-shadow: 0 14px 30px rgba(0, 0, 0, 0.4);
+  animation: transCardRise 0.6s 1.65s cubic-bezier(0.34, 1.56, 0.64, 1) both;
+}
+
+.trans-next-overline {
+  font-size: 0.8rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.8px;
+  color: rgba(255, 255, 255, 0.9);
+  text-align: left;
+}
+
+.trans-next-main-row {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  text-align: left;
+}
+
+.trans-next-name {
+  flex: 1;
+  font-size: clamp(1.15rem, 4.5vw, 1.35rem);
+  font-weight: 700;
+}
+
+.trans-next-go {
+  width: 34px;
+  height: 34px;
+  border-radius: 50%;
+  background: rgba(255, 255, 255, 0.25);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 1rem;
+  font-weight: 700;
+}
+
+/* Barre de progression de 5 secondes en bas de la pleine page */
+.trans-progress-wrap {
+  width: 100%;
+  padding: 2px 4px 0;
+}
+
+.trans-progress-bar {
+  width: 100%;
+  height: 10px;
+  background: rgba(255, 255, 255, 0.2);
+  border-radius: 10px;
+  overflow: hidden;
+  border: 1.5px solid rgba(255, 255, 255, 0.35);
+}
+
+.trans-progress-fill {
+  height: 100%;
+  width: 0%;
+  background: linear-gradient(90deg, #fde047 0%, #f59e0b 50%, #10b981 100%);
+  border-radius: 10px;
+  animation: transProgress5s 5s linear forwards;
+}
+
+@keyframes transScreenFadeIn {
+  0% { opacity: 0; }
+  100% { opacity: 1; }
+}
+
+@keyframes transSlideDown {
+  0% { opacity: 0; transform: translateY(-22px); }
+  100% { opacity: 1; transform: translateY(0); }
+}
+
+@keyframes transPopScale {
+  0% { opacity: 0; transform: scale(0.65); }
+  100% { opacity: 1; transform: scale(1); }
+}
+
+@keyframes transStarBounce {
+  0% { opacity: 0; transform: scale(0) rotate(-25deg); }
+  70% { opacity: 1; transform: scale(1.18) rotate(6deg); }
+  100% { opacity: 1; transform: scale(1) rotate(0deg); }
+}
+
+@keyframes transCardRise {
+  0% { opacity: 0; transform: translateY(28px) scale(0.92); }
+  100% { opacity: 1; transform: translateY(0) scale(1); }
+}
+
+@keyframes transProgress5s {
+  0% { width: 0%; }
+  100% { width: 100%; }
+}

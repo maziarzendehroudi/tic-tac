@@ -206,3 +206,20 @@ describe('Niveau 5 (V57) — Pilules fluides des quarts d’heure', () => {
     expect(cPause?.text).toBe('Heure pile');
   });
 });
+
+describe('Animations Pleine Page V58 — Durée de 5 secondes (5000 ms)', () => {
+  it('configure une durée de 5000 ms et fournit les métadonnées complètes de carte du niveau suivant', () => {
+    expect(GameEngine.TRANSITION_DURATION_MS).toBe(5000);
+
+    const s1 = GameEngine.getLevelTransitionSummary(1);
+    expect(s1.nextBadge).toBe('2');
+    expect(s1.nextColorClass).toBe('lvl-2');
+    expect(s1.nextShortName).toBe('Les 24 heures');
+    expect(s1.isFinal).toBe(false);
+
+    const s8 = GameEngine.getLevelTransitionSummary(8);
+    expect(s8.nextBadge).toBe('⚙️');
+    expect(s8.nextColorClass).toBe('workshop-rect');
+    expect(s8.isFinal).toBe(true);
+  });
+});

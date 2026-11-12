@@ -34,7 +34,7 @@
                 <path d="M16 3.13a4 4 0 0 1 0 7.75"></path>
               </svg>
             </button>
-            <button id="force-refresh-btn" type="button" title="Vider le cache PWA et forcer la mise à jour">⚡ Maj v57</button>
+            <button id="force-refresh-btn" type="button" title="Vider le cache PWA et forcer la mise à jour">⚡ Maj v58</button>
           </div>
           <button id="sound-toggle-btn" type="button" aria-pressed="true" aria-label="Activer ou couper le son" title="Son actif">
             <svg viewBox="0 0 24 24" width="24" height="24" fill="none" stroke="currentColor" stroke-width="2.3" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
@@ -181,6 +181,12 @@
           <p id="workshop-instruction">Tourne la molette pour remonter la montre et voir le mécanisme !</p>
           <div id="workshop-parts-tray"></div>
         </div>
+      </div>
+
+      <!-- VUE 4 : ÉCRAN PLEINE PAGE D'ANIMATION (ÉTAPE 2 & NIVEAU SUIVANT - 5 SECONDES) -->
+      <div id="transition-screen" class="hidden" aria-live="polite">
+        <canvas id="transitionBgCanvas" width="540" height="960"></canvas>
+        <div id="transition-content" class="transition-stage"></div>
       </div>
 
       <!-- MODALE JOUEURS JOYEUSE & CLIC LONG -->

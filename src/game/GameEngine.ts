@@ -19,11 +19,16 @@ interface CelebrationParticle {
   color: string;
   rotation: number;
   vRot: number;
+  shape: 'rect' | 'circle' | 'star';
 }
 
 export interface LevelTransitionSummary {
   learnedText: string;
   nextTitle: string;
+  nextShortName: string;
+  nextBadge: string;
+  nextColorClass: string;
+  isFinal: boolean;
 }
 
 const ZOOM_LABELS: Record<Exclude<WorkshopZoom, 'overview'>, string> = {
@@ -65,13 +70,15 @@ export const LEVEL_RECAPS: Record<number, string> = {
   2: 'Tu connais les 24 heures du jour et de la nuit (chiffres noirs et orange) !',
   3: 'Tu sais lire les minutes de 5 en 5 avec la grande aiguille bleue !',
   4: 'Tu sais lire l’heure pile et la demie avec les deux aiguilles !',
-  5: 'Tu connais le quart d’heure (15) et les trois quarts d’heure (45) !',
+  5: 'Tu connais l’heure pile, le quart d’heure, la demie et les trois quarts d’heure !',
   6: 'Tu sais compter chaque petite graduation à la minute près !',
   7: 'Tu sais lire toutes les heures et les minutes, le jour comme la nuit !',
   8: 'Tu sais lire l’heure sur une horloge de grand en devinant les chiffres !'
 };
 
 export class GameEngine {
+  public static readonly TRANSITION_DURATION_MS = 5000;
+
   private canvas: HTMLCanvasElement;
   private ctx: CanvasRenderingContext2D;
   private clock: Clock;
@@ -116,11 +123,22 @@ export class GameEngine {
   public static getLevelTransitionSummary(completedLevel: number): LevelTransitionSummary {
     const learnedText =
       LEVEL_RECAPS[completedLevel] || 'Tu maîtrises une nouvelle étape de l’horloge !';
-    const nextTitle =
-      completedLevel >= SaveManager.MAX_LEVEL
-        ? '⚙️ L’atelier de l’horloger'
-        : `Niveau ${completedLevel + 1} · ${LEVEL_SHORT_NAMES[completedLevel + 1]}`;
-    return { learnedText, nextTitle };
+    const isFinal = completedLevel >= SaveManager.MAX_LEVEL;
+    const nextLvl = completedLevel + 1;
+    const nextShortName = isFinal
+      ? 'L’atelier de l’horloger'
+      : LEVEL_SHORT_NAMES[nextLvl] || `Niveau ${nextLvl}`;
+    const nextTitle = isFinal
+      ? '⚙️ L’atelier de l’horloger'
+      : `Niveau ${nextLvl} · ${nextShortName}`;
+    return {
+      learnedText,
+      nextTitle,
+      nextShortName,
+      nextBadge: isFinal ? '⚙️' : String(nextLvl),
+      nextColorClass: isFinal ? 'workshop-rect' : `lvl-${nextLvl}`,
+      isFinal
+    };
   }
 
   constructor(canvas: HTMLCanvasElement) {
@@ -165,6 +183,11 @@ export class GameEngine {
     this.isTutorialActive = false;
     this.isWinding = false;
     this.isWaitingNext = false;
+    const transitionScreen = document.getElementById('transition-screen');
+    if (transitionScreen) {
+      transitionScreen.classList.add('hidden');
+      transitionScreen.classList.remove('step2-theme', 'levelup-theme');
+    }
   }
 
   public startLevel(level: number): void {
@@ -979,27 +1002,20 @@ export class GameEngine {
     if (this.phaseSuccessCount >= 3) {
       if (this.currentPhase === 1) {
         this.soundEngine.playSuccess();
-        this.playStep2TransitionAnimation();
-
-        const step2Text =
+        const step2Instruction =
           this.currentLevel <= 2
-            ? '🎉 <strong>Étape 2 :</strong> glisse la petite aiguille orange avec ton doigt !'
+            ? 'Glisse la <strong>petite aiguille orange</strong> sur le bon chiffre avec ton doigt !'
             : this.currentLevel === 3
-              ? '🎉 <strong>Étape 2 :</strong> glisse la grande aiguille bleue avec ton doigt !'
-              : '🎉 <strong>Étape 2 :</strong> glisse les aiguilles sur l’horloge avec ton doigt !';
+              ? 'Glisse la <strong>grande aiguille bleue</strong> sur les minutes avec ton doigt !'
+              : 'Glisse <strong>les deux aiguilles</strong> sur l’horloge avec ton doigt !';
 
-        this.showFeedback(
-          step2Text,
-          'step2',
-          () => {
-            this.currentPhase = 2;
-            this.phaseSuccessCount = 0;
-            this.initNewQuestion();
-            this.updateUI();
-            this.render();
-          },
-          3400
-        );
+        this.playStep2FullPageAnimation(step2Instruction, () => {
+          this.currentPhase = 2;
+          this.phaseSuccessCount = 0;
+          this.initNewQuestion();
+          this.updateUI();
+          this.render();
+        });
         return;
       } else {
         this.soundEngine.playLevelComplete();
@@ -1009,36 +1025,15 @@ export class GameEngine {
         this.updateMenuUI();
 
         const summary = GameEngine.getLevelTransitionSummary(this.currentLevel);
-        this.playCelebrationAnimation(earnedStars, summary.nextTitle);
-
-        const recapHtml = `
-          <div class="levelup-recap-box">
-            <div class="recap-learned">🎓 ${summary.learnedText}</div>
-            <div class="recap-next">➔ Prochain défi : <strong>${summary.nextTitle}</strong></div>
-          </div>
-        `;
-
-        if (this.currentLevel === SaveManager.MAX_LEVEL) {
-          this.showFeedback(
-            recapHtml,
-            'levelup',
-            () => {
-              this.openWorkshop();
-            },
-            4500
-          );
-          return;
-        }
-
         const nextLvl = this.currentLevel + 1;
-        this.showFeedback(
-          recapHtml,
-          'levelup',
-          () => {
+
+        this.playLevelUpFullPageAnimation(earnedStars, summary, () => {
+          if (summary.isFinal) {
+            this.openWorkshop();
+          } else {
             this.startLevel(nextLvl);
-          },
-          4500
-        );
+          }
+        });
         return;
       }
     }
@@ -1062,244 +1057,424 @@ export class GameEngine {
   }
 
   /**
-   * Animation visuelle sur l'horloge lors du passage à l'Étape 2 :
-   * - Ondes concentriques dorées/violettes
-   * - Balayage de démonstration de l'aiguille accompagné d'un doigt "👆"
-   * - Badge animé "👆 Étape 2 · À ton tour !"
+   * Dessine un curseur de main vectoriel net avec halo tactile
    */
-  private playStep2TransitionAnimation(): void {
-    cancelAnimationFrame(this.celebrationAnimId);
-    const startTime = performance.now();
-    const isDay = TimeMath.is24HourLevel(this.currentLevel)
-      ? (this.targetTime ? this.targetTime.isDay : true)
-      : true;
+  private drawTouchHandCursor(
+    ctx: CanvasRenderingContext2D,
+    x: number,
+    y: number,
+    isPressed: boolean
+  ): void {
+    ctx.save();
+    ctx.translate(x, y);
 
-    const animate = (now: number) => {
-      const elapsed = now - startTime;
-      const ctx = this.ctx;
-      const r = this.radius;
-
-      this.clock.draw(this.currentLevel, isDay);
-
-      // 1. Ondes lumineuses concentriques
-      for (let i = 0; i < 2; i++) {
-        const waveP = ((elapsed * 0.0009 + i * 0.5) % 1);
-        ctx.save();
-        ctx.beginPath();
-        ctx.arc(0, 0, 24 + waveP * (r - 28), 0, Math.PI * 2);
-        ctx.strokeStyle = `rgba(139, 92, 246, ${(1 - waveP) * 0.45})`;
-        ctx.lineWidth = 4;
-        ctx.stroke();
-        ctx.restore();
-      }
-
-      // 2. Oscillation fluide de l'aiguille + curseur doigt "👆"
-      const swing = Math.sin(elapsed * 0.0048);
-      let pointerAngle = 0;
-      let pointerOrbit = r - 76;
-      let arcColor = '#ea580c';
-
-      if (this.currentLevel === 3) {
-        const demoMin = 15 + swing * 10;
-        this.hands.draw(12, demoMin, 3, 'minute');
-        pointerAngle = (demoMin * Math.PI) / 30;
-        pointerOrbit = r - 52;
-        arcColor = '#0284c7';
-      } else if (this.currentLevel <= 2) {
-        const demoHr = 3 + swing * 1.5;
-        this.hands.draw(demoHr, 0, this.currentLevel, 'hour');
-        pointerAngle = (demoHr * Math.PI) / 6;
-        pointerOrbit = r - 86;
-        arcColor = '#ea580c';
-      } else {
-        const demoMin = 30 + swing * 12;
-        this.hands.draw(2, demoMin, this.currentLevel, 'minute');
-        pointerAngle = (demoMin * Math.PI) / 30;
-        pointerOrbit = r - 52;
-        arcColor = '#0284c7';
-      }
-
-      // Arc pointillé de guidage
-      ctx.save();
+    if (isPressed) {
       ctx.beginPath();
-      ctx.arc(
-        0,
-        0,
-        pointerOrbit,
-        pointerAngle - 0.42 - Math.PI / 2,
-        pointerAngle + 0.42 - Math.PI / 2
-      );
-      ctx.strokeStyle = arcColor;
-      ctx.lineWidth = 3.5;
-      ctx.setLineDash([6, 5]);
-      ctx.stroke();
-      ctx.restore();
-
-      // Halo + Doigt "👆" sur la pointe de l'aiguille
-      const fx = Math.sin(pointerAngle) * pointerOrbit;
-      const fy = -Math.cos(pointerAngle) * pointerOrbit;
-      ctx.save();
-      ctx.beginPath();
-      ctx.arc(fx, fy, 20, 0, Math.PI * 2);
-      ctx.fillStyle = 'rgba(254, 240, 138, 0.72)';
+      ctx.arc(0, 0, 22, 0, Math.PI * 2);
+      ctx.fillStyle = 'rgba(254, 240, 138, 0.55)';
       ctx.fill();
-      ctx.font = '26px sans-serif';
-      ctx.textAlign = 'center';
-      ctx.textBaseline = 'middle';
-      ctx.fillText('👆', fx + 6, fy + 10);
-      ctx.restore();
-
-      // 3. Badge animé "Étape 2 · À ton tour !"
-      const pop = Math.min(1, elapsed / 260);
-      const scale =
-        pop < 1
-          ? 0.5 + 0.5 * Math.sin(pop * Math.PI * 0.75) * 1.08
-          : 1 + 0.025 * Math.sin(elapsed * 0.008);
-
-      ctx.save();
-      ctx.translate(0, 62);
-      ctx.scale(scale, scale);
-
-      ctx.beginPath();
-      ctx.roundRect(-124, -26, 248, 52, 18);
-      ctx.fillStyle = 'rgba(76, 29, 149, 0.94)';
-      ctx.fill();
-      ctx.lineWidth = 3;
+      ctx.lineWidth = 2.5;
       ctx.strokeStyle = '#fde047';
       ctx.stroke();
+    }
 
-      ctx.font = '700 20px "Fredoka", sans-serif';
-      ctx.fillStyle = '#fde047';
-      ctx.textAlign = 'center';
-      ctx.textBaseline = 'middle';
-      ctx.fillText('👆 Étape 2 · À ton tour !', 0, 1);
-      ctx.restore();
+    const scale = isPressed ? 0.94 : 1.04;
+    ctx.scale(scale, scale);
+    ctx.rotate(-0.22);
 
-      this.celebrationAnimId = requestAnimationFrame(animate);
-    };
+    ctx.shadowColor = 'rgba(15, 23, 42, 0.45)';
+    ctx.shadowBlur = 10;
+    ctx.shadowOffsetY = 4;
 
-    this.celebrationAnimId = requestAnimationFrame(animate);
+    // Silhouette de main pointant avec l'index
+    ctx.beginPath();
+    ctx.roundRect(-6, -2, 12, 24, 6);
+    ctx.roundRect(-14, 12, 28, 22, 10);
+    ctx.fillStyle = '#ffffff';
+    ctx.fill();
+    ctx.lineWidth = 3;
+    ctx.strokeStyle = '#0f172a';
+    ctx.stroke();
+
+    // Petit point lumineux au bout du doigt
+    ctx.beginPath();
+    ctx.arc(0, 2, 3.5, 0, Math.PI * 2);
+    ctx.fillStyle = '#f97316';
+    ctx.fill();
+
+    ctx.restore();
   }
 
   /**
-   * Animation de fin de niveau :
-   * - Confettis + tour d'honneur des aiguilles
-   * - Apparition séquentielle des 3 étoiles dorées
-   * - Carte de victoire annonçant le niveau suivant sur le cadran
+   * PLEINE PAGE 1 (5 SECONDES) : Animation de passage à l'Étape 2
    */
-  private playCelebrationAnimation(earnedStars: 1 | 2 | 3, nextTitle: string): void {
+  private playStep2FullPageAnimation(
+    instructionHtml: string,
+    onComplete: () => void
+  ): void {
     cancelAnimationFrame(this.celebrationAnimId);
-    const startTime = performance.now();
-    const isDay = TimeMath.is24HourLevel(this.currentLevel)
-      ? (this.targetTime ? this.targetTime.isDay : true)
-      : true;
+    clearTimeout(this.autoNextTimerId);
+    this.isWaitingNext = true;
 
-    const colors = ['#fbbf24', '#38bdf8', '#34d399', '#f43f5e', '#a855f7'];
-    const particles: CelebrationParticle[] = [];
-    for (let i = 0; i < 48; i++) {
-      const angle = Math.random() * Math.PI * 2;
-      const speed = 2.5 + Math.random() * 5.8;
-      particles.push({
-        x: 0,
-        y: 0,
-        vx: Math.cos(angle) * speed,
-        vy: Math.sin(angle) * speed - 2.4,
-        size: 6 + Math.random() * 7,
-        color: colors[i % colors.length],
-        rotation: Math.random() * Math.PI,
-        vRot: (Math.random() - 0.5) * 0.22
-      });
+    const screen = document.getElementById('transition-screen');
+    const content = document.getElementById('transition-content');
+    const bgCanvas = document.getElementById('transitionBgCanvas') as HTMLCanvasElement | null;
+    if (!screen || !content || !bgCanvas) {
+      onComplete();
+      return;
     }
 
+    screen.classList.remove('hidden', 'levelup-theme');
+    screen.classList.add('step2-theme');
+
+    const levelBadgeTitle = LEVEL_SHORT_NAMES[this.currentLevel] || `Niveau ${this.currentLevel}`;
+
+    content.innerHTML = `
+      <div class="trans-top-group">
+        <div class="trans-pill-badge">★ ★ ★ · Lecture réussie !</div>
+        <h2 class="trans-hero-title">Étape 2 · À ton tour !</h2>
+        <p class="trans-hero-subtitle">Niveau ${this.currentLevel} · ${levelBadgeTitle}</p>
+      </div>
+
+      <div class="trans-clock-stage">
+        <canvas id="step2DemoCanvas" width="340" height="340"></canvas>
+      </div>
+
+      <div class="trans-step2-card">
+        <div class="trans-card-tag">Maintenant, manipule l’horloge</div>
+        <p class="trans-card-body">${instructionHtml}</p>
+      </div>
+
+      <div class="trans-progress-wrap">
+        <div class="trans-progress-bar">
+          <div class="trans-progress-fill"></div>
+        </div>
+      </div>
+    `;
+
+    const demoCanvas = document.getElementById('step2DemoCanvas') as HTMLCanvasElement | null;
+    const demoCtx = demoCanvas ? demoCanvas.getContext('2d') : null;
+    let demoClock: Clock | null = null;
+    let demoHands: Hands | null = null;
+    const demoRadius = 152;
+
+    if (demoCanvas && demoCtx) {
+      demoCtx.translate(demoCanvas.width / 2, demoCanvas.height / 2);
+      demoClock = new Clock(demoCtx, demoRadius);
+      demoHands = new Hands(demoCtx, demoRadius);
+    }
+
+    const bgCtx = bgCanvas.getContext('2d')!;
+    const sparkles = Array.from({ length: 28 }, (_, i) => ({
+      x: Math.random() * bgCanvas.width,
+      y: Math.random() * bgCanvas.height,
+      r: 2 + (i % 4) * 1.5,
+      vy: -0.4 - Math.random() * 0.8,
+      phase: Math.random() * Math.PI * 2
+    }));
+
+    const startTime = performance.now();
+
     const animate = (now: number) => {
+      if (!this.isWaitingNext) return;
       const elapsed = now - startTime;
-      const ctx = this.ctx;
 
-      // Tour d'honneur des aiguilles sur le cadran
-      this.clock.draw(this.currentLevel, isDay);
-      const spinHours = (this.currentHours + elapsed * 0.004) % 12;
-      const spinMinutes = (this.currentMinutes + elapsed * 0.045) % 60;
-      this.hands.draw(spinHours, spinMinutes, this.currentLevel);
+      // 1. Fond plein écran : rayons lumineux doux + étoiles flottantes
+      bgCtx.clearRect(0, 0, bgCanvas.width, bgCanvas.height);
+      bgCtx.save();
+      bgCtx.translate(bgCanvas.width / 2, bgCanvas.height * 0.44);
+      bgCtx.rotate(elapsed * 0.00025);
+      for (let i = 0; i < 12; i++) {
+        bgCtx.save();
+        bgCtx.rotate((i * Math.PI) / 6);
+        bgCtx.beginPath();
+        bgCtx.moveTo(0, 0);
+        bgCtx.lineTo(-42, -620);
+        bgCtx.lineTo(42, -620);
+        bgCtx.closePath();
+        bgCtx.fillStyle = 'rgba(255, 255, 255, 0.06)';
+        bgCtx.fill();
+        bgCtx.restore();
+      }
+      bgCtx.restore();
 
-      ctx.save();
-
-      // Pluie de confettis
-      particles.forEach(p => {
-        p.x += p.vx;
-        p.y += p.vy;
-        p.vy += 0.14;
-        p.rotation += p.vRot;
-
-        ctx.save();
-        ctx.translate(p.x, p.y);
-        ctx.rotate(p.rotation);
-        ctx.fillStyle = p.color;
-        ctx.fillRect(-p.size / 2, -p.size / 2, p.size, p.size * 0.65);
-        ctx.restore();
+      sparkles.forEach(s => {
+        s.y += s.vy;
+        if (s.y < -10) s.y = bgCanvas.height + 10;
+        const alpha = 0.35 + 0.55 * Math.sin(elapsed * 0.004 + s.phase);
+        bgCtx.beginPath();
+        bgCtx.arc(s.x, s.y, s.r, 0, Math.PI * 2);
+        bgCtx.fillStyle = `rgba(254, 240, 138, ${alpha})`;
+        bgCtx.fill();
       });
 
-      // Carte centrale de victoire
-      const cardPop = Math.min(1, elapsed / 280);
-      const cardScale = 0.6 + 0.4 * Math.sin(cardPop * Math.PI * 0.5);
-      ctx.save();
-      ctx.scale(cardScale, cardScale);
+      // 2. Cadran central de démonstration (2 cycles de 2500 ms sur les 5000 ms)
+      if (demoCtx && demoClock && demoHands) {
+        demoClock.draw(this.currentLevel, true);
 
-      ctx.beginPath();
-      ctx.roundRect(-146, -66, 292, 132, 24);
-      ctx.fillStyle = 'rgba(15, 23, 42, 0.94)';
-      ctx.fill();
-      ctx.lineWidth = 3.5;
-      ctx.strokeStyle = '#fbbf24';
-      ctx.stroke();
+        const cycle = (elapsed % 2500) / 2500;
+        const isDraggingPhase = cycle >= 0.12 && cycle <= 0.72;
+        const isSnapPhase = cycle > 0.72;
+        const rawT =
+          cycle < 0.12
+            ? 0
+            : cycle <= 0.72
+              ? (cycle - 0.12) / 0.60
+              : 1;
+        const easeT =
+          rawT < 0.5
+            ? 4 * rawT * rawT * rawT
+            : 1 - Math.pow(-2 * rawT + 2, 3) / 2;
 
-      // Titre du niveau validé
-      ctx.font = '700 18px "Fredoka", sans-serif';
-      ctx.fillStyle = '#f8fafc';
-      ctx.textAlign = 'center';
-      ctx.textBaseline = 'middle';
-      ctx.fillText(`🏆 Niveau ${this.currentLevel} terminé !`, 0, -40);
+        let startAngle = 0;
+        let endAngle = 0;
+        let orbitR = demoRadius - 58;
+        let arcColor = '#ea580c';
 
-      // Les 3 étoiles qui apparaissent une par une avec rebond
-      for (let i = 0; i < 3; i++) {
-        const starDelay = 160 + i * 210;
-        const starElapsed = Math.max(0, elapsed - starDelay);
-        const starPop = Math.min(1, starElapsed / 240);
-        const sScale =
-          starPop === 0
-            ? 0.01
-            : starPop < 1
-              ? 1.25 * Math.sin(starPop * Math.PI * 0.65)
-              : 1 + 0.05 * Math.sin((elapsed - starDelay) * 0.007);
+        if (this.currentLevel === 3) {
+          const m = 5 + easeT * 20;
+          demoHands.draw(12, m, 3, 'minute');
+          startAngle = (5 * Math.PI) / 30;
+          endAngle = (25 * Math.PI) / 30;
+          orbitR = demoRadius - 36;
+          arcColor = '#0284c7';
+        } else if (this.currentLevel <= 2) {
+          const h = 1 + easeT * 3;
+          demoHands.draw(h, 0, this.currentLevel, 'hour');
+          startAngle = Math.PI / 6;
+          endAngle = (4 * Math.PI) / 6;
+          orbitR = demoRadius - 62;
+          arcColor = '#ea580c';
+        } else {
+          const m = easeT * 30;
+          demoHands.draw(2, m, this.currentLevel, 'minute');
+          startAngle = 0;
+          endAngle = Math.PI;
+          orbitR = demoRadius - 36;
+          arcColor = '#0284c7';
+        }
 
-        ctx.save();
-        ctx.translate((i - 1) * 46, -2);
-        ctx.scale(sScale, sScale);
-        ctx.font = '700 36px "Fredoka", sans-serif';
-        ctx.fillStyle = i < earnedStars ? '#fde047' : 'rgba(148, 163, 184, 0.35)';
-        ctx.fillText('★', 0, 0);
-        ctx.restore();
+        const currentAngle = startAngle + (endAngle - startAngle) * easeT;
+
+        // Arc pointillé entre le départ et la cible
+        demoCtx.save();
+        demoCtx.beginPath();
+        demoCtx.arc(0, 0, orbitR, startAngle - Math.PI / 2, endAngle - Math.PI / 2);
+        demoCtx.strokeStyle = arcColor;
+        demoCtx.lineWidth = 4;
+        demoCtx.setLineDash([7, 5]);
+        demoCtx.stroke();
+        demoCtx.restore();
+
+        // Cible lumineuse à l'arrivée
+        const tx = Math.sin(endAngle) * orbitR;
+        const ty = -Math.cos(endAngle) * orbitR;
+        demoCtx.save();
+        demoCtx.beginPath();
+        demoCtx.arc(tx, ty, 20, 0, Math.PI * 2);
+        demoCtx.strokeStyle = isSnapPhase ? '#10b981' : arcColor;
+        demoCtx.lineWidth = 3.5;
+        demoCtx.stroke();
+
+        // Explosion d'étoiles dorées + coche verte quand l'aiguille atteint la cible
+        if (isSnapPhase) {
+          const snapP = (cycle - 0.72) / 0.28;
+          for (let k = 0; k < 6; k++) {
+            const a = (k * Math.PI) / 3 + snapP * 0.5;
+            const dist = 16 + snapP * 24;
+            demoCtx.beginPath();
+            demoCtx.arc(
+              tx + Math.cos(a) * dist,
+              ty + Math.sin(a) * dist,
+              3.5 * (1 - snapP * 0.6),
+              0,
+              Math.PI * 2
+            );
+            demoCtx.fillStyle = '#fde047';
+            demoCtx.fill();
+          }
+
+          demoCtx.beginPath();
+          demoCtx.arc(tx, ty, 16, 0, Math.PI * 2);
+          demoCtx.fillStyle = '#10b981';
+          demoCtx.fill();
+          demoCtx.font = '700 18px "Fredoka", sans-serif';
+          demoCtx.fillStyle = '#ffffff';
+          demoCtx.textAlign = 'center';
+          demoCtx.textBaseline = 'middle';
+          demoCtx.fillText('✓', tx, ty + 1);
+        }
+        demoCtx.restore();
+
+        // Curseur de main qui saisit et déplace l'aiguille
+        const cx = Math.sin(currentAngle) * (orbitR - 6);
+        const cy = -Math.cos(currentAngle) * (orbitR - 6);
+        this.drawTouchHandCursor(demoCtx, cx, cy, isDraggingPhase);
       }
-
-      // Pilule d'annonce du niveau suivant en bas de la carte
-      ctx.beginPath();
-      ctx.roundRect(-130, 26, 260, 30, 12);
-      ctx.fillStyle = 'rgba(2, 132, 199, 0.35)';
-      ctx.fill();
-      ctx.lineWidth = 1.5;
-      ctx.strokeStyle = '#38bdf8';
-      ctx.stroke();
-
-      ctx.font = '700 14px "Fredoka", sans-serif';
-      ctx.fillStyle = '#bae6fd';
-      ctx.fillText(`➔ ${nextTitle}`, 0, 41);
-
-      ctx.restore();
-      ctx.restore();
 
       this.celebrationAnimId = requestAnimationFrame(animate);
     };
 
     this.celebrationAnimId = requestAnimationFrame(animate);
+
+    this.autoNextTimerId = window.setTimeout(() => {
+      if (!this.isWaitingNext) return;
+      this.isWaitingNext = false;
+      cancelAnimationFrame(this.celebrationAnimId);
+      screen.classList.add('hidden');
+      screen.classList.remove('step2-theme');
+      onComplete();
+    }, GameEngine.TRANSITION_DURATION_MS);
+  }
+
+  /**
+   * PLEINE PAGE 2 (5 SECONDES) : Animation de fin de niveau, récapitulatif & annonce du niveau suivant
+   */
+  private playLevelUpFullPageAnimation(
+    earnedStars: 1 | 2 | 3,
+    summary: LevelTransitionSummary,
+    onComplete: () => void
+  ): void {
+    cancelAnimationFrame(this.celebrationAnimId);
+    clearTimeout(this.autoNextTimerId);
+    this.isWaitingNext = true;
+
+    const screen = document.getElementById('transition-screen');
+    const content = document.getElementById('transition-content');
+    const bgCanvas = document.getElementById('transitionBgCanvas') as HTMLCanvasElement | null;
+    if (!screen || !content || !bgCanvas) {
+      onComplete();
+      return;
+    }
+
+    screen.classList.remove('hidden', 'step2-theme');
+    screen.classList.add('levelup-theme');
+
+    const completedName = LEVEL_SHORT_NAMES[this.currentLevel] || `Niveau ${this.currentLevel}`;
+    const bannerTitle =
+      earnedStars === 3
+        ? `Niveau ${this.currentLevel} parfait !`
+        : `Niveau ${this.currentLevel} validé !`;
+
+    content.innerHTML = `
+      <div class="trans-top-group">
+        <div class="trans-pill-badge gold-badge">🏆 ${completedName}</div>
+        <h2 class="trans-hero-title">${bannerTitle}</h2>
+      </div>
+
+      <div class="trans-stars-showcase">
+        <div class="trans-star-orb star-slot-1 ${earnedStars >= 1 ? 'is-earned' : 'is-empty'}">★</div>
+        <div class="trans-star-orb star-slot-2 ${earnedStars >= 2 ? 'is-earned' : 'is-empty'}">★</div>
+        <div class="trans-star-orb star-slot-3 ${earnedStars >= 3 ? 'is-earned' : 'is-empty'}">★</div>
+      </div>
+
+      <div class="trans-learned-card">
+        <div class="trans-learned-header">🎓 Ce que tu as appris</div>
+        <p class="trans-learned-body">${summary.learnedText}</p>
+      </div>
+
+      <div class="trans-next-level-card ${summary.nextColorClass}">
+        <span class="trans-next-overline">${summary.isFinal ? 'Récompense finale débloquée' : 'Prochain niveau'}</span>
+        <div class="trans-next-main-row">
+          <span class="lvl-badge">${summary.nextBadge}</span>
+          <span class="trans-next-name">${summary.nextShortName}</span>
+          <span class="trans-next-go">▶</span>
+        </div>
+      </div>
+
+      <div class="trans-progress-wrap">
+        <div class="trans-progress-bar">
+          <div class="trans-progress-fill"></div>
+        </div>
+      </div>
+    `;
+
+    const bgCtx = bgCanvas.getContext('2d')!;
+    const colors = ['#fde047', '#38bdf8', '#34d399', '#fb7185', '#c084fc', '#fb923c'];
+    const shapes: Array<'rect' | 'circle' | 'star'> = ['rect', 'circle', 'star'];
+
+    const particles: CelebrationParticle[] = Array.from({ length: 68 }, (_, i) => ({
+      x: Math.random() * bgCanvas.width,
+      y: -Math.random() * bgCanvas.height,
+      vx: (Math.random() - 0.5) * 2.2,
+      vy: 1.8 + Math.random() * 3.2,
+      size: 7 + Math.random() * 8,
+      color: colors[i % colors.length],
+      rotation: Math.random() * Math.PI * 2,
+      vRot: (Math.random() - 0.5) * 0.14,
+      shape: shapes[i % shapes.length]
+    }));
+
+    const startTime = performance.now();
+
+    const animate = (now: number) => {
+      if (!this.isWaitingNext) return;
+      const elapsed = now - startTime;
+
+      bgCtx.clearRect(0, 0, bgCanvas.width, bgCanvas.height);
+
+      // 1. Soleil d'or rotatif derrière les 3 étoiles
+      bgCtx.save();
+      bgCtx.translate(bgCanvas.width / 2, bgCanvas.height * 0.27);
+      bgCtx.rotate(elapsed * 0.00035);
+      for (let i = 0; i < 16; i++) {
+        bgCtx.save();
+        bgCtx.rotate((i * Math.PI) / 8);
+        bgCtx.beginPath();
+        bgCtx.moveTo(0, 0);
+        bgCtx.lineTo(-28, -520);
+        bgCtx.lineTo(28, -520);
+        bgCtx.closePath();
+        bgCtx.fillStyle = 'rgba(253, 224, 71, 0.07)';
+        bgCtx.fill();
+        bgCtx.restore();
+      }
+      bgCtx.restore();
+
+      // 2. Pluie continue de confettis sur les 5 secondes
+      particles.forEach(p => {
+        p.x += p.vx + Math.sin(elapsed * 0.003 + p.size) * 0.4;
+        p.y += p.vy;
+        p.rotation += p.vRot;
+
+        if (p.y > bgCanvas.height + 20) {
+          p.y = -20;
+          p.x = Math.random() * bgCanvas.width;
+        }
+
+        bgCtx.save();
+        bgCtx.translate(p.x, p.y);
+        bgCtx.rotate(p.rotation);
+        bgCtx.fillStyle = p.color;
+
+        if (p.shape === 'circle') {
+          bgCtx.beginPath();
+          bgCtx.arc(0, 0, p.size * 0.45, 0, Math.PI * 2);
+          bgCtx.fill();
+        } else if (p.shape === 'star') {
+          bgCtx.font = `${Math.round(p.size * 1.4)}px sans-serif`;
+          bgCtx.textAlign = 'center';
+          bgCtx.textBaseline = 'middle';
+          bgCtx.fillText('★', 0, 0);
+        } else {
+          bgCtx.fillRect(-p.size / 2, -p.size / 2, p.size, p.size * 0.6);
+        }
+        bgCtx.restore();
+      });
+
+      this.celebrationAnimId = requestAnimationFrame(animate);
+    };
+
+    this.celebrationAnimId = requestAnimationFrame(animate);
+
+    this.autoNextTimerId = window.setTimeout(() => {
+      if (!this.isWaitingNext) return;
+      this.isWaitingNext = false;
+      cancelAnimationFrame(this.celebrationAnimId);
+      screen.classList.add('hidden');
+      screen.classList.remove('levelup-theme');
+      onComplete();
+    }, GameEngine.TRANSITION_DURATION_MS);
   }
 
   private handleFailedReadAttempt(selectedChoice: TimeTarget, clickedBtn: HTMLElement | null): void {
