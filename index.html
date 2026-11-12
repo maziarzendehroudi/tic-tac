@@ -12,8 +12,8 @@
     <link href="https://fonts.googleapis.com/css2?family=Fredoka:wght@400;600;700&display=swap" rel="stylesheet">
     <link rel="manifest" href="./manifest.json">
     <meta name="theme-color" content="#38bdf8">
-    <script type="module" crossorigin src="/tic-tac/assets/index-Bqh7lBSg.js"></script>
-    <link rel="stylesheet" crossorigin href="/tic-tac/assets/index-DgkRtdE6.css">
+    <script type="module" crossorigin src="/tic-tac/assets/index-BfGIK2VK.js"></script>
+    <link rel="stylesheet" crossorigin href="/tic-tac/assets/index-BAAryeEb.css">
   </head>
   <body class="theme-day">
     <div id="sky-backdrop" aria-hidden="true">
@@ -28,14 +28,14 @@
       <div id="main-menu" class="view">
         <div id="global-top-bar">
           <div class="top-left-actions">
-            <button id="profile-btn" type="button" title="Changer de joueur">
+            <button id="profile-btn" type="button" title="Changer ou gérer les joueurs">
               <svg class="user-svg-icon" viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
                 <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"></path>
                 <circle cx="12" cy="7" r="4"></circle>
               </svg>
               <span id="current-profile-name">Joueur 1</span> ▾
             </button>
-            <button id="force-refresh-btn" type="button" title="Vider le cache PWA et forcer la mise à jour">⚡ Maj v45</button>
+            <button id="force-refresh-btn" type="button" title="Vider le cache PWA et forcer la mise à jour">⚡ Maj v46</button>
           </div>
           <button id="sound-toggle-btn" type="button" aria-pressed="true" aria-label="Activer ou couper le son" title="Son actif">
             <svg viewBox="0 0 24 24" width="26" height="26" fill="none" stroke="currentColor" stroke-width="2.3" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
@@ -167,20 +167,33 @@
         </div>
       </div>
 
-      <!-- MODALE MULTI-PROFILS -->
+      <!-- MODALE MULTI-PROFILS & GESTION DU JOUEUR -->
       <div id="profile-modal" class="modal hidden">
         <div class="modal-content profile-modal-content">
-          <h2>Qui joue ?</h2>
-          <p class="profile-subtitle">Chaque joueur garde ses niveaux et ses étoiles !</p>
+          <div class="modal-header-row">
+            <div>
+              <h2>Joueurs &amp; Profils</h2>
+              <p class="profile-subtitle">Sélectionne, renomme ou gère la progression</p>
+            </div>
+            <button id="profile-close-top-btn" type="button" class="modal-icon-close" aria-label="Fermer">✕</button>
+          </div>
+
           <div id="profiles-list"></div>
+
           <form id="add-profile-form">
-            <input id="new-profile-input" type="text" maxlength="16" placeholder="Prénom du nouveau joueur..." autocomplete="off" />
+            <input id="new-profile-input" type="text" maxlength="16" placeholder="Nouveau joueur (prénom)..." autocomplete="off" />
             <button type="submit" id="add-profile-submit">+ Créer</button>
           </form>
-          <div class="modal-footer-row">
-            <button id="dev-unlock-btn" type="button" title="Débloquer ou réinitialiser ce profil">🔓 Mode Test</button>
-            <button id="profile-close-btn" type="button">Fermer</button>
+
+          <div class="active-profile-tools">
+            <span class="tools-label">Progression du joueur actif :</span>
+            <div class="modal-footer-row">
+              <button id="dev-unlock-btn" type="button" title="Débloquer tous les niveaux et l'Atelier">🔓 Tout débloquer</button>
+              <button id="dev-reset-btn" type="button" title="Remettre la progression de ce joueur à zéro">🔄 Réinitialiser</button>
+            </div>
           </div>
+
+          <button id="profile-close-btn" type="button" class="modal-main-close-btn">Terminé</button>
         </div>
       </div>
 
