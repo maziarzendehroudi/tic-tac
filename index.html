@@ -12,8 +12,8 @@
     <link href="https://fonts.googleapis.com/css2?family=Fredoka:wght@400;600;700&display=swap" rel="stylesheet">
     <link rel="manifest" href="./manifest.json">
     <meta name="theme-color" content="#38bdf8">
-    <script type="module" crossorigin src="/tic-tac/assets/index-C5lRRqoL.js"></script>
-    <link rel="stylesheet" crossorigin href="/tic-tac/assets/index-Ba319qpo.css">
+    <script type="module" crossorigin src="/tic-tac/assets/index-BOUKfZHO.js"></script>
+    <link rel="stylesheet" crossorigin href="/tic-tac/assets/index-D1ZloAaU.css">
   </head>
   <body class="theme-day">
     <div id="sky-backdrop" aria-hidden="true">
@@ -28,7 +28,7 @@
       <div id="main-menu" class="view">
         <div id="global-top-bar">
           <div class="top-left-actions">
-            <button id="force-refresh-btn" type="button" title="Vider le cache PWA et forcer la mise à jour">⚡ Maj v63</button>
+            <button id="force-refresh-btn" type="button" title="Vider le cache PWA et forcer la mise à jour">⚡ Maj v65</button>
           </div>
           <button id="sound-toggle-btn" type="button" aria-pressed="true" aria-label="Activer ou couper le son" title="Son actif">
             <svg viewBox="0 0 24 24" width="24" height="24" fill="none" stroke="currentColor" stroke-width="2.3" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
@@ -46,7 +46,8 @@
           <button id="player-progress-bar" type="button" title="Changer de joueur">
             <span id="active-player-pill">👤 Joueur 1 ▾</span>
             <span id="player-rank-title">⏱️ Apprenti du Temps</span>
-            <span id="player-stars-count">★ 0 / 24</span>
+            <span id="player-stars-count">★ 0 / 48</span>
+            <span id="player-points-count">🏆 0 pts</span>
           </button>
         </div>
 
@@ -97,6 +98,12 @@
             <span class="lvl-badge">8</span>
             <div class="lvl-content"><span class="lvl-title">L'horloge des grands</span></div>
             <span class="lvl-status locked-icon">🔒</span>
+          </button>
+
+          <button id="quiz-btn" type="button" class="quiz-rect">
+            <span class="lvl-badge quiz-badge">🎲</span>
+            <div class="lvl-content"><span class="lvl-title">Mode Quizz · Tous niveaux</span></div>
+            <span id="quiz-status" class="lvl-status stars-badge quiz-open-badge">🏆 0 pts</span>
           </button>
 
           <button id="workshop-btn" type="button" class="workshop-rect locked">
@@ -183,7 +190,7 @@
         </div>
       </div>
 
-      <!-- VUE 4 : ÉCRAN PLEINE PAGE D'ANIMATION (ÉTAPE 1, ÉTAPE 2 & NIVEAU SUIVANT) -->
+      <!-- VUE 4 : ÉCRAN PLEINE PAGE D'ANIMATION (ÉTAPE 1, ÉTAPE 2, NIVEAU SUIVANT & FIN DE QUIZZ) -->
       <div id="transition-screen" class="hidden" aria-live="polite">
         <canvas id="transitionBgCanvas" width="540" height="960"></canvas>
         <div id="transition-content" class="transition-stage"></div>
