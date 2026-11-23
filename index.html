@@ -12,8 +12,8 @@
     <link href="https://fonts.googleapis.com/css2?family=Fredoka:wght@400;600;700&display=swap" rel="stylesheet">
     <link rel="manifest" href="./manifest.json">
     <meta name="theme-color" content="#38bdf8">
-    <script type="module" crossorigin src="/tic-tac/assets/index-BOUKfZHO.js"></script>
-    <link rel="stylesheet" crossorigin href="/tic-tac/assets/index-D1ZloAaU.css">
+    <script type="module" crossorigin src="/tic-tac/assets/index-BYQdrUOI.js"></script>
+    <link rel="stylesheet" crossorigin href="/tic-tac/assets/index-DWXva6-k.css">
   </head>
   <body class="theme-day">
     <div id="sky-backdrop" aria-hidden="true">
@@ -24,32 +24,17 @@
     </div>
 
     <div id="app">
-      <!-- VUE 1 : MENU PRINCIPAL -->
+      <!-- VUE 1 : MENU PRINCIPAL ORGANISÉ EN 3 ZONES -->
       <div id="main-menu" class="view">
-        <div id="global-top-bar">
-          <div class="top-left-actions">
-            <button id="force-refresh-btn" type="button" title="Vider le cache PWA et forcer la mise à jour">⚡ Maj v65</button>
-          </div>
-          <button id="sound-toggle-btn" type="button" aria-pressed="true" aria-label="Activer ou couper le son" title="Son actif">
-            <svg viewBox="0 0 24 24" width="24" height="24" fill="none" stroke="currentColor" stroke-width="2.3" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
-              <polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5" fill="currentColor" fill-opacity="0.2"></polygon>
-              <path class="sound-wave" d="M15.54 8.46a5 5 0 0 1 0 7.07"></path>
-              <path class="sound-wave" d="M19.07 4.93a10 10 0 0 1 0 14.14"></path>
-              <line class="mute-slash" x1="3" y1="3" x2="21" y2="21"></line>
-            </svg>
-          </button>
-        </div>
-
-        <div id="main-title-box">
+        <header id="main-title-box">
           <h1>Tic-Tac</h1>
           <p>Apprends à lire l'heure pas à pas !</p>
           <button id="player-progress-bar" type="button" title="Changer de joueur">
             <span id="active-player-pill">👤 Joueur 1 ▾</span>
-            <span id="player-rank-title">⏱️ Apprenti du Temps</span>
             <span id="player-stars-count">★ 0 / 48</span>
             <span id="player-points-count">🏆 0 pts</span>
           </button>
-        </div>
+        </header>
 
         <div id="levels-grid">
           <button class="level-rect lvl-1" data-level="1">
@@ -99,6 +84,10 @@
             <div class="lvl-content"><span class="lvl-title">L'horloge des grands</span></div>
             <span class="lvl-status locked-icon">🔒</span>
           </button>
+        </div>
+
+        <div id="special-modes-section">
+          <div class="home-section-divider" aria-hidden="true"></div>
 
           <button id="quiz-btn" type="button" class="quiz-rect">
             <span class="lvl-badge quiz-badge">🎲</span>
@@ -106,10 +95,30 @@
             <span id="quiz-status" class="lvl-status stars-badge quiz-open-badge">🏆 0 pts</span>
           </button>
 
-          <button id="workshop-btn" type="button" class="workshop-rect locked">
-            <span class="lvl-badge workshop-badge">⚙️</span>
-            <div class="lvl-content"><span class="lvl-title">L'atelier de l'horloger</span></div>
-            <span id="workshop-status" class="lvl-status locked-icon">🔒</span>
+          <button id="workshop-btn" type="button" class="workshop-pill locked">
+            <span class="workshop-medallion" aria-hidden="true">
+              <svg viewBox="0 0 32 32" width="20" height="20">
+                <g fill="#fde047" stroke="#b45309" stroke-width="1.2">
+                  <rect x="14" y="1.5" width="4" height="5" rx="1" />
+                  <rect x="14" y="25.5" width="4" height="5" rx="1" />
+                  <rect x="1.5" y="14" width="5" height="4" rx="1" />
+                  <rect x="25.5" y="14" width="5" height="4" rx="1" />
+                  <rect x="14" y="1.5" width="4" height="5" rx="1" transform="rotate(45 16 16)" />
+                  <rect x="14" y="25.5" width="4" height="5" rx="1" transform="rotate(45 16 16)" />
+                  <rect x="1.5" y="14" width="5" height="4" rx="1" transform="rotate(45 16 16)" />
+                  <rect x="25.5" y="14" width="5" height="4" rx="1" transform="rotate(45 16 16)" />
+                </g>
+                <circle cx="16" cy="16" r="10.2" fill="#fbbf24" stroke="#92400e" stroke-width="1.5" />
+                <circle cx="16" cy="16" r="6.2" fill="#090d16" />
+                <line x1="16" y1="9.8" x2="16" y2="22.2" stroke="#fde047" stroke-width="1.6" />
+                <line x1="9.8" y1="16" x2="22.2" y2="16" stroke="#fde047" stroke-width="1.6" />
+                <circle cx="16" cy="16" r="2.6" fill="#e11d48" stroke="#ffffff" stroke-width="1" />
+              </svg>
+            </span>
+            <div class="lvl-content">
+              <span class="lvl-title workshop-pill-title">L'atelier de l'horloger</span>
+            </div>
+            <span id="workshop-status" class="workshop-status-pill is-locked">🔒 Niv. 8</span>
           </button>
         </div>
       </div>
@@ -177,8 +186,8 @@
               <path d="M12 19l-7-7 7-7"></path>
             </svg>
           </button>
-          <div id="workshop-header-pill" class="workshop-rect">
-            <span>⚙️ L'atelier de l'horloger</span>
+          <div id="workshop-header-pill" class="workshop-pill-header">
+            <span class="workshop-pill-title">⚙️ L'atelier de l'horloger</span>
           </div>
         </div>
         <div id="workshop-canvas-wrap">
