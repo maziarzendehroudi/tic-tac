@@ -6,6 +6,10 @@
 - **Éditeur :** SASU Mestis — *Numérique en action*
 - **Nature :** Application web ludo-éducative (PWA) pour enfants dédiée à l'apprentissage progressif de la lecture de l'heure analogique (8 niveaux à 6 étoiles + Mode Quizz aléatoire + L'atelier de l'horloger) avec gestion multi-profils (fratrie) et ambiance céleste dynamique Jour ☀️ / Nuit 🌙.
 - **Verrouillage ergonomique :** Interface 100 % fixe (`100dvh`, `overflow: hidden`, `overscroll-behavior: none`), hauteur stabilisée de la zone de messages et de contrôles pour éviter tout déplacement vertical du cadran.
+- **Accueil optimisé en 3 zones (V66) :**
+  1. En-tête épuré (sans boutons parasites en haut) avec capsule joueur sur une seule ligne (`👤 Prénom ▾`, `★ X / 48`, `🏆 X pts`, sans intitulé de rang).
+  2. Grille verticale aérée des 8 niveaux d'apprentissage.
+  3. Zone dédiée aux modes spéciaux séparée par un filet discret : `Mode Quizz` et capsule horlogère `L'atelier de l'horloger` (cadran nuit, double lunette dorée et engrenage à rubis central).
 
 ## 2. Progression Pédagogique (8 Niveaux — 48 Étoiles : 6 par niveau) & Architecture Visuelle
 1. **Niveau 1 — Les 12 heures :** Petite aiguille orange seule sur le cercle `1..12` (format `3 h`, singulier respecté sur `1 heure`).
@@ -16,18 +20,13 @@
 6. **Niveau 6 — À la minute près :** Les 2 aiguilles sur les 60 graduations (`00..59`) avec repères bleus `00..55`.
 7. **Niveau 7 — Le défi jour & nuit :** Toutes les minutes + cycle 24h avec la couronne intérieure orange `13..00`, les repères bleus `00..55` et la pilule de période.
 8. **Niveau 8 — L'horloge des grands :** Seuls les repères cardinaux `12, 3, 6, 9` sont chiffrés sans bâtons intermédiaires ni couronne orange.
-- **Validation Étape 2 :** Le bouton `✓ Vérifier` disparaît dès qu'on appuie dessus (reste masqué pendant la confirmation d'une bonne réponse, et réapparaît dès que l'enfant déplace une aiguille après une erreur).
-- **Barème des 6 étoiles par niveau :** `6` étoiles pour 0 erreur, puis `-1` étoile par erreur (minimum `1` étoile garantie), affichées sur les pilules d'accueil, l'écran de célébration et le total joueur (`/ 48`).
+- **Validation Étape 2 :** Le bouton `✓ Vérifier` disparaît dès qu'on appuie dessus et réapparaît dès que l'enfant déplace une aiguille après une erreur.
 
-## 3. Mode Quizz — Tous Niveaux Mélangés & Points (Version V64)
-- **Accès libre dès l'accueil :** Bouton dédié `🎲 Mode Quizz · Tous niveaux` ouvert en permanence.
-- **Séries aléatoires de 10 questions :** Mélange les 8 niveaux (sans répétition consécutive du même niveau) et alterne aléatoirement Lecture (QCM) et Manipulation des aiguilles, sans didacticiel intermédiaire.
-- **Système de points par profil :** `+10 pts` au 1er essai, `+5 pts` au 2e essai, `+2 pts` avec aide (score sur `100 pts` par Quizz), sauvegardés au fil de l'eau dans le profil actif (`quizPoints`, `quizBestScore`).
+## 3. Mode Quizz — Tous Niveaux Mélangés & Points (Version V64+)
+- **Accès libre dès l'accueil :** Bouton dédié `🎲 Mode Quizz · Tous niveaux`.
+- **Séries aléatoires de 10 questions :** Mélange les 8 niveaux (sans répétition consécutive du même niveau) et alterne aléatoirement Lecture (QCM) et Manipulation des aiguilles.
+- **Système de points par profil :** `+10 pts` au 1er essai, `+5 pts` au 2e essai, `+2 pts` avec aide (score sur `100 pts` par Quizz).
 
-## 4. L'atelier de l'horloger (`src/game/WatchMechanism.ts` — Version V55)
+## 4. L'atelier de l'horloger (`src/game/WatchMechanism.ts`)
 - **Récompense finale débloquée après le Niveau 8 :**
-  - Mouvement squelette plein cadre dans un Canvas carré `500×500` avec barillet contenu à l'intérieur des graduations (`< 114 px`).
-  - **Ressort à `0 %` par défaut à l'ouverture** accompagné de la consigne : *« Tourne la molette pour remonter la montre et voir le mécanisme ! »*.
-  - **Molette compacte à droite (`x = 138`) à débrayage automatique** et détente continue en `20 s`.
-  - **Chaîne cinématique à 5 contacts verrouillés en vitesse réelle (`1000 ms`)**.
-  - **3 boutons de zoom sur une seule ligne (`⚙️ Ressort`, `🟠 Heures`, `🔵 Minutes`)** avec affichage cumulatif en opacité maximale (`100 %`).
+  - Mouvement squelette plein cadre dans un Canvas carré `500×500` avec ressort à `0 %` par défaut à l'ouverture, molette à débrayage automatique (`x = 138`), chaîne cinématique à 5 contacts verrouillés et 3 boutons de zoom (`⚙️ Ressort`, `🟠 Heures`, `🔵 Minutes`).

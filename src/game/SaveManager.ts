@@ -76,7 +76,6 @@ export class SaveManager {
         const val = (raw.levelStars as Record<number, unknown>)[lvl];
         if (typeof val === 'number' && val >= 1 && val <= this.STARS_PER_LEVEL) {
           const floored = Math.floor(val);
-          // Migration douce des anciennes sauvegardes sur 3 étoiles vers l'échelle sur 6 étoiles
           levelStars[lvl] =
             !isSixStarScale && floored <= 3
               ? Math.min(this.STARS_PER_LEVEL, floored * 2)
@@ -112,7 +111,7 @@ export class SaveManager {
       completedLevels,
       levelStars,
       starsScale: 6,
-      muted: Boolean(raw.muted),
+      muted: false,
       quizPoints,
       quizBestScore
     };
@@ -194,7 +193,7 @@ export class SaveManager {
     const cleanName = name.trim().slice(0, 18) || 'Joueur';
     const store = this.loadStore();
     const newSave = this.createDefaultSave(false);
-    newSave.muted = muted;
+    newSave.muted = Boolean(muted) && false;
     const newProfile: PlayerProfile = {
       id: `p_${Date.now()}_${Math.floor(Math.random() * 1000)}`,
       name: cleanName,
@@ -235,7 +234,7 @@ export class SaveManager {
 
   public static unlockAll(muted: boolean = false): GameSave {
     const save = this.createDefaultSave(true);
-    save.muted = muted;
+    save.muted = Boolean(muted) && false;
     this.save(save);
     return save;
   }
@@ -283,13 +282,6 @@ export class SaveManager {
       sum += save.levelStars[lvl] || 0;
     }
     return sum;
-  }
-
-  public static getRankTitle(totalStars: number): string {
-    if (totalStars >= 48) return '👑 Grand Maître du Temps';
-    if (totalStars >= 32) return '🌟 Gardien Jour & Nuit';
-    if (totalStars >= 16) return '🧭 Éclaireur des Aiguilles';
-    return '⏱️ Apprenti du Temps';
   }
 
   public static applyLevelRewards(

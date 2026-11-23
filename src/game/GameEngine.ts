@@ -176,7 +176,7 @@ export class GameEngine {
       nextTitle,
       nextShortName,
       nextBadge: isFinal ? '⚙️' : String(nextLvl),
-      nextColorClass: isFinal ? 'workshop-rect' : `lvl-${nextLvl}`,
+      nextColorClass: isFinal ? 'workshop-pill-card' : `lvl-${nextLvl}`,
       isFinal
     };
   }
@@ -218,7 +218,7 @@ export class GameEngine {
     this.ctx.translate(centerX, centerY);
 
     this.saveData = SaveManager.load();
-    this.soundEngine = new SoundEngine(this.saveData.muted);
+    this.soundEngine = new SoundEngine(false);
     this.clock = new Clock(this.ctx, radius);
     this.hands = new Hands(this.ctx, radius);
     this.questionManager = new QuestionManager(1);
@@ -236,7 +236,6 @@ export class GameEngine {
     }
 
     this.initEvents();
-    this.updateSoundButtonUI();
     this.updateMenuUI();
     this.applySkyTheme(true);
   }
@@ -658,37 +657,6 @@ export class GameEngine {
       this.closeTutorial();
     });
 
-    const soundToggleBtn = document.getElementById('sound-toggle-btn');
-    soundToggleBtn?.addEventListener('click', () => {
-      this.saveData.muted = !this.saveData.muted;
-      this.soundEngine.setMuted(this.saveData.muted);
-      SaveManager.save(this.saveData);
-      this.updateSoundButtonUI();
-      if (!this.saveData.muted) {
-        this.soundEngine.playSnap();
-      }
-    });
-
-    const forceRefreshBtn = document.getElementById('force-refresh-btn');
-    forceRefreshBtn?.addEventListener('click', async () => {
-      forceRefreshBtn.textContent = '⏳...';
-      try {
-        if ('serviceWorker' in navigator) {
-          const registrations = await navigator.serviceWorker.getRegistrations();
-          await Promise.all(registrations.map(reg => reg.unregister()));
-        }
-        if ('caches' in window) {
-          const keys = await caches.keys();
-          await Promise.all(keys.map(key => caches.delete(key)));
-        }
-      } catch {
-        // Poursuit le rechargement forcé
-      }
-      const url = new URL(window.location.href);
-      url.searchParams.set('t', String(Date.now()));
-      window.location.replace(url.toString());
-    });
-
     document.getElementById('player-progress-bar')?.addEventListener('click', () => {
       this.soundEngine.playSnap();
       this.openProfileModal();
@@ -715,7 +683,7 @@ export class GameEngine {
       const input = document.getElementById('new-profile-input') as HTMLInputElement | null;
       const name = input?.value.trim() || '';
       if (!name) return;
-      const created = SaveManager.createProfile(name, this.saveData.muted);
+      const created = SaveManager.createProfile(name, false);
       this.saveData = created.save;
       if (input) input.value = '';
       this.unlockedEditProfileId = null;
@@ -929,12 +897,10 @@ export class GameEngine {
           return;
         }
         this.saveData = SaveManager.switchProfile(profile.id);
-        this.soundEngine.setMuted(this.saveData.muted);
         this.soundEngine.playSnap();
         this.unlockedEditProfileId = null;
         this.confirmingDeleteId = null;
         this.renderProfilesList();
-        this.updateSoundButtonUI();
         this.updateMenuUI();
       });
 
@@ -996,15 +962,6 @@ export class GameEngine {
     });
   }
 
-  private updateSoundButtonUI(): void {
-    const btn = document.getElementById('sound-toggle-btn');
-    if (btn) {
-      btn.classList.toggle('is-muted', this.saveData.muted);
-      btn.setAttribute('aria-pressed', String(!this.saveData.muted));
-      btn.setAttribute('title', this.saveData.muted ? 'Son coupé' : 'Son actif');
-    }
-  }
-
   private updateMenuUI(): void {
     const levelRects = document.querySelectorAll('.level-rect');
     const maxUnlocked = this.saveData.maxUnlockedLevel || 1;
@@ -1023,13 +980,10 @@ export class GameEngine {
 
     const totalStars = SaveManager.getTotalStars(this.saveData);
     const totalPoints = this.saveData.quizPoints || 0;
-    const rankTitle = SaveManager.getRankTitle(totalStars);
-    const rankEl = document.getElementById('player-rank-title');
     const starsCountEl = document.getElementById('player-stars-count');
     const pointsCountEl = document.getElementById('player-points-count');
     const quizStatusEl = document.getElementById('quiz-status');
 
-    if (rankEl) rankEl.textContent = rankTitle;
     if (starsCountEl) starsCountEl.textContent = `★ ${totalStars} / ${SaveManager.MAX_STARS}`;
     if (pointsCountEl) pointsCountEl.textContent = `🏆 ${totalPoints} pts`;
     if (quizStatusEl) quizStatusEl.textContent = `🏆 ${totalPoints} pts`;
@@ -1068,12 +1022,12 @@ export class GameEngine {
     if (workshopBtn && workshopStatus) {
       if (workshopUnlocked) {
         workshopBtn.classList.remove('locked');
-        workshopStatus.innerHTML = '<span class="lvl-star-on">✨ Ouvrir</span>';
-        workshopStatus.className = 'lvl-status stars-badge workshop-open-badge';
+        workshopStatus.textContent = 'Explorer ▶';
+        workshopStatus.className = 'workshop-status-pill is-open';
       } else {
         workshopBtn.classList.add('locked');
-        workshopStatus.textContent = '🔒';
-        workshopStatus.className = 'lvl-status locked-icon';
+        workshopStatus.textContent = '🔒 Niv. 8';
+        workshopStatus.className = 'workshop-status-pill is-locked';
       }
     }
   }
@@ -1281,9 +1235,6 @@ export class GameEngine {
     );
   }
 
-  /**
-   * Animation pleine page de fin de Quizz : score sur 100, record éventuel, total cumulé & Nouveau Quizz
-   */
   private playQuizCompleteFullPageAnimation(
     sessionScore: number,
     isNewRecord: boolean
@@ -1440,9 +1391,6 @@ export class GameEngine {
     this.celebrationAnimId = requestAnimationFrame(animate);
   }
 
-  /**
-   * Animation pleine page partagée pour Étape 1 (Lecture) et Étape 2 (Manipulation)
-   */
   private playPhaseIntroFullPageAnimation(
     stepNumber: 1 | 2,
     onComplete: () => void
@@ -1586,9 +1534,6 @@ export class GameEngine {
     this.playPhaseIntroFullPageAnimation(2, onComplete);
   }
 
-  /**
-   * PLEINE PAGE FIN DE NIVEAU : Couronne de 6 vraies étoiles SVG, carte cliquable du niveau suivant & bouton "Continuer"
-   */
   private playLevelUpFullPageAnimation(
     earnedStars: LevelStarRating,
     summary: LevelTransitionSummary,
@@ -1880,7 +1825,6 @@ export class GameEngine {
 
   private checkPlaceAnswer(): void {
     const checkBtn = document.getElementById('check-btn');
-    // Le bouton "✓ Vérifier" disparaît immédiatement dès qu'on appuie dessus
     checkBtn?.classList.add('hidden');
 
     const isCorrect = TimeMath.isPlacementCorrect(

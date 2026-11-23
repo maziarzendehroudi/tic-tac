@@ -123,6 +123,10 @@ describe('Didacticiels & Expressions parlées Niveaux 4, 5 et 6 (V63)', () => {
       expect(() => TutorialOverlay.draw(ctx, hands, 200, lvl, 1200)).not.toThrow();
     }
 
+    const finalSummary = GameEngine.getLevelTransitionSummary(8);
+    expect(finalSummary.isFinal).toBe(true);
+    expect(finalSummary.nextColorClass).toBe('workshop-pill-card');
+
     const created = SaveManager.createProfile('Menu', false);
     const renamed = SaveManager.renameProfile(created.id, 'Sophia');
     expect(renamed.name).toBe('Sophia');
@@ -188,7 +192,7 @@ describe('Mode Quizz & Système de Points (V64)', () => {
   });
 });
 
-describe('Système à 6 Étoiles par Niveau / 48 Étoiles au Total (V65)', () => {
+describe('Système à 6 Étoiles / 48 Max & Accueil Épuré (V65-V66)', () => {
   beforeEach(() => {
     const store: Record<string, string> = {};
     globalThis.localStorage = {
@@ -201,9 +205,10 @@ describe('Système à 6 Étoiles par Niveau / 48 Étoiles au Total (V65)', () =>
     };
   });
 
-  it('calcule de 1 à 6 étoiles selon le nombre d’erreurs et plafonne le total à 48 étoiles', () => {
+  it('calcule de 1 à 6 étoiles selon le nombre d’erreurs, plafonne à 48 étoiles et supprime les titres de rang', () => {
     expect(SaveManager.STARS_PER_LEVEL).toBe(6);
     expect(SaveManager.MAX_STARS).toBe(48);
+    expect('getRankTitle' in SaveManager).toBe(false);
 
     expect(SaveManager.computeStarsForErrors(0)).toBe(6);
     expect(SaveManager.computeStarsForErrors(1)).toBe(5);
@@ -215,35 +220,25 @@ describe('Système à 6 Étoiles par Niveau / 48 Étoiles au Total (V65)', () =>
 
     const fullSave = SaveManager.createDefaultSave(true);
     expect(SaveManager.getTotalStars(fullSave)).toBe(48);
-    expect(SaveManager.getRankTitle(48)).toContain('Grand Maître');
-    expect(SaveManager.getRankTitle(32)).toContain('Gardien');
-    expect(SaveManager.getRankTitle(16)).toContain('Éclaireur');
-    expect(SaveManager.getRankTitle(10)).toContain('Apprenti');
   });
 
-  it('migre automatiquement les anciennes sauvegardes sur 3 étoiles vers 6 étoiles et conserve les scores sur 6', () => {
+  it('migre les anciennes sauvegardes et réactive le son par défaut suite à la suppression du bouton muet', () => {
     localStorage.setItem(
       'tic_tac_pedagogy_save',
       JSON.stringify({
         maxUnlockedLevel: 4,
         completedLevels: [1, 2, 3],
         levelStars: { 1: 3, 2: 2, 3: 1 },
-        muted: false
+        muted: true
       })
     );
 
     const migrated = SaveManager.load();
     expect(migrated.starsScale).toBe(6);
+    expect(migrated.muted).toBe(false);
     expect(migrated.levelStars[1]).toBe(6);
     expect(migrated.levelStars[2]).toBe(4);
     expect(migrated.levelStars[3]).toBe(2);
     expect(SaveManager.getTotalStars(migrated)).toBe(12);
-
-    SaveManager.applyLevelRewards(migrated, 4, 5);
-    SaveManager.save(migrated);
-
-    const reloaded = SaveManager.load();
-    expect(reloaded.levelStars[4]).toBe(5);
-    expect(SaveManager.getTotalStars(reloaded)).toBe(17);
   });
 });

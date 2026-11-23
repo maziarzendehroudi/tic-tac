@@ -2024,3 +2024,236 @@ button#player-progress-bar {
 .six-stars-showcase .trans-star-svg.slot-6 {
   animation: transStarBounce 0.55s 0.72s cubic-bezier(0.34, 1.56, 0.64, 1) forwards;
 }
+
+/* ============================================================================
+   REFONTE ACCUEIL V66 : ÉPURE HAUTE, BARRE JOUEUR 1 LIGNE, CAPSULE ATELIER & 3 ZONES
+   ============================================================================ */
+
+/* 1. Astres remontés en haut de l'écran pour encadrer le titre sans barre supérieure */
+.sun-orb,
+.moon-orb {
+  top: max(18px, env(safe-area-inset-top, 14px));
+  right: max(22px, calc(50% - 205px));
+}
+
+.cloud-1 {
+  top: max(26px, calc(env(safe-area-inset-top, 14px) + 8px));
+  left: max(20px, calc(50% - 210px));
+}
+
+/* 2. Réorganisation verticale équilibrée du menu principal en 3 zones */
+#app {
+  padding: max(12px, env(safe-area-inset-top, 10px)) 14px max(14px, env(safe-area-inset-bottom, 12px));
+}
+
+#main-menu {
+  justify-content: space-between;
+  gap: clamp(8px, 1.5dvh, 16px);
+}
+
+#main-title-box {
+  margin: 0;
+  padding: clamp(2px, 0.8dvh, 8px) 0 0;
+  width: 100%;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+}
+
+#main-title-box h1 {
+  font-size: clamp(2.15rem, 5.8dvh, 2.95rem);
+  line-height: 1;
+}
+
+#main-title-box p {
+  font-size: clamp(0.86rem, 1.95dvh, 1.02rem);
+  margin-top: 4px;
+}
+
+/* Capsule joueur compacte garantie sur une seule ligne (sans titre de rang) */
+button#player-progress-bar {
+  margin-top: clamp(7px, 1.2dvh, 12px);
+  display: inline-flex;
+  flex-wrap: nowrap;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  padding: 4px 8px 4px 6px;
+  border-radius: 999px;
+  background: rgba(15, 23, 42, 0.88);
+  border: 2px solid rgba(255, 255, 255, 0.48);
+  box-shadow: 0 5px 14px rgba(15, 23, 42, 0.22);
+  max-width: 100%;
+}
+
+#active-player-pill {
+  font-size: 0.84rem;
+  padding: 3px 10px;
+  border-radius: 999px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  max-width: 150px;
+}
+
+#player-stars-count {
+  font-size: 0.82rem;
+  padding: 2px 9px;
+  border-radius: 999px;
+  white-space: nowrap;
+}
+
+#player-points-count {
+  font-size: 0.82rem;
+  padding: 2px 9px;
+  border-radius: 999px;
+  white-space: nowrap;
+}
+
+/* 3. Zone centrale : les 8 niveaux d'apprentissage bien aérés */
+#levels-grid {
+  flex: 1 1 auto;
+  justify-content: center;
+  gap: clamp(4px, 0.95dvh, 9px);
+  margin-bottom: 0;
+  width: 100%;
+}
+
+.level-rect,
+.quiz-rect {
+  min-height: clamp(35px, 5.15dvh, 46px);
+  padding: clamp(5px, 0.9dvh, 9px) 13px;
+  border-radius: 15px;
+}
+
+.lvl-badge {
+  width: clamp(24px, 3.4dvh, 28px);
+  height: clamp(24px, 3.4dvh, 28px);
+  min-width: clamp(24px, 3.4dvh, 28px);
+  font-size: 0.85rem;
+}
+
+.lvl-title {
+  font-size: clamp(0.88rem, 2.05dvh, 1rem);
+}
+
+.lvl-status.stars-badge.lvl-stars-6 {
+  min-width: 88px;
+  padding: 2px 8px;
+  font-size: 0.82rem;
+}
+
+/* 4. Zone basse dédiée : Mode Quizz + Capsule horlogère distincte */
+#special-modes-section {
+  width: 100%;
+  flex: 0 0 auto;
+  display: flex;
+  flex-direction: column;
+  gap: clamp(5px, 0.95dvh, 9px);
+}
+
+.home-section-divider {
+  width: 64px;
+  height: 3px;
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.52);
+  margin: 0 auto 2px;
+}
+
+/* 5. Pilule capsule horlogère distinctive pour "L'atelier de l'horloger" */
+.workshop-pill {
+  width: 100%;
+  min-height: clamp(38px, 5.5dvh, 50px);
+  padding: clamp(5px, 0.9dvh, 9px) 10px clamp(5px, 0.9dvh, 9px) 9px;
+  border-radius: 999px;
+  background: linear-gradient(135deg, #090d16 0%, #1e293b 54%, #0f172a 100%);
+  border: 2.5px solid #fbbf24;
+  box-shadow:
+    inset 0 0 0 1.5px rgba(254, 240, 138, 0.2),
+    0 6px 14px rgba(15, 23, 42, 0.28);
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  cursor: pointer;
+  text-align: left;
+  color: #fef08a;
+  transition: transform 0.12s ease, box-shadow 0.15s ease;
+}
+
+.workshop-pill:active:not(.locked) {
+  transform: scale(0.98);
+}
+
+.workshop-medallion {
+  width: clamp(28px, 3.8dvh, 32px);
+  height: clamp(28px, 3.8dvh, 32px);
+  min-width: clamp(28px, 3.8dvh, 32px);
+  border-radius: 50%;
+  background: radial-gradient(circle, #1e293b 0%, #090d16 100%);
+  border: 2px solid #fde047;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  box-shadow: 0 0 8px rgba(251, 191, 36, 0.35);
+  flex-shrink: 0;
+}
+
+.workshop-pill-title {
+  color: #fef08a;
+  letter-spacing: 0.2px;
+}
+
+.workshop-status-pill {
+  flex-shrink: 0;
+  border-radius: 999px;
+  padding: 4px 12px;
+  font-size: 0.82rem;
+  font-weight: 700;
+  white-space: nowrap;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.workshop-status-pill.is-open {
+  background: linear-gradient(135deg, #fde047 0%, #f59e0b 100%);
+  color: #0f172a;
+  border: 1.5px solid #ffffff;
+  box-shadow: 0 2px 8px rgba(245, 158, 11, 0.45);
+}
+
+.workshop-status-pill.is-locked {
+  background: rgba(30, 41, 59, 0.85);
+  color: #cbd5e1;
+  border: 1.5px dashed rgba(251, 191, 36, 0.5);
+}
+
+.workshop-pill.locked {
+  background: linear-gradient(135deg, #0f172a 0%, #1e293b 100%);
+  border: 2px dashed rgba(251, 191, 36, 0.65);
+  box-shadow: none;
+  cursor: not-allowed;
+}
+
+.workshop-pill.locked .workshop-pill-title {
+  color: #cbd5e1;
+}
+
+.workshop-pill.locked .workshop-medallion {
+  opacity: 0.65;
+  box-shadow: none;
+}
+
+/* En-tête assorti dans l'écran de l'Atelier et carte récompense fin de niveau 8 */
+#workshop-header-pill.workshop-pill-header {
+  border-radius: 999px;
+  background: linear-gradient(135deg, #090d16 0%, #1e293b 54%, #0f172a 100%);
+  border: 2.5px solid #fbbf24;
+  box-shadow: inset 0 0 0 1.5px rgba(254, 240, 138, 0.2), 0 4px 12px rgba(0, 0, 0, 0.35);
+  justify-content: center;
+}
+
+.trans-next-level-card.workshop-pill-card {
+  background: linear-gradient(135deg, #090d16 0%, #1e293b 54%, #0f172a 100%);
+  border-color: #fbbf24;
+}
