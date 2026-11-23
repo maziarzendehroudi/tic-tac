@@ -7,6 +7,7 @@ import { Hands } from './Hands';
 import { Clock } from './Clock';
 import { TutorialOverlay } from './TutorialOverlay';
 import { GameEngine } from './GameEngine';
+import { QuestionManager } from './QuestionManager';
 
 function createMockCtx(): CanvasRenderingContext2D {
   return {
@@ -128,5 +129,121 @@ describe('Didacticiels & Expressions parlées Niveaux 4, 5 et 6 (V63)', () => {
 
     const sound = new SoundEngine(false);
     expect(() => sound.playWindingClick()).not.toThrow();
+  });
+});
+
+describe('Mode Quizz & Système de Points (V64)', () => {
+  beforeEach(() => {
+    const store: Record<string, string> = {};
+    globalThis.localStorage = {
+      getItem: (key: string) => store[key] ?? null,
+      setItem: (key: string, val: string) => { store[key] = val; },
+      removeItem: (key: string) => { delete store[key]; },
+      clear: () => { Object.keys(store).forEach(k => delete store[k]); },
+      key: (i: number) => Object.keys(store)[i] ?? null,
+      length: 0
+    };
+  });
+
+  it('génère un plan de 10 questions couvrant les 8 niveaux sans doublon consécutif et mélangeant lecture/manipulation', () => {
+    for (let run = 0; run < 40; run++) {
+      const plan = QuestionManager.buildQuizPlan(10);
+      expect(plan).toHaveLength(10);
+
+      const distinctLevels = new Set(plan.map(s => s.level));
+      expect(distinctLevels.size).toBe(8);
+
+      const phase1Count = plan.filter(s => s.phase === 1).length;
+      const phase2Count = plan.filter(s => s.phase === 2).length;
+      expect(phase1Count).toBe(5);
+      expect(phase2Count).toBe(5);
+
+      for (let i = 1; i < plan.length; i++) {
+        expect(plan[i].level).not.toBe(plan[i - 1].level);
+      }
+    }
+  });
+
+  it('calcule et persiste les points de Quizz par profil', () => {
+    expect(SaveManager.computeQuizQuestionPoints(0)).toBe(10);
+    expect(SaveManager.computeQuizQuestionPoints(1)).toBe(5);
+    expect(SaveManager.computeQuizQuestionPoints(2)).toBe(2);
+    expect(SaveManager.computeQuizQuestionPoints(4)).toBe(2);
+
+    const loaded = SaveManager.load();
+    expect(loaded.quizPoints).toBe(0);
+    expect(loaded.quizBestScore).toBe(0);
+
+    SaveManager.addQuizPoints(loaded, 85);
+    expect(SaveManager.recordQuizSessionScore(loaded, 85)).toBe(false);
+    expect(SaveManager.recordQuizSessionScore(loaded, 95)).toBe(true);
+    SaveManager.save(loaded);
+
+    const p2 = SaveManager.createProfile('Camille', false);
+    expect(p2.save.quizPoints).toBe(0);
+
+    const backToP1 = SaveManager.switchProfile('p_default');
+    expect(backToP1.quizPoints).toBe(85);
+    expect(backToP1.quizBestScore).toBe(95);
+  });
+});
+
+describe('Système à 6 Étoiles par Niveau / 48 Étoiles au Total (V65)', () => {
+  beforeEach(() => {
+    const store: Record<string, string> = {};
+    globalThis.localStorage = {
+      getItem: (key: string) => store[key] ?? null,
+      setItem: (key: string, val: string) => { store[key] = val; },
+      removeItem: (key: string) => { delete store[key]; },
+      clear: () => { Object.keys(store).forEach(k => delete store[k]); },
+      key: (i: number) => Object.keys(store)[i] ?? null,
+      length: 0
+    };
+  });
+
+  it('calcule de 1 à 6 étoiles selon le nombre d’erreurs et plafonne le total à 48 étoiles', () => {
+    expect(SaveManager.STARS_PER_LEVEL).toBe(6);
+    expect(SaveManager.MAX_STARS).toBe(48);
+
+    expect(SaveManager.computeStarsForErrors(0)).toBe(6);
+    expect(SaveManager.computeStarsForErrors(1)).toBe(5);
+    expect(SaveManager.computeStarsForErrors(2)).toBe(4);
+    expect(SaveManager.computeStarsForErrors(3)).toBe(3);
+    expect(SaveManager.computeStarsForErrors(4)).toBe(2);
+    expect(SaveManager.computeStarsForErrors(5)).toBe(1);
+    expect(SaveManager.computeStarsForErrors(9)).toBe(1);
+
+    const fullSave = SaveManager.createDefaultSave(true);
+    expect(SaveManager.getTotalStars(fullSave)).toBe(48);
+    expect(SaveManager.getRankTitle(48)).toContain('Grand Maître');
+    expect(SaveManager.getRankTitle(32)).toContain('Gardien');
+    expect(SaveManager.getRankTitle(16)).toContain('Éclaireur');
+    expect(SaveManager.getRankTitle(10)).toContain('Apprenti');
+  });
+
+  it('migre automatiquement les anciennes sauvegardes sur 3 étoiles vers 6 étoiles et conserve les scores sur 6', () => {
+    localStorage.setItem(
+      'tic_tac_pedagogy_save',
+      JSON.stringify({
+        maxUnlockedLevel: 4,
+        completedLevels: [1, 2, 3],
+        levelStars: { 1: 3, 2: 2, 3: 1 },
+        muted: false
+      })
+    );
+
+    const migrated = SaveManager.load();
+    expect(migrated.starsScale).toBe(6);
+    expect(migrated.levelStars[1]).toBe(6);
+    expect(migrated.levelStars[2]).toBe(4);
+    expect(migrated.levelStars[3]).toBe(2);
+    expect(SaveManager.getTotalStars(migrated)).toBe(12);
+
+    SaveManager.applyLevelRewards(migrated, 4, 5);
+    SaveManager.save(migrated);
+
+    const reloaded = SaveManager.load();
+    expect(reloaded.levelStars[4]).toBe(5);
+    expect(SaveManager.getTotalStars(reloaded)).toBe(17);
   });
 });

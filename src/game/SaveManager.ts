@@ -1,8 +1,13 @@
+export type LevelStarRating = 1 | 2 | 3 | 4 | 5 | 6;
+
 export interface GameSave {
   maxUnlockedLevel: number;
   completedLevels: number[];
   levelStars: Record<number, number>;
+  starsScale?: number;
   muted: boolean;
+  quizPoints: number;
+  quizBestScore: number;
 }
 
 export interface PlayerProfile {
@@ -18,7 +23,9 @@ interface ProfilesStore {
 
 export class SaveManager {
   public static readonly MAX_LEVEL = 8;
-  public static readonly MAX_STARS = 24;
+  public static readonly STARS_PER_LEVEL = 6;
+  public static readonly MAX_STARS = SaveManager.MAX_LEVEL * SaveManager.STARS_PER_LEVEL; // 48
+  public static readonly QUIZ_QUESTIONS_COUNT = 10;
   private static LEGACY_KEY = 'tic_tac_pedagogy_save';
   private static PROFILES_KEY = 'tic_tac_profiles_v1';
 
@@ -27,15 +34,21 @@ export class SaveManager {
       return {
         maxUnlockedLevel: 8,
         completedLevels: [1, 2, 3, 4, 5, 6, 7, 8],
-        levelStars: { 1: 3, 2: 3, 3: 3, 4: 3, 5: 3, 6: 3, 7: 3, 8: 3 },
-        muted: false
+        levelStars: { 1: 6, 2: 6, 3: 6, 4: 6, 5: 6, 6: 6, 7: 6, 8: 6 },
+        starsScale: 6,
+        muted: false,
+        quizPoints: 0,
+        quizBestScore: 0
       };
     }
     return {
       maxUnlockedLevel: 1,
       completedLevels: [],
       levelStars: {},
-      muted: false
+      starsScale: 6,
+      muted: false,
+      quizPoints: 0,
+      quizBestScore: 0
     };
   }
 
@@ -56,17 +69,23 @@ export class SaveManager {
         )
       : [];
 
+    const isSixStarScale = raw.starsScale === 6;
     const levelStars: Record<number, number> = {};
     if (raw.levelStars && typeof raw.levelStars === 'object') {
       for (let lvl = 1; lvl <= this.MAX_LEVEL; lvl++) {
         const val = (raw.levelStars as Record<number, unknown>)[lvl];
-        if (typeof val === 'number' && val >= 1 && val <= 3) {
-          levelStars[lvl] = Math.floor(val);
+        if (typeof val === 'number' && val >= 1 && val <= this.STARS_PER_LEVEL) {
+          const floored = Math.floor(val);
+          // Migration douce des anciennes sauvegardes sur 3 étoiles vers l'échelle sur 6 étoiles
+          levelStars[lvl] =
+            !isSixStarScale && floored <= 3
+              ? Math.min(this.STARS_PER_LEVEL, floored * 2)
+              : floored;
         }
       }
     }
     completedLevels.forEach(lvl => {
-      if (!levelStars[lvl]) levelStars[lvl] = 2;
+      if (!levelStars[lvl]) levelStars[lvl] = 4;
     });
 
     const highestCompleted = completedLevels.length > 0 ? Math.max(...completedLevels) : 0;
@@ -75,11 +94,27 @@ export class SaveManager {
       Math.max(maxUnlockedLevel, highestCompleted + 1)
     );
 
+    const quizPoints =
+      typeof raw.quizPoints === 'number' && Number.isFinite(raw.quizPoints) && raw.quizPoints >= 0
+        ? Math.floor(raw.quizPoints)
+        : 0;
+
+    const maxQuizScore = this.QUIZ_QUESTIONS_COUNT * 10;
+    const quizBestScore =
+      typeof raw.quizBestScore === 'number' &&
+      Number.isFinite(raw.quizBestScore) &&
+      raw.quizBestScore >= 0
+        ? Math.min(maxQuizScore, Math.floor(raw.quizBestScore))
+        : 0;
+
     return {
       maxUnlockedLevel: adjustedMax,
       completedLevels,
       levelStars,
-      muted: Boolean(raw.muted)
+      starsScale: 6,
+      muted: Boolean(raw.muted),
+      quizPoints,
+      quizBestScore
     };
   }
 
@@ -213,10 +248,33 @@ export class SaveManager {
     return save.completedLevels.includes(this.MAX_LEVEL) || this.isFullyUnlocked(save);
   }
 
-  public static computeStarsForErrors(totalErrors: number): 1 | 2 | 3 {
-    if (totalErrors <= 1) return 3;
-    if (totalErrors <= 4) return 2;
-    return 1;
+  public static computeStarsForErrors(totalErrors: number): LevelStarRating {
+    const cleanErrors = Math.max(0, Math.floor(totalErrors));
+    const stars = Math.max(1, Math.min(this.STARS_PER_LEVEL, this.STARS_PER_LEVEL - cleanErrors));
+    return stars as LevelStarRating;
+  }
+
+  public static computeQuizQuestionPoints(errorsCount: number): 10 | 5 | 2 {
+    if (errorsCount <= 0) return 10;
+    if (errorsCount === 1) return 5;
+    return 2;
+  }
+
+  public static addQuizPoints(save: GameSave, points: number): GameSave {
+    const validPts = Math.max(0, Math.floor(points));
+    save.quizPoints = Math.max(0, (save.quizPoints || 0) + validPts);
+    return save;
+  }
+
+  public static recordQuizSessionScore(save: GameSave, sessionScore: number): boolean {
+    const maxQuizScore = this.QUIZ_QUESTIONS_COUNT * 10;
+    const clamped = Math.max(0, Math.min(maxQuizScore, Math.floor(sessionScore)));
+    const prevBest = save.quizBestScore || 0;
+    if (clamped > prevBest) {
+      save.quizBestScore = clamped;
+      return prevBest > 0;
+    }
+    return false;
   }
 
   public static getTotalStars(save: GameSave): number {
@@ -228,22 +286,26 @@ export class SaveManager {
   }
 
   public static getRankTitle(totalStars: number): string {
-    if (totalStars >= 24) return '👑 Grand Maître du Temps';
-    if (totalStars >= 16) return '🌟 Gardien Jour & Nuit';
-    if (totalStars >= 8) return '🧭 Éclaireur des Aiguilles';
+    if (totalStars >= 48) return '👑 Grand Maître du Temps';
+    if (totalStars >= 32) return '🌟 Gardien Jour & Nuit';
+    if (totalStars >= 16) return '🧭 Éclaireur des Aiguilles';
     return '⏱️ Apprenti du Temps';
   }
 
   public static applyLevelRewards(
     save: GameSave,
     completedLevel: number,
-    earnedStars: number = 3
+    earnedStars: number = SaveManager.STARS_PER_LEVEL
   ): GameSave {
     if (!save.completedLevels.includes(completedLevel)) {
       save.completedLevels.push(completedLevel);
     }
     const previousBest = save.levelStars[completedLevel] || 0;
-    save.levelStars[completedLevel] = Math.max(previousBest, Math.min(3, Math.max(1, earnedStars)));
+    save.levelStars[completedLevel] = Math.max(
+      previousBest,
+      Math.min(this.STARS_PER_LEVEL, Math.max(1, Math.floor(earnedStars)))
+    );
+    save.starsScale = 6;
 
     if (completedLevel === save.maxUnlockedLevel && completedLevel < this.MAX_LEVEL) {
       save.maxUnlockedLevel = completedLevel + 1;

@@ -9,18 +9,25 @@ export interface TimeTarget {
   periodLabel: string;
 }
 
+export interface QuizStep {
+  level: number;
+  phase: 1 | 2;
+}
+
 export class QuestionManager {
   private level: number;
-  private lastQuestionText: string = '';
+  private lastQuestionKey: string = '';
   private usedQuestions: Set<string> = new Set();
 
   constructor(level: number = 1) {
     this.level = level;
   }
 
-  public setLevel(level: number): void {
+  public setLevel(level: number, clearHistory: boolean = true): void {
     this.level = level;
-    this.usedQuestions.clear();
+    if (clearHistory) {
+      this.usedQuestions.clear();
+    }
   }
 
   public getLevel(): number {
@@ -29,6 +36,68 @@ export class QuestionManager {
 
   public resetHistory(): void {
     this.usedQuestions.clear();
+    this.lastQuestionKey = '';
+  }
+
+  private static shuffleArray<T>(items: T[]): T[] {
+    const arr = [...items];
+    for (let i = arr.length - 1; i > 0; i--) {
+      const j = Math.floor(Math.random() * (i + 1));
+      const tmp = arr[i];
+      arr[i] = arr[j];
+      arr[j] = tmp;
+    }
+    return arr;
+  }
+
+  /**
+   * Construit un plan de Quizz aléatoire mélangeant tous les niveaux (1 à 8)
+   * et les deux modes d'interaction (Phase 1 : Lecture QCM, Phase 2 : Manipulation),
+   * sans jamais poser deux fois le même niveau côte à côte.
+   */
+  public static buildQuizPlan(count: number = 10): QuizStep[] {
+    const safeCount = Math.max(2, Math.floor(count));
+    const baseLevels = [1, 2, 3, 4, 5, 6, 7, 8];
+    const levelsPool: number[] = [];
+
+    while (levelsPool.length < safeCount) {
+      const batch = this.shuffleArray(baseLevels);
+      const needed = safeCount - levelsPool.length;
+      levelsPool.push(...batch.slice(0, needed));
+    }
+
+    const levels = this.shuffleArray(levelsPool);
+
+    // Garantit deux niveaux consécutifs toujours distincts
+    for (let i = 1; i < levels.length; i++) {
+      if (levels[i] === levels[i - 1]) {
+        for (let j = 0; j < levels.length; j++) {
+          if (
+            j !== i &&
+            j !== i - 1 &&
+            levels[j] !== levels[i] &&
+            (j === 0 || levels[j - 1] !== levels[i]) &&
+            (j === levels.length - 1 || levels[j + 1] !== levels[i]) &&
+            (i === levels.length - 1 || levels[i + 1] !== levels[j])
+          ) {
+            const tmp = levels[i];
+            levels[i] = levels[j];
+            levels[j] = tmp;
+            break;
+          }
+        }
+      }
+    }
+
+    const rawPhases: Array<1 | 2> = Array.from({ length: safeCount }, (_, idx) =>
+      idx % 2 === 0 ? 1 : 2
+    );
+    const phases = this.shuffleArray(rawPhases);
+
+    return levels.map((lvl, idx) => ({
+      level: lvl,
+      phase: phases[idx]
+    }));
   }
 
   /**
@@ -73,14 +142,16 @@ export class QuestionManager {
 
   public generateQuestion(): TimeTarget {
     let candidate = this.buildCandidate();
+    let key = `${this.level}:${candidate.text}`;
     for (let attempt = 0; attempt < 24; attempt++) {
-      if (candidate.text !== this.lastQuestionText && !this.usedQuestions.has(candidate.text)) {
+      if (key !== this.lastQuestionKey && !this.usedQuestions.has(key)) {
         break;
       }
       candidate = this.buildCandidate();
+      key = `${this.level}:${candidate.text}`;
     }
-    this.lastQuestionText = candidate.text;
-    this.usedQuestions.add(candidate.text);
+    this.lastQuestionKey = key;
+    this.usedQuestions.add(key);
     return candidate;
   }
 
@@ -163,7 +234,6 @@ export class QuestionManager {
       );
     };
 
-    // Cas particulier du Niveau 3 (Minutes seules : 3 choix de minutes)
     if (this.level === 3) {
       const step5 = Math.random() < 0.5 ? 5 : -5;
       const decoy1 = this.createTargetFrom(12, correct.minutes + step5);
@@ -183,7 +253,6 @@ export class QuestionManager {
       return choices.sort(() => Math.random() - 0.5);
     }
 
-    // 1. LEURRE SUR L'HEURE (même minute)
     if (this.level >= 4 && correct.minutes >= 30) {
       const trapNextHour = this.createTargetFrom(correct.hours + 1, correct.minutes);
       if (isDistinctAndUnambiguous(trapNextHour)) choices.push(trapNextHour);
@@ -198,7 +267,6 @@ export class QuestionManager {
       if (isDistinctAndUnambiguous(hourDecoy)) choices.push(hourDecoy);
     }
 
-    // 2. LEURRE SUR LES MINUTES (même heure, minute différente) aux Niveaux 4 à 8
     if (this.level >= 4 && choices.length < 3) {
       let altMin = (correct.minutes + 30) % 60;
       if (this.level === 5) {
@@ -212,7 +280,6 @@ export class QuestionManager {
       if (isDistinctAndUnambiguous(minDecoy)) choices.push(minDecoy);
     }
 
-    // 3. Complément pour Niveaux 1 et 2 (heures seules) ou sécurité
     if (choices.length < 3) {
       const secondHourDecoy = this.createTargetFrom(correct.hours + 2, correct.minutes);
       if (isDistinctAndUnambiguous(secondHourDecoy)) choices.push(secondHourDecoy);

@@ -1,9 +1,9 @@
 import { Clock } from './Clock';
 import { Hands } from './Hands';
 import { QuestionManager } from './QuestionManager';
-import type { TimeTarget } from './QuestionManager';
+import type { QuizStep, TimeTarget } from './QuestionManager';
 import { SaveManager } from './SaveManager';
-import type { GameSave } from './SaveManager';
+import type { GameSave, LevelStarRating } from './SaveManager';
 import { SoundEngine } from './SoundEngine';
 import { TimeMath } from './TimeMath';
 import { TutorialOverlay } from './TutorialOverlay';
@@ -114,6 +114,11 @@ export class GameEngine {
   private currentLevel: number = 1;
   private currentPhase: 1 | 2 = 1;
   private phaseSuccessCount: number = 0;
+
+  private isQuizMode: boolean = false;
+  private quizPlan: QuizStep[] = [];
+  private quizIndex: number = 0;
+  private quizSessionScore: number = 0;
 
   private isDragging: boolean = false;
   private isWaitingNext: boolean = false;
@@ -256,12 +261,18 @@ export class GameEngine {
     const transitionScreen = document.getElementById('transition-screen');
     if (transitionScreen) {
       transitionScreen.classList.add('hidden');
-      transitionScreen.classList.remove('step1-theme', 'step2-theme', 'levelup-theme');
+      transitionScreen.classList.remove(
+        'step1-theme',
+        'step2-theme',
+        'levelup-theme',
+        'quizend-theme'
+      );
     }
   }
 
   public startLevel(level: number): void {
     this.clearPendingAnimations();
+    this.isQuizMode = false;
     this.currentLevel = level;
     this.currentPhase = 1;
     this.phaseSuccessCount = 0;
@@ -286,6 +297,42 @@ export class GameEngine {
     this.updatePhaseStarsUI();
     this.initNewQuestion();
     this.openTutorial();
+  }
+
+  public startQuiz(): void {
+    this.clearPendingAnimations();
+    this.isQuizMode = true;
+    this.quizPlan = QuestionManager.buildQuizPlan(SaveManager.QUIZ_QUESTIONS_COUNT);
+    this.quizIndex = 0;
+    this.quizSessionScore = 0;
+    this.questionManager.resetHistory();
+
+    document.getElementById('main-menu')?.classList.add('hidden');
+    document.getElementById('workshop-screen')?.classList.add('hidden');
+    document.getElementById('game-screen')?.classList.remove('hidden');
+
+    const headerPill = document.getElementById('level-header-pill');
+    if (headerPill) {
+      headerPill.className = 'quiz-rect';
+    }
+
+    this.setupCurrentQuizStep();
+  }
+
+  private setupCurrentQuizStep(): void {
+    const step = this.quizPlan[this.quizIndex] || { level: 1, phase: 1 };
+    this.currentLevel = step.level;
+    this.currentPhase = step.phase;
+    this.questionManager.setLevel(step.level, false);
+
+    const titleDisplay = document.getElementById('level-title-display');
+    if (titleDisplay) {
+      titleDisplay.textContent = `🎲 Quizz ${this.quizIndex + 1}/${this.quizPlan.length} · Niv. ${this.currentLevel}`;
+    }
+
+    this.initNewQuestion();
+    this.updateUI();
+    this.render();
   }
 
   private openTutorial(): void {
@@ -402,7 +449,6 @@ export class GameEngine {
     document.getElementById('tutorial-tools')?.classList.add('hidden');
     document.getElementById('tutorial-callout-row')?.classList.add('hidden');
 
-    // Lance l'animation pleine page "Étape 1" (similaire à l'Étape 2) avant la première question
     this.playStep1FullPageAnimation(() => {
       const showDaySky = TimeMath.is24HourLevel(this.currentLevel) ? this.targetTime.isDay : true;
       this.applySkyTheme(showDaySky);
@@ -427,6 +473,7 @@ export class GameEngine {
 
   private openWorkshop(): void {
     this.clearPendingAnimations();
+    this.isQuizMode = false;
     document.getElementById('main-menu')?.classList.add('hidden');
     document.getElementById('game-screen')?.classList.add('hidden');
     document.getElementById('workshop-screen')?.classList.remove('hidden');
@@ -482,6 +529,7 @@ export class GameEngine {
 
   private returnToMenu(): void {
     this.clearPendingAnimations();
+    this.isQuizMode = false;
     document.getElementById('game-screen')?.classList.add('hidden');
     document.getElementById('workshop-screen')?.classList.add('hidden');
     document.getElementById('main-menu')?.classList.remove('hidden');
@@ -546,6 +594,11 @@ export class GameEngine {
           this.soundEngine.playError();
         }
       });
+    });
+
+    document.getElementById('quiz-btn')?.addEventListener('click', () => {
+      this.soundEngine.playSnap();
+      this.startQuiz();
     });
 
     document.getElementById('workshop-btn')?.addEventListener('click', () => {
@@ -636,7 +689,6 @@ export class GameEngine {
       window.location.replace(url.toString());
     });
 
-    // Clic sur le nom du joueur sous le titre pour ouvrir la modale "Qui joue ?"
     document.getElementById('player-progress-bar')?.addEventListener('click', () => {
       this.soundEngine.playSnap();
       this.openProfileModal();
@@ -717,6 +769,9 @@ export class GameEngine {
       if (!this.isDragging) return;
       this.isDragging = false;
       this.snapToGrid();
+      if (!this.isWaitingNext && this.currentPhase === 2) {
+        document.getElementById('check-btn')?.classList.remove('hidden');
+      }
       this.soundEngine.playSnap();
       this.render();
     };
@@ -727,6 +782,7 @@ export class GameEngine {
     this.canvas.addEventListener('touchstart', onStart, { passive: false });
     window.addEventListener('touchmove', onMove, { passive: false });
     window.addEventListener('touchend', onEnd);
+    window.addEventListener('touchcancel', onEnd);
 
     document.getElementById('check-btn')?.addEventListener('click', () => {
       if (!this.isWaitingNext && this.currentPhase === 2) {
@@ -764,6 +820,7 @@ export class GameEngine {
       const isActive = profile.id === active.id;
       const isEditUnlocked = this.unlockedEditProfileId === profile.id;
       const stars = SaveManager.getTotalStars(profile.save);
+      const pts = profile.save.quizPoints || 0;
       const displayName = profile.name === 'Test' ? 'Joueur 1' : profile.name;
 
       const row = document.createElement('div');
@@ -822,7 +879,10 @@ export class GameEngine {
       selectBtn.className = 'profile-select-btn';
       selectBtn.innerHTML = `
         <span class="prof-name">${displayName}</span>
-        <span class="prof-stars"><span class="prof-star-icon">★</span> ${stars} / ${SaveManager.MAX_STARS}</span>
+        <span class="prof-badges">
+          <span class="prof-stars"><span class="prof-star-icon">★</span> ${stars}/${SaveManager.MAX_STARS}</span>
+          <span class="prof-points">🏆 ${pts} pts</span>
+        </span>
       `;
 
       let pressTimer = 0;
@@ -962,11 +1022,17 @@ export class GameEngine {
     }
 
     const totalStars = SaveManager.getTotalStars(this.saveData);
+    const totalPoints = this.saveData.quizPoints || 0;
     const rankTitle = SaveManager.getRankTitle(totalStars);
     const rankEl = document.getElementById('player-rank-title');
     const starsCountEl = document.getElementById('player-stars-count');
+    const pointsCountEl = document.getElementById('player-points-count');
+    const quizStatusEl = document.getElementById('quiz-status');
+
     if (rankEl) rankEl.textContent = rankTitle;
     if (starsCountEl) starsCountEl.textContent = `★ ${totalStars} / ${SaveManager.MAX_STARS}`;
+    if (pointsCountEl) pointsCountEl.textContent = `🏆 ${totalPoints} pts`;
+    if (quizStatusEl) quizStatusEl.textContent = `🏆 ${totalPoints} pts`;
 
     levelRects.forEach(rect => {
       const level = parseInt(rect.getAttribute('data-level') || '1', 10);
@@ -977,11 +1043,11 @@ export class GameEngine {
         rect.classList.remove('locked');
         if (statusEl) {
           if (starsEarned > 0) {
-            const starsHtml = [1, 2, 3]
+            const starsHtml = [1, 2, 3, 4, 5, 6]
               .map(s => (s <= starsEarned ? '<span class="lvl-star-on">★</span>' : '<span class="lvl-star-off">★</span>'))
               .join('');
             statusEl.innerHTML = starsHtml;
-            statusEl.className = 'lvl-status stars-badge';
+            statusEl.className = 'lvl-status stars-badge lvl-stars-6';
           } else {
             statusEl.textContent = '▶';
             statusEl.className = 'lvl-status play';
@@ -1081,6 +1147,57 @@ export class GameEngine {
   private handleSuccessfulAnswer(): void {
     this.triggerSuccessEffect();
 
+    const spokenSuffix = this.targetTime.spokenText ? ` (<em>${this.targetTime.spokenText}</em>)` : '';
+    const successMsg =
+      this.currentLevel === 3
+        ? `<strong>Bravo ! L’aiguille indique bien ${this.targetTime.text} !</strong>`
+        : this.currentLevel === 5 && this.targetTime.spokenText
+          ? `<strong>Bravo ! Il est bien ${this.targetTime.spokenText} !</strong>`
+          : `<strong>Bravo ! Il est bien ${this.targetTime.text}${spokenSuffix} !</strong>`;
+
+    if (this.isQuizMode) {
+      const earnedPts = SaveManager.computeQuizQuestionPoints(this.errorsCount);
+      this.quizSessionScore += earnedPts;
+      SaveManager.addQuizPoints(this.saveData, earnedPts);
+      SaveManager.save(this.saveData);
+      this.updatePhaseStarsUI();
+      this.updateMenuUI();
+      this.soundEngine.playSuccess();
+
+      const quizSuccessHtml = `<span class="quiz-gain-pill">+${earnedPts} pts 🏆</span> ${successMsg}`;
+
+      if (this.quizIndex + 1 >= this.quizPlan.length) {
+        const isNewRecord = SaveManager.recordQuizSessionScore(
+          this.saveData,
+          this.quizSessionScore
+        );
+        SaveManager.save(this.saveData);
+        this.updateMenuUI();
+
+        this.showFeedback(
+          quizSuccessHtml,
+          'success',
+          () => {
+            this.soundEngine.playLevelComplete();
+            this.playQuizCompleteFullPageAnimation(this.quizSessionScore, isNewRecord);
+          },
+          2200
+        );
+        return;
+      }
+
+      this.showFeedback(
+        quizSuccessHtml,
+        'success',
+        () => {
+          this.quizIndex++;
+          this.setupCurrentQuizStep();
+        },
+        2200
+      );
+      return;
+    }
+
     if (this.currentQuestionAssisted) {
       this.soundEngine.playSuccess();
       this.showFeedback(
@@ -1099,17 +1216,8 @@ export class GameEngine {
     this.updatePhaseStarsUI();
     this.soundEngine.playSuccess();
 
-    const spokenSuffix = this.targetTime.spokenText ? ` (<em>${this.targetTime.spokenText}</em>)` : '';
-    const successMsg =
-      this.currentLevel === 3
-        ? `<strong>Bravo ! L’aiguille indique bien ${this.targetTime.text} !</strong>`
-        : this.currentLevel === 5 && this.targetTime.spokenText
-          ? `<strong>Bravo ! Il est bien ${this.targetTime.spokenText} !</strong>`
-          : `<strong>Bravo ! Il est bien ${this.targetTime.text}${spokenSuffix} !</strong>`;
-
     if (this.phaseSuccessCount >= 3) {
       if (this.currentPhase === 1) {
-        // Affiche d'abord "Bravo ! Il est bien..." pendant 3 secondes avant de lancer l'écran Étape 2
         this.showFeedback(
           successMsg,
           'success',
@@ -1127,7 +1235,6 @@ export class GameEngine {
         );
         return;
       } else {
-        // Sauvegarde immédiate des étoiles acquises puis affichage de "Bravo ! Il est bien..." pendant 3 secondes
         const earnedStars = SaveManager.computeStarsForErrors(this.levelTotalErrors);
         SaveManager.applyLevelRewards(this.saveData, this.currentLevel, earnedStars);
         SaveManager.save(this.saveData);
@@ -1175,6 +1282,165 @@ export class GameEngine {
   }
 
   /**
+   * Animation pleine page de fin de Quizz : score sur 100, record éventuel, total cumulé & Nouveau Quizz
+   */
+  private playQuizCompleteFullPageAnimation(
+    sessionScore: number,
+    isNewRecord: boolean
+  ): void {
+    cancelAnimationFrame(this.celebrationAnimId);
+    clearTimeout(this.autoNextTimerId);
+    this.isWaitingNext = true;
+
+    const screen = document.getElementById('transition-screen');
+    const content = document.getElementById('transition-content');
+    const bgCanvas = document.getElementById('transitionBgCanvas') as HTMLCanvasElement | null;
+    if (!screen || !content || !bgCanvas) {
+      this.returnToMenu();
+      return;
+    }
+
+    screen.classList.remove('hidden', 'step1-theme', 'step2-theme', 'levelup-theme');
+    screen.classList.add('quizend-theme');
+    this.setSystemBarColor('#3b0764');
+
+    const maxScore = SaveManager.QUIZ_QUESTIONS_COUNT * 10;
+    const heroTitle =
+      sessionScore >= maxScore
+        ? 'Quizz Parfait !'
+        : sessionScore >= 70
+          ? 'Super Quizz !'
+          : 'Bravo pour ce Quizz !';
+
+    const recordBadgeHtml = isNewRecord
+      ? `<div class="quiz-record-pill">🌟 Nouveau record personnel !</div>`
+      : '';
+
+    content.innerHTML = `
+      <div class="trans-top-group">
+        <div class="trans-pill-badge gold-badge">🎲 Quizz terminé</div>
+        <h2 class="trans-hero-title">${heroTitle}</h2>
+      </div>
+
+      <div class="trans-quiz-score-card">
+        <div class="trans-quiz-trophy" aria-hidden="true">🏆</div>
+        <div class="trans-quiz-big-pts">+${sessionScore} <span>/ ${maxScore} pts</span></div>
+        ${recordBadgeHtml}
+        <div class="trans-quiz-total-pill">
+          Total cumulé : <strong>🏆 ${this.saveData.quizPoints} pts</strong>
+        </div>
+      </div>
+
+      <div class="trans-quiz-actions">
+        <button id="quiz-replay-btn" type="button" class="trans-action-btn">
+          <span>🎲 Nouveau Quizz</span>
+          ${PLAY_ICON_SVG}
+        </button>
+        <button id="quiz-menu-btn" type="button" class="trans-secondary-btn">
+          <span>Retour au menu</span>
+        </button>
+      </div>
+    `;
+
+    const closeTransition = () => {
+      this.isWaitingNext = false;
+      cancelAnimationFrame(this.celebrationAnimId);
+      screen.classList.add('hidden');
+      screen.classList.remove('quizend-theme');
+    };
+
+    document.getElementById('quiz-replay-btn')?.addEventListener('click', () => {
+      if (!this.isWaitingNext) return;
+      closeTransition();
+      this.soundEngine.playSnap();
+      this.startQuiz();
+    });
+
+    document.getElementById('quiz-menu-btn')?.addEventListener('click', () => {
+      if (!this.isWaitingNext) return;
+      closeTransition();
+      this.soundEngine.playSnap();
+      this.returnToMenu();
+    });
+
+    const bgCtx = bgCanvas.getContext('2d')!;
+    const colors = ['#fde047', '#f472b6', '#38bdf8', '#34d399', '#c084fc', '#fb923c'];
+    const shapes: Array<'rect' | 'circle' | 'star'> = ['rect', 'circle', 'star'];
+
+    const particles: CelebrationParticle[] = Array.from({ length: 64 }, (_, i) => ({
+      x: Math.random() * bgCanvas.width,
+      y: -Math.random() * bgCanvas.height,
+      vx: (Math.random() - 0.5) * 2.2,
+      vy: 1.8 + Math.random() * 3.2,
+      size: 7 + Math.random() * 8,
+      color: colors[i % colors.length],
+      rotation: Math.random() * Math.PI * 2,
+      vRot: (Math.random() - 0.5) * 0.14,
+      shape: shapes[i % shapes.length]
+    }));
+
+    const startTime = performance.now();
+
+    const animate = (now: number) => {
+      if (!this.isWaitingNext) return;
+      const elapsed = now - startTime;
+
+      bgCtx.clearRect(0, 0, bgCanvas.width, bgCanvas.height);
+
+      bgCtx.save();
+      bgCtx.translate(bgCanvas.width / 2, bgCanvas.height * 0.42);
+      bgCtx.rotate(elapsed * 0.0003);
+      for (let i = 0; i < 14; i++) {
+        bgCtx.save();
+        bgCtx.rotate((i * Math.PI) / 7);
+        bgCtx.beginPath();
+        bgCtx.moveTo(0, 0);
+        bgCtx.lineTo(-32, -560);
+        bgCtx.lineTo(32, -560);
+        bgCtx.closePath();
+        bgCtx.fillStyle = 'rgba(253, 224, 71, 0.07)';
+        bgCtx.fill();
+        bgCtx.restore();
+      }
+      bgCtx.restore();
+
+      particles.forEach(p => {
+        p.x += p.vx + Math.sin(elapsed * 0.003 + p.size) * 0.4;
+        p.y += p.vy;
+        p.rotation += p.vRot;
+
+        if (p.y > bgCanvas.height + 20) {
+          p.y = -20;
+          p.x = Math.random() * bgCanvas.width;
+        }
+
+        bgCtx.save();
+        bgCtx.translate(p.x, p.y);
+        bgCtx.rotate(p.rotation);
+        bgCtx.fillStyle = p.color;
+
+        if (p.shape === 'circle') {
+          bgCtx.beginPath();
+          bgCtx.arc(0, 0, p.size * 0.45, 0, Math.PI * 2);
+          bgCtx.fill();
+        } else if (p.shape === 'star') {
+          bgCtx.font = `${Math.round(p.size * 1.4)}px sans-serif`;
+          bgCtx.textAlign = 'center';
+          bgCtx.textBaseline = 'middle';
+          bgCtx.fillText('★', 0, 0);
+        } else {
+          bgCtx.fillRect(-p.size / 2, -p.size / 2, p.size, p.size * 0.6);
+        }
+        bgCtx.restore();
+      });
+
+      this.celebrationAnimId = requestAnimationFrame(animate);
+    };
+
+    this.celebrationAnimId = requestAnimationFrame(animate);
+  }
+
+  /**
    * Animation pleine page partagée pour Étape 1 (Lecture) et Étape 2 (Manipulation)
    */
   private playPhaseIntroFullPageAnimation(
@@ -1193,7 +1459,13 @@ export class GameEngine {
       return;
     }
 
-    screen.classList.remove('hidden', 'step1-theme', 'step2-theme', 'levelup-theme');
+    screen.classList.remove(
+      'hidden',
+      'step1-theme',
+      'step2-theme',
+      'levelup-theme',
+      'quizend-theme'
+    );
     screen.classList.add(stepNumber === 1 ? 'step1-theme' : 'step2-theme');
     this.setSystemBarColor(stepNumber === 1 ? '#0c4a6e' : '#2e1065');
 
@@ -1202,7 +1474,10 @@ export class GameEngine {
       stepNumber === 1
         ? GameEngine.getStep1PromptForLevel(this.currentLevel)
         : GameEngine.getStep2PromptForLevel(this.currentLevel);
-    const starsBadgeHtml = stepNumber === 1 ? '☆ ☆ ☆' : '★ ★ ★';
+    const starsBadgeHtml =
+      stepNumber === 1
+        ? '<span class="star-off">★★★</span><span class="phase-sep">·</span><span class="star-off">★★★</span>'
+        : '<span class="star-on">★★★</span><span class="phase-sep">·</span><span class="star-off">★★★</span>';
     const badgeClass = stepNumber === 1 ? 'trans-step1-badge' : 'trans-step2-badge';
 
     content.innerHTML = `
@@ -1312,10 +1587,10 @@ export class GameEngine {
   }
 
   /**
-   * PLEINE PAGE FIN DE NIVEAU : 3 vraies étoiles SVG, carte cliquable du niveau suivant & bouton "Continuer"
+   * PLEINE PAGE FIN DE NIVEAU : Couronne de 6 vraies étoiles SVG, carte cliquable du niveau suivant & bouton "Continuer"
    */
   private playLevelUpFullPageAnimation(
-    earnedStars: 1 | 2 | 3,
+    earnedStars: LevelStarRating,
     summary: LevelTransitionSummary,
     onReturnMenu: () => void,
     onLaunchNext: () => void
@@ -1332,15 +1607,19 @@ export class GameEngine {
       return;
     }
 
-    screen.classList.remove('hidden', 'step1-theme', 'step2-theme');
+    screen.classList.remove('hidden', 'step1-theme', 'step2-theme', 'quizend-theme');
     screen.classList.add('levelup-theme');
     this.setSystemBarColor('#090d16');
 
     const completedName = LEVEL_SHORT_NAMES[this.currentLevel] || `Niveau ${this.currentLevel}`;
     const bannerTitle =
-      earnedStars === 3
+      earnedStars >= SaveManager.STARS_PER_LEVEL
         ? `Niveau ${this.currentLevel} parfait !`
         : `Niveau ${this.currentLevel} validé !`;
+
+    const sixStarsHtml = [1, 2, 3, 4, 5, 6]
+      .map(slot => GameEngine.buildStarSvg(slot, earnedStars >= slot))
+      .join('');
 
     content.innerHTML = `
       <div class="trans-top-group">
@@ -1348,10 +1627,8 @@ export class GameEngine {
         <h2 class="trans-hero-title">${bannerTitle}</h2>
       </div>
 
-      <div class="trans-stars-showcase">
-        ${GameEngine.buildStarSvg(1, earnedStars >= 1)}
-        ${GameEngine.buildStarSvg(2, earnedStars >= 2)}
-        ${GameEngine.buildStarSvg(3, earnedStars >= 3)}
+      <div class="trans-stars-showcase six-stars-showcase">
+        ${sixStarsHtml}
       </div>
 
       <div class="trans-learned-card">
@@ -1538,12 +1815,14 @@ export class GameEngine {
       const nextMinutes = TimeMath.pointerToMinutes(x, y);
       if (nextMinutes !== this.currentMinutes) {
         this.currentMinutes = nextMinutes;
+        document.getElementById('check-btn')?.classList.remove('hidden');
         this.soundEngine.playTick(nextMinutes % 2 === 0);
       }
     } else {
       const nextHours = TimeMath.pointerToHours(x, y, this.currentMinutes);
       if (nextHours !== this.currentHours) {
         this.currentHours = nextHours;
+        document.getElementById('check-btn')?.classList.remove('hidden');
         this.soundEngine.playTick(true);
       }
     }
@@ -1590,6 +1869,8 @@ export class GameEngine {
     if (document.activeElement instanceof HTMLElement) {
       document.activeElement.blur();
     }
+    document.getElementById('check-btn')?.classList.remove('hidden');
+
     const allBtns = document.querySelectorAll('#choices-container .choice-btn, #check-btn');
     allBtns.forEach(btn => {
       btn.classList.remove('btn-correct', 'btn-wrong', 'choice-tried');
@@ -1599,6 +1880,9 @@ export class GameEngine {
 
   private checkPlaceAnswer(): void {
     const checkBtn = document.getElementById('check-btn');
+    // Le bouton "✓ Vérifier" disparaît immédiatement dès qu'on appuie dessus
+    checkBtn?.classList.add('hidden');
+
     const isCorrect = TimeMath.isPlacementCorrect(
       this.currentHours,
       this.currentMinutes,
@@ -1607,7 +1891,6 @@ export class GameEngine {
       this.currentLevel
     );
 
-    this.animateButtonFeedback(checkBtn, isCorrect);
     if (isCorrect) this.handleSuccessfulAnswer();
     else this.handleFailedPlaceAttempt();
   }
@@ -1650,6 +1933,12 @@ export class GameEngine {
   private updatePhaseStarsUI(): void {
     const phaseBadge = document.getElementById('phase-badge');
     if (!phaseBadge) return;
+
+    if (this.isQuizMode) {
+      phaseBadge.innerHTML = `<span class="quiz-live-pts">🏆 ${this.quizSessionScore} pts</span>`;
+      return;
+    }
+
     const totalEarned = (this.currentPhase === 1 ? 0 : 3) + this.phaseSuccessCount;
     const step1Html = [0, 1, 2]
       .map(i => (i < totalEarned ? '<span class="star-on">★</span>' : '<span class="star-off">★</span>'))

@@ -1700,3 +1700,327 @@ button#player-progress-bar:active {
 body.theme-night .target-spoken-hint {
   color: #bae6fd;
 }
+
+/* ============================================================================
+   NOUVEAUTÉS V64 : MODE QUIZZ ALÉATOIRE TOUS NIVEAUX & SYSTÈME DE POINTS
+   ============================================================================ */
+
+/* 1. Ajustement responsive fin de l'accueil pour accueillir les 10 entrées dans 100dvh */
+#app {
+  padding: 8px 14px 12px;
+}
+
+#main-title-box {
+  padding: 2px 0;
+}
+
+#main-title-box h1 {
+  font-size: clamp(2.05rem, 5.4dvh, 2.9rem);
+}
+
+#main-title-box p {
+  font-size: clamp(0.86rem, 1.9dvh, 1.0rem);
+  margin-top: 2px;
+}
+
+button#player-progress-bar {
+  margin-top: 6px;
+  flex-wrap: wrap;
+  justify-content: center;
+  max-width: 100%;
+  gap: 5px 7px;
+  padding: 4px 10px 4px 6px;
+}
+
+#player-rank-title {
+  font-size: 0.8rem;
+}
+
+#player-stars-count {
+  font-size: 0.8rem;
+  padding: 1px 8px;
+}
+
+#player-points-count {
+  font-size: 0.8rem;
+  font-weight: 700;
+  color: #fbcfe8;
+  background: rgba(219, 39, 119, 0.35);
+  border: 1px solid rgba(244, 114, 182, 0.55);
+  padding: 1px 8px;
+  border-radius: 12px;
+}
+
+#levels-grid {
+  gap: clamp(3px, 0.52dvh, 6px);
+  margin-bottom: clamp(4px, 1.2dvh, 14px);
+}
+
+.level-rect, .workshop-rect, .quiz-rect {
+  border: 2px solid rgba(255, 255, 255, 0.38);
+  border-radius: 14px;
+  padding: clamp(4px, 0.74dvh, 8px) 12px;
+  text-align: left;
+  cursor: pointer;
+  box-shadow: 0 4px 10px rgba(15, 23, 42, 0.16);
+  transition: transform 0.12s ease;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  color: #ffffff;
+}
+
+.lvl-badge {
+  width: clamp(23px, 3.2dvh, 26px);
+  height: clamp(23px, 3.2dvh, 26px);
+  min-width: clamp(23px, 3.2dvh, 26px);
+  font-size: 0.82rem;
+}
+
+.lvl-title {
+  font-size: clamp(0.84rem, 1.92dvh, 0.96rem);
+}
+
+.lvl-status {
+  height: clamp(23px, 3.2dvh, 26px);
+}
+
+/* 2. Bouton et en-tête Mode Quizz */
+.quiz-rect {
+  background: linear-gradient(135deg, #ec4899, #9333ea);
+  border-color: #fde047;
+  box-shadow: 0 4px 12px rgba(147, 51, 234, 0.28);
+}
+
+.quiz-rect:active {
+  transform: scale(0.98);
+}
+
+.quiz-badge {
+  background: rgba(254, 240, 138, 0.28);
+  border-color: #fde047;
+}
+
+.quiz-open-badge {
+  background: rgba(15, 23, 42, 0.48) !important;
+  border-color: #fde047 !important;
+  color: #fde047 !important;
+  padding: 2px 10px !important;
+  white-space: nowrap;
+}
+
+.quiz-live-pts {
+  color: #fde047;
+  font-size: 0.92rem;
+  font-weight: 700;
+  white-space: nowrap;
+}
+
+.quiz-gain-pill {
+  display: inline-block;
+  background: linear-gradient(135deg, #f59e0b, #d97706);
+  color: #ffffff;
+  border: 2px solid #fde047;
+  padding: 1px 10px;
+  border-radius: 12px;
+  font-size: clamp(0.92rem, 3.6vw, 1.06rem);
+  font-weight: 700;
+  vertical-align: middle;
+  margin-right: 4px;
+  box-shadow: 0 3px 8px rgba(15, 23, 42, 0.22);
+}
+
+#help-box.feedback-success:has(.quiz-gain-pill) {
+  font-size: clamp(1.12rem, 4.4vw, 1.34rem);
+}
+
+/* 3. Badges étoiles + points dans la modale "Qui joue ?" */
+.prof-badges {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  flex-shrink: 0;
+}
+
+.prof-points {
+  font-size: 0.84rem;
+  font-weight: 700;
+  color: #86198f;
+  background: #fae8ff;
+  border: 1.5px solid #f5d0fe;
+  padding: 4px 8px;
+  border-radius: 12px;
+  white-space: nowrap;
+}
+
+.profile-item.active-profile .prof-points {
+  background: rgba(15, 23, 42, 0.28);
+  color: #fbcfe8;
+  border-color: rgba(244, 114, 182, 0.65);
+}
+
+/* 4. Écran pleine page de fin de Quizz */
+#transition-screen.quizend-theme {
+  background: radial-gradient(circle at 50% 35%, #a21caf 0%, #581c87 52%, #1e1b4b 100%);
+  color: #ffffff;
+}
+
+#transition-screen.quizend-theme .transition-stage {
+  justify-content: space-between;
+  padding: 10px 0;
+}
+
+.trans-quiz-score-card {
+  width: 100%;
+  background: linear-gradient(180deg, #ffffff 0%, #fdf4ff 100%);
+  color: #0f172a;
+  border: 4px solid #fde047;
+  border-radius: 28px;
+  padding: 24px 20px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 12px;
+  box-shadow: 0 18px 40px rgba(15, 23, 42, 0.45);
+  animation: transPopScale 0.5s cubic-bezier(0.34, 1.56, 0.64, 1) forwards;
+}
+
+.trans-quiz-trophy {
+  font-size: clamp(3rem, 11vw, 4rem);
+  line-height: 1;
+  filter: drop-shadow(0 6px 12px rgba(245, 158, 11, 0.4));
+}
+
+.trans-quiz-big-pts {
+  font-size: clamp(2.2rem, 8vw, 2.85rem);
+  font-weight: 700;
+  color: #9333ea;
+  line-height: 1.05;
+}
+
+.trans-quiz-big-pts span {
+  font-size: clamp(1.15rem, 4.4vw, 1.4rem);
+  color: #64748b;
+}
+
+.quiz-record-pill {
+  background: linear-gradient(135deg, #f59e0b, #d97706);
+  color: #ffffff;
+  font-size: 0.92rem;
+  font-weight: 700;
+  padding: 4px 14px;
+  border-radius: 14px;
+  box-shadow: 0 4px 10px rgba(217, 119, 6, 0.35);
+}
+
+.trans-quiz-total-pill {
+  background: #f1f5f9;
+  color: #334155;
+  border: 2px solid #e2e8f0;
+  padding: 6px 16px;
+  border-radius: 16px;
+  font-size: 1rem;
+  font-weight: 600;
+}
+
+.trans-quiz-total-pill strong {
+  color: #0f172a;
+}
+
+.trans-quiz-actions {
+  width: 100%;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.trans-secondary-btn {
+  width: 100%;
+  height: 48px;
+  background: rgba(15, 23, 42, 0.45);
+  color: #f8fafc;
+  border: 2px solid rgba(255, 255, 255, 0.45);
+  border-radius: 18px;
+  font-size: 1.08rem;
+  font-weight: 700;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: transform 0.12s ease;
+}
+
+.trans-secondary-btn:active {
+  transform: scale(0.97);
+}
+
+/* ============================================================================
+   CORRECTIFS V65 : MASQUAGE DU BOUTON VÉRIFIER & 6 ÉTOILES PAR NIVEAU (48 MAX)
+   ============================================================================ */
+
+/* 1. Disparition propre du bouton "✓ Vérifier" au clic sans décaler le cadran */
+#check-btn.hidden {
+  display: none;
+}
+
+/* 2. Badge compact à 6 étoiles sur les pilules de niveaux de la page d'accueil */
+.lvl-status.stars-badge.lvl-stars-6 {
+  min-width: 84px;
+  padding: 2px 7px;
+  gap: 1.5px;
+  font-size: 0.78rem;
+  letter-spacing: -0.5px;
+}
+
+/* 3. Couronne animée de 6 étoiles 3D SVG sur l'écran de célébration de fin de niveau */
+.trans-stars-showcase.six-stars-showcase {
+  gap: clamp(4px, 1.6vw, 8px);
+  width: 100%;
+  padding: 6px 2px 2px;
+}
+
+.six-stars-showcase .trans-star-svg,
+.six-stars-showcase .trans-star-svg.slot-2 {
+  width: clamp(42px, 12.6vw, 56px);
+  height: clamp(42px, 12.6vw, 56px);
+  margin-top: 0;
+}
+
+.six-stars-showcase .trans-star-svg.slot-1,
+.six-stars-showcase .trans-star-svg.slot-6 {
+  margin-top: 8px;
+}
+
+.six-stars-showcase .trans-star-svg.slot-2,
+.six-stars-showcase .trans-star-svg.slot-5 {
+  margin-top: 2px;
+}
+
+.six-stars-showcase .trans-star-svg.slot-3,
+.six-stars-showcase .trans-star-svg.slot-4 {
+  margin-top: -4px;
+}
+
+.six-stars-showcase .trans-star-svg.slot-1 {
+  animation: transStarBounce 0.55s 0.12s cubic-bezier(0.34, 1.56, 0.64, 1) forwards;
+}
+
+.six-stars-showcase .trans-star-svg.slot-2 {
+  animation: transStarBounce 0.55s 0.24s cubic-bezier(0.34, 1.56, 0.64, 1) forwards;
+}
+
+.six-stars-showcase .trans-star-svg.slot-3 {
+  animation: transStarBounce 0.55s 0.36s cubic-bezier(0.34, 1.56, 0.64, 1) forwards;
+}
+
+.six-stars-showcase .trans-star-svg.slot-4 {
+  animation: transStarBounce 0.55s 0.48s cubic-bezier(0.34, 1.56, 0.64, 1) forwards;
+}
+
+.six-stars-showcase .trans-star-svg.slot-5 {
+  animation: transStarBounce 0.55s 0.60s cubic-bezier(0.34, 1.56, 0.64, 1) forwards;
+}
+
+.six-stars-showcase .trans-star-svg.slot-6 {
+  animation: transStarBounce 0.55s 0.72s cubic-bezier(0.34, 1.56, 0.64, 1) forwards;
+}
